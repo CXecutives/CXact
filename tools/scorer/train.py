@@ -1,4 +1,4 @@
-"""Fits the two free values of the Passungsgrad (engine 25) on teacher labels and prints them.
+"""Fits the free value of the Passungsgrad (engine 25) on teacher labels and prints it.
 
     py -3.14 -X utf8 -I tools/scorer/train.py --signals <scores.jsonl> --labels <labels.jsonl>
         --exclude <gold pairs.jsonl> [--splits train,lockbox] [--params core/src/matching/params.rs]
@@ -15,11 +15,10 @@ The fitter replays `scorer.rs` from the signals (`percent` and `caps`, integer a
 the mirror of the Rust: change both together) and first checks that the replay with the
 constants of --params gives every dumped score. Everything with a meaning stays fixed (the
 weights 40/40/20, the level and field values, the frame step, the caps, the thresholds of
-the field class); it searches only what has none, deterministically on a grid:
+the field class, UNNAMED by the rubric's rule 8); it searches only what has none,
+deterministically on a grid:
 
-  - PARTIAL, what a requirement met in part counts (300 to 950 per-mille);
-  - UNNAMED, what the other musts a short list does not name count of role and field
-    (300 to 1000 per-mille).
+  - PARTIAL, what a requirement met in part counts (300 to 950 per-mille).
 
 The objective is NDCG@10 (mean over profiles, the order of gold/eval.py: scored, unscorable,
 excluded, then score, then rank) plus Spearman of the score against the teacher's passung
@@ -42,8 +41,9 @@ TOP_K = 10
 VERDICT_ORDER = {"scored": 0, "unscorable": 1, "excluded": 2}
 
 # The constants the replay reads from params.rs; the fitted ones first.
-FITTED = ["PARTIAL", "UNNAMED"]
+FITTED = ["PARTIAL"]
 FIXED = [
+    "UNNAMED",
     "W_ROLE",
     "W_CORE",
     "W_MUSTS",
@@ -68,7 +68,7 @@ FIXED = [
     "LEVEL_CAP",
 ]
 
-GRID = {"PARTIAL": range(300, 951, 50), "UNNAMED": range(300, 1001, 50)}
+GRID = {"PARTIAL": range(300, 951, 50)}
 
 
 def read_jsonl(path):
@@ -252,15 +252,14 @@ def better(candidate, best):
 
 
 def search(pairs, start):
-    """The whole grid of the two values (it is small)."""
+    """The whole grid of the value (it is small)."""
     best_p = dict(start)
     best = (round(objective(pairs, best_p), 9), 0, tuple(best_p[k] for k in FITTED))
     for partial in GRID["PARTIAL"]:
-        for unnamed in GRID["UNNAMED"]:
-            p = dict(start, PARTIAL=partial, UNNAMED=unnamed)
-            cand = (round(objective(pairs, p), 9), distance(p, start), tuple(p[k] for k in FITTED))
-            if better(cand, best):
-                best, best_p = cand, p
+        p = dict(start, PARTIAL=partial)
+        cand = (round(objective(pairs, p), 9), distance(p, start), tuple(p[k] for k in FITTED))
+        if better(cand, best):
+            best, best_p = cand, p
     return best_p
 
 

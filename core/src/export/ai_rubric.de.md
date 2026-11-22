@@ -24,7 +24,7 @@ Rahmen. Der Inhalt setzt sich aus drei Teilen zusammen, jeder mit seinem festen 
   mindestens drei. Was die Anzeige zum Kern nicht nennt, zählt wie Rolle und Fach und die übrigen
   Muss-Punkte im Mittel.
 - Weitere Muss-Punkte (20): der Anteil der übrigen erfüllten Muss-Punkte, gezählt als mindestens
-  sieben. Was eine kurze Liste nicht nennt, zählt zu 30 % wie Rolle und Fach.
+  sieben. Was eine kurze Liste nicht nennt, zählt zu 70 % wie Rolle und Fach.
 
 Ein teilweise erfüllter Punkt zählt fast voll (CXact rechnet 90 %). Was unklar ist, zählt nicht mit.
 Erfüllte Kann-Punkte bringen bis zu 5 Punkte dazu, offene kosten nichts.

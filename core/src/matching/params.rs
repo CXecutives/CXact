@@ -58,8 +58,8 @@ pub(crate) const OFF_FIELD_CAP: u8 = 24;
 // --- ENGINE_VERSION 25: the Passungsgrad (`scorer.rs`) ---
 // score = content x frame factor, then the lowest cap. The weights, the level values, the
 // field values, the frame step and the caps are fixed by what they mean (the owner's rules
-// in `export/ai_rubric.de.md`); only `PARTIAL` and `UNNAMED` are fitted, on the private
-// teacher labels (train and lockbox without the gold pairs) by `tools/scorer/train.py`.
+// in `export/ai_rubric.de.md`); only `PARTIAL` is fitted, on the private teacher labels
+// (train and lockbox without the gold pairs) by `tools/scorer/train.py`.
 
 /// The weights of the three content parts in points (sum 100): role and field, core of the
 /// role, other musts. Fixed by meaning: the role and its core decide, the rest of the list
@@ -70,8 +70,10 @@ pub(crate) const W_MUSTS: u64 = 20;
 /// What a requirement met in part counts (per-mille; fitted).
 pub(crate) const PARTIAL: u64 = 900;
 /// The other musts a short list does not name count this share of role and field
-/// (per-mille; fitted).
-pub(crate) const UNNAMED: u64 = 300;
+/// (per-mille). Set by the owner's rule 8, a short ad is not punished (it is judged from
+/// its title and field), not fitted on a check set: the teacher fit gave 300, which costs
+/// a short list of other musts more than a long one.
+pub(crate) const UNNAMED: u64 = 700;
 /// The core of the role counts at least this many musts: the ones the ad does not name
 /// count as role and field and the other musts do on average (a short ad is judged from its
 /// title and field, the rubric's rule 8).

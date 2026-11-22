@@ -396,7 +396,7 @@ the rubric's text, which the AI prompts quote.
   rubric's list.
 - **A frame condition**: an aspect in `signals::frame_aspects` and `FRAME_CODES`; each
   condition worse than wished is one step.
-- **Refit** the two free values (`PARTIAL`, `UNNAMED`) after a change of the signals or the
+- **Refit** the free value (`PARTIAL`; `UNNAMED` follows the rubric's rule 8) after a change of the signals or the
   parts: `CORE=<core> WORK=<folder> SIGNALS=<folder>/signals.jsonl bash
   core/tests/fixtures/private/bench/retrain.sh` dumps the signals, fits on the teacher labels
   (train and lockbox, never a gold pair) and prints the constants; put them into `params.rs`
