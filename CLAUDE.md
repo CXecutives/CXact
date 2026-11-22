@@ -1,6 +1,6 @@
 # CXact (formerly Job-Alert-Monitor)
 
-Desktop app (Tauri 2 + Rust, Windows and macOS) that finds interim and freelance jobs, by its own search of the
+Desktop app (Tauri 2 + Rust; Windows only for now, the code stays portable to macOS) that finds interim and freelance jobs, by its own search of the
 sources that allow it or from the user's job alert mails, fetches the job pages and **scores every job against a
 consultant profile**, only when the user presses the fetch.
 **What the app is and does, the decisions that hold and the next steps live in `docs/PLAN.md`: read the part the
@@ -54,7 +54,7 @@ generated files and the guardrails.
   (`--full` for everything) runs them at once with one line per step.
 - After a fresh clone: `git config core.hooksPath .githooks` (the pre-push gate),
   `git config merge.regen.driver true` (a merge keeps this side's generated files), `npm ci`,
-  `npx playwright install chromium webkit` (the harness); the Rust toolchain comes from `rust-toolchain.toml`.
+  `npx playwright install chromium` (the harness); the Rust toolchain comes from `rust-toolchain.toml`.
 - Generated files (IPC types, command map, demo snapshot and vocabulary, golden prompt, corpus digest, colours):
   `npm run gen` writes them all in one run (`tools/gen.mjs`); run it after a change of a code, a type or the engine
   and after every merge, then commit what it wrote.
@@ -78,8 +78,10 @@ generated files and the guardrails.
 - Parallel tracks: worktrees made by hand from the current base (the workflow's worktree isolation starts from a
   stale base), disjoint files; `cargo clean` before removing one.
 - Small UI changes (text, colour, spacing, order, a fact, an icon): directly in the UI worktree, seen in the live
-  preview, only the affected specs in Chromium. The full harness in both engines once before a push.
-- macOS is verified through the `macos-latest` CI runner (`.github/workflows/ci.yml`) and WebKit locally.
+  preview, only the affected specs in Chromium. The full harness in Chromium once before a push.
+- Windows only for now: no macOS or WebKit work. Their CI runs stay ready and start only by hand
+  (`.github/workflows/ci.yml`, "macos" ticked); keep platform code in `ui/src/lib/platform.ts` and
+  `src-tauri/src/platform.rs` so macOS remains possible.
 
 ## Change and connect
 - **Change, add or remove** inside the frontend or the backend: `docs/CHANGING.md` names the places for each kind

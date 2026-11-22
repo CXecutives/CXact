@@ -1,5 +1,6 @@
-# Checks and builds on both target systems. The two runs are independent (fail-fast: false):
-# a failure on Windows must not cut off the macOS run and vice versa. CI publishes nothing:
+# Checks and builds. Windows only for now (the owner's decision): a push runs Windows and
+# Chromium. The macOS run and WebKit stay ready and run on a manual start with "macos" ticked;
+# the code stays portable. The runs are independent (fail-fast: false). CI publishes nothing:
 # installers, screenshots and logs are workflow artifacts only.
 name: CI
 
@@ -7,6 +8,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      macos:
+        description: Also run macOS and WebKit
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -27,11 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: windows
-            os: windows-latest
-          - name: macos
-            os: macos-latest
+        include: ${{ fromJSON(inputs.macos && '[{"name":"windows","os":"windows-latest"},{"name":"macos","os":"macos-latest"}]' || '[{"name":"windows","os":"windows-latest"}]') }}
 
     steps:
       - uses: actions/checkout@v5
@@ -429,7 +431,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        browser: [chromium, webkit]
+        browser: ${{ fromJSON(inputs.macos && '["chromium","webkit"]' || '["chromium"]') }}
     steps:
       - uses: actions/checkout@v5
 

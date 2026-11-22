@@ -22,7 +22,7 @@ project memory, `handoff`), the one place for them. Keep this file short: replac
 
 ## Environment
 
-- macOS is checked only through the `macos-latest` CI runner.
+- Windows only for now (owner, 2026-11-22); macOS maybe later, its CI run starts only by hand.
 - The clone lives in `Documents\CXact`, the app's default work folder (`settings::default_workspace`).
   `profil/` and `auswertung/` are ignored by git.
 - After a fresh clone (`CLAUDE.md` "Commands"), `core/tests/fixtures/private/` comes from the old folder if
