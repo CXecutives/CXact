@@ -4,7 +4,8 @@ Desktop app (Tauri 2 + Rust, Windows and macOS) that finds interim and freelance
 sources that allow it or from the user's job alert mails, fetches the job pages and **scores every job against a
 consultant profile**, only when the user presses the fetch.
 **What the app is and does, the decisions that hold and the next steps live in `docs/PLAN.md`: read the part the
-task needs. How to work with the user is in `MEMORY.md` (imported below).**
+task needs. How the owner works with Claude (speed, checks, helpers, structure) is in his `~/.claude/CLAUDE.md`,
+which every session loads; this file holds only what is CXact's, `MEMORY.md` (imported below) the project facts.**
 The old app `CXecutives/projektscraper` is a read-only reference.
 
 ## Hard rules
@@ -69,42 +70,22 @@ generated files and the guardrails.
 - Engine changes: `docs/CHANGING.md` "Add words to the engine".
 
 ## Workflow
-- Small English commits, each green on its own. Docs only where they make the work faster (CLAUDE.md, CHANGING.md
-  as the map of where a change goes); no doc duties per change. Parallel tracks work in their own worktree with
-  disjoint files; shared files (`Cargo.toml`, `package.json`, `core/src/lib.rs`, `core/src/view.rs` and `core/src/view/**`,
-  `src-tauri/src/commands/**`, `src-tauri/commands.txt`, `build.rs`, `capabilities/main.json`, `tauri*.conf.json`)
-  belong to the integrator.
-- Remove worktrees right after merging and run `cargo clean` there (disk).
-- A flaky test is fixed or removed the same day, never retried (CI fails a test that passes only on its retry).
+- Small English commits, each green on its own. Shared files (`Cargo.toml`, `package.json`, `core/src/lib.rs`,
+  `core/src/view.rs` and `core/src/view/**`, `src-tauri/src/commands/**`, `src-tauri/commands.txt`, `build.rs`,
+  `capabilities/main.json`, `tauri*.conf.json`) belong to the integrator.
+- Parallel tracks: worktrees made by hand from the current base (the workflow's worktree isolation starts from a
+  stale base), disjoint files; `cargo clean` before removing one.
+- Small UI changes (text, colour, spacing, order, a fact, an icon): directly in the UI worktree, seen in the live
+  preview, only the affected specs in Chromium. The full harness in both engines once before a push.
 - macOS is verified through the `macos-latest` CI runner (`.github/workflows/ci.yml`) and WebKit locally.
 
-## Change and connect (project rules)
-Two kinds of work, both fast; the structure keeps them fast ("a tree needs roots"):
-- **Change, add or remove** a function, rule, field, code or text inside the frontend or inside the backend: one
-  source per decision, tables instead of wiring, and the change touches only the places `docs/CHANGING.md` names.
-  When a small change needs edits in more than three places, fix the structure first (a table, a helper, a
-  generated list), then make the change. What goes, goes whole: code, texts, tests and docs together.
-- **Connect** frontend and backend only when both are finished. They meet only through the generated types and
-  `ui/src/lib/ipc/api.ts`; the stub (`tools/ui-harness/stub.ts`) serves the same contract. A change to the
-  contract updates the stub in the same block, so connecting stays a merge, not a rebuild.
-
-## Speed and tokens (project rules)
-Fast AND lean: as much as possible in the shortest time, without losing quality. The cost comes from extra work,
-not from speed. So:
-- Batch the checks: run the gates once at the end of a block, not after every step ("lieber alles auf einmal").
-- Parallel tracks in worktrees made by hand from the current base (the workflow's worktree isolation starts from a
-  stale base), disjoint files, one integrator who merges as soon as a track is done.
-- Only what pays off. Decide before building (product questions in one round, with a recommendation), so nothing
-  is built twice. Deliver what the user can see first (preview early), background work after.
-- Small UI changes (text, colour, spacing, order, a fact, an icon): the main session edits directly, no subagent,
-  no worktree, only the affected specs in Chromium, seen in the live preview; minutes, not hours.
-- Subagents only for large, independent chunks with disjoint files and a precise brief. No review or audit agents
-  except for data safety, security and backend removals; never confirmation audits.
-- Verify where it is uncertain: cheap gates always (`npm run check`, clippy, Rust tests); UI specs of the changed
-  area only; the full harness in both engines once before a push; never re-verify what is proven.
-- One source per decision (`docs/ARCHITECTURE.md`); `docs/CHANGING.md` says where each kind of change goes.
-- Tests check behaviour through shared helpers and read texts from the catalog; screenshot baselines run on request.
-- Report at milestones only, state durations honestly beforehand, watch the plan's token use.
+## Change and connect
+- **Change, add or remove** inside the frontend or the backend: `docs/CHANGING.md` names the places for each kind
+  of change; `docs/ARCHITECTURE.md` the one source of each decision.
+- **Connect** frontend and backend only when the owner says both are finished. They meet only through the generated
+  types and `ui/src/lib/ipc/api.ts`; the stub (`tools/ui-harness/stub.ts`) serves the same contract. A contract
+  change updates the stub in the same block; `ui-preview` takes main's contract only through
+  `tools/sync-contract.cmd` (its stamp is checked by `npm run check`). Connecting stays a merge, not a rebuild.
 
 ## Memory
 @MEMORY.md
