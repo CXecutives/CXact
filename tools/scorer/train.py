@@ -11,6 +11,9 @@ Inputs (both private, never in the repo):
   --labels   the teachers' consensus per pair: {"pair", "passung" 0-100, "punkte", "note" 0-3,
              "drop", "excluded"}. A pair with "drop": true or without "note" is left out; a pair
              the teachers excluded counts as note 0 (the gain of retrain.sh and metrics.rs).
+             Optional: "split" moves the pair to that split (a graded test pair into training),
+             "weight" (a whole number, default 1) counts it that many times in the fit and the
+             calibration (a stronger teacher's label).
 
 Target: the score of the pair's note (NOTE_TARGET, 0 -> 12 ... 3 -> 88).
 
@@ -79,6 +82,15 @@ def read_labels(path):
             continue
         labels[row["pair"]] = row
     return labels
+
+
+def split_of(row, labels):
+    """The split of a pair: its label's, else the dump's."""
+    return labels.get(row["pair"], {}).get("split") or row["split"]
+
+
+def weight_of(label):
+    return max(1, int(label.get("weight", 1)))
 
 
 def note_of(label):
@@ -362,9 +374,14 @@ def main():
     labels = read_labels(args.labels)
     names, signs = header["names"], header["sign"]
     train_splits = set(args.train_splits.split(","))
-    train = [r for r in rows if r["split"] in train_splits and r["pair"] in labels]
-    if len(train) < 2 * MIN_BIN:
-        sys.exit(f"only {len(train)} labelled training pairs; at least {2 * MIN_BIN} are needed")
+    unique = [r for r in rows if r["pair"] in labels and split_of(r, labels) in train_splits]
+    if len(unique) < 2 * MIN_BIN:
+        sys.exit(f"only {len(unique)} labelled training pairs; at least {2 * MIN_BIN} are needed")
+    # A weighted pair counts as that many copies (same group, so the same fold).
+    first, train = [], []
+    for r in unique:
+        first.append(len(train))
+        train.extend([r] * weight_of(labels[r["pair"]]))
 
     X = np.asarray([r["v"] for r in train], dtype=np.int64)
     y = np.asarray([NOTE_TARGET[note_of(labels[r["pair"]])] / 10 for r in train])
@@ -386,21 +403,24 @@ def main():
     intercept, tables = fit(bins, y, signs, n_bins)
     int_b, ints = integer_model(intercept, tables, edges)
 
-    print(f"signals {len(names)}, training pairs {len(train)} (splits {sorted(train_splits)})")
+    print(
+        f"signals {len(names)}, training pairs {len(unique)}, {len(train)} with weights "
+        f"(splits {sorted(train_splits)})"
+    )
     for name, table in zip(names, ints):
         if len(table) > 1:
             span = max(p for _, p in table) - min(p for _, p in table)
             print(f"  {name:14s} bins {len(table):2d}  span {span / 10:6.1f} points")
-    report("train, out of fold", train, oof_cal, labels)
+    report("train, out of fold", unique, [oof_cal[i] for i in first], labels)
     for split in [s for s in args.report_splits.split(",") if s]:
-        part = [r for r in rows if r["split"] == split and r["pair"] in labels]
+        part = [r for r in rows if r["pair"] in labels and split_of(r, labels) == split]
         if not part:
             print(f"{split}: no labelled pairs")
             continue
         pred = [calibrate(knots, integer_raw(int_b, ints, r["v"])) for r in part]
         report(f"{split}, integer model", part, pred, labels)
 
-    Path(args.out).write_text(rust(names, int_b, ints, knots, len(train)), encoding="utf-8", newline="\n")
+    Path(args.out).write_text(rust(names, int_b, ints, knots, len(unique)), encoding="utf-8", newline="\n")
     print(f"wrote {args.out}")
 
 
