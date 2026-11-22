@@ -1,9 +1,9 @@
 {
   "generatedBy": "tools/sync-contract.cmd, never edited by hand",
   "from": "main",
-  "commit": "ee47e672f1cfed416e96f42537e59901214dc667",
+  "commit": "2a433776183538ea7d78070e971d2d4dd660ee65",
   "files": {
-    "tools/ui-harness/demo/snapshot.json": "5a463e28ab5b32eb",
+    "tools/ui-harness/demo/snapshot.json": "9086bd18ad75d0bf",
     "tools/ui-harness/demo/vocabulary.json": "4701367d9acce9ad",
     "ui/src/lib/ipc/types/AppNote.ts": "94e748266a727c3c",
     "ui/src/lib/ipc/types/AppState.ts": "5a8f60a67d2ac39c",

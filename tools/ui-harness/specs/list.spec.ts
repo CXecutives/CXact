@@ -1753,7 +1753,11 @@ test('another order: the rows and the sections glide, and the days go and come w
 test("another order: the open row's highlight glides along with it", async ({ page }) => {
   await setToken(page, '--dur-slow', '900ms');
   await open(page, WIN);
-  const key = (await stubList(page)).active.at(-1)!;
+  // The last scored row: a job still waiting for its page would load and move on its own.
+  const { jobs } = await stubList(page);
+  const scored = jobs.filter((job) => job.match?.status === 'scored');
+  const last = scored.at(-1)!.key;
+  const key = `${last.portal}-${last.id}`;
   await row(page, key).click();
   await expectHighlightOn(page, key);
   await motionSettled(page);
