@@ -29,9 +29,8 @@ bands: Array<Band>,
  */
 run: number | null, 
 /**
- * The filter "Gefunden": only jobs that came at or after this moment (Unix seconds;
- * the alert mail's date, else when the app first saw the job, as "Nach Datum" orders
- * them). The page names the start of today, of the last 7 or of the last 30 days in
+ * The filter "Gefunden": only jobs the app first saw at or after this moment (Unix
+ * seconds; the day "Nach Datum" orders by first). The page names the start of today, of the last 7 or of the last 30 days in
  * the user's time zone. `null` = every job.
  */
 receivedSince: number | null, 

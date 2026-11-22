@@ -2,6 +2,7 @@
   {
     "portal": "freelancermap",
     "id": "2801",
+    "expect": "high",
     "title": "Interim CFO (m/w/d) für Familienunternehmen",
     "company": "Hanseatic Holding GmbH",
     "location": "Hamburg",
@@ -46,6 +47,7 @@
   {
     "portal": "linkedin",
     "id": "4100200301",
+    "expect": "high",
     "title": "Head of Controlling Transformation",
     "company": "Nordlicht Energie AG",
     "location": "Bremen (Remote)",
@@ -78,6 +80,7 @@
   {
     "portal": "freelance",
     "id": "900411",
+    "expect": "high",
     "title": "SAP S/4HANA Finance Projektleitung",
     "company": "Datenwerk Süd GmbH",
     "location": "München (Vor Ort)",
@@ -91,6 +94,7 @@
   {
     "portal": "freelancermap",
     "id": "2802",
+    "expect": "high",
     "title": "Interim Head of Finance",
     "company": "Grünwerk Mobility GmbH",
     "location": "Berlin",
@@ -125,6 +129,7 @@
   {
     "portal": "freelancermap",
     "id": "2803",
+    "expect": "mid",
     "title": "Kaufmännische Leitung Projektgeschäft",
     "company": "Werft 7 GmbH",
     "location": "Kiel (Vor Ort)",
@@ -154,6 +159,7 @@
   {
     "portal": "linkedin",
     "id": "4100200302",
+    "expect": "low",
     "title": "Finance Business Partner Shared Service",
     "company": "Alpenblick Logistik AG",
     "location": "Leipzig (Hybrid)",
@@ -182,6 +188,7 @@
   {
     "portal": "freelance",
     "id": "900412",
+    "expect": "excluded",
     "title": "Buchhaltung über Personaldienstleister",
     "company": "Musterpersonal GmbH",
     "location": "Berlin",
@@ -207,6 +214,7 @@
   {
     "portal": "linkedin",
     "id": "4100200303",
+    "expect": "mid",
     "title": "Controller Konzernberichtswesen",
     "company": "Contoso Services GmbH",
     "location": "Frankfurt am Main (Hybrid)",
@@ -237,6 +245,7 @@
   {
     "portal": "freelancermap",
     "id": "2804",
+    "expect": "low",
     "title": "Interim Treasury Manager",
     "company": "Rheinhafen Chemie GmbH",
     "location": "Köln",
@@ -252,6 +261,7 @@
   {
     "portal": "linkedin",
     "id": "4100200306",
+    "expect": "low",
     "title": "Sachbearbeitung Kreditoren",
     "company": "Nordhafen Logistik GmbH",
     "location": "Bremen",
@@ -281,6 +291,7 @@
   {
     "portal": "linkedin",
     "id": "4100200304",
+    "expect": "mid",
     "title": "Leitung Rechnungswesen",
     "company": "Stadtwerke Nordheide",
     "location": "Buchholz (Vor Ort)",
@@ -311,6 +322,7 @@
   {
     "portal": "freelance",
     "id": "900413",
+    "expect": "low",
     "title": "SAP FI Berater Migration",
     "company": "Datenwerk Süd GmbH",
     "location": "München (Vor Ort)",
@@ -339,6 +351,7 @@
   {
     "portal": "freelancermap",
     "id": "2805",
+    "expect": "excluded",
     "title": "Projektcontroller Bau",
     "company": "Baufeld Projekte GmbH",
     "location": "Stuttgart",
@@ -365,6 +378,7 @@
   {
     "portal": "linkedin",
     "id": "4100200305",
+    "expect": "excluded",
     "title": "Payroll Specialist",
     "company": "Lakeside Payroll AG",
     "location": "Zürich, Schweiz (Hybrid)",
@@ -392,6 +406,7 @@
   {
     "portal": "freelancermap",
     "id": "2807",
+    "expect": "excluded",
     "title": "Werkstudent Controlling (m/w/d)",
     "company": "Elbufer Handel GmbH",
     "location": "Hamburg",
@@ -415,6 +430,7 @@
   {
     "portal": "freelancermap",
     "id": "2806",
+    "expect": "unscorable",
     "title": "Reporting Analyst",
     "company": "Hafenkontor GmbH",
     "location": "Hamburg",
@@ -426,6 +442,7 @@
   {
     "portal": "linkedin",
     "id": "4100200399",
+    "expect": "high",
     "run": true,
     "title": "Interim CFO Carve-out",
     "company": "Brückenwerk Industrie AG",
@@ -456,6 +473,7 @@
   {
     "portal": "freelancermap",
     "id": "2899",
+    "expect": "high",
     "run": true,
     "title": "Controlling Lead Post-Merger",
     "company": "Elbufer Medien GmbH",
@@ -483,6 +501,7 @@
   {
     "portal": "freelance",
     "id": "900499",
+    "expect": "excluded",
     "run": true,
     "title": "Buchhalter im Kundeneinsatz",
     "company": "Personalwerk Nord GmbH",
