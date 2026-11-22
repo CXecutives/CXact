@@ -118,6 +118,16 @@ pub(crate) const DOMAIN: Domain = Domain {
         // Transformation and organisation.
         ("hr transformation", "hr-transformation"),
         ("personaltransformation", "hr-transformation"),
+        // Harmonising the HR processes of several units: one piece of an HR transformation.
+        ("hr-prozessharmonisierung", "hr-harmonisierung"),
+        ("hr prozessharmonisierung", "hr-harmonisierung"),
+        ("harmonisierung hr-prozesse", "hr-harmonisierung"),
+        ("harmonisierung hr prozesse", "hr-harmonisierung"),
+        ("harmonisierung personalprozesse", "hr-harmonisierung"),
+        ("hr process harmonisation", "hr-harmonisierung"),
+        ("hr process harmonization", "hr-harmonisierung"),
+        ("harmonisation hr processes", "hr-harmonisierung"),
+        ("harmonization hr processes", "hr-harmonisierung"),
         ("hr business partner modell", "dreisaulenmodell"),
         ("drei saulen modell", "dreisaulenmodell"),
         ("three pillar model", "dreisaulenmodell"),
@@ -226,7 +236,7 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("personalinformationssystem", "hris"),
         ("success factors", "successfactors"),
     ],
-    half: &[],
+    half: &[("hr-transformation", &["hr-harmonisierung"])],
 };
 
 #[cfg(test)]
@@ -287,6 +297,26 @@ mod tests {
                 ("Personalentwicklung", "Personal"),
             ],
         );
+    }
+
+    /// An HR transformation meets the harmonisation of HR processes in half, never the other
+    /// way.
+    #[test]
+    fn harmonising_hr_processes_is_part_of_a_transformation() {
+        use crate::matching::atoms::{Fit, atoms, fit};
+        let v = hr();
+        assert_same(
+            &v,
+            &[
+                ("HR-Prozessharmonisierung", "Harmonisierung der HR-Prozesse"),
+                ("harmonisation of HR processes", "HR-Prozessharmonisierung"),
+            ],
+        );
+        let one = |text: &str| atoms(text, &v).pop().expect("one atom");
+        let transformation = one("HR-Transformation");
+        let harmonising = one("HR-Prozessharmonisierung");
+        assert_eq!(fit(&harmonising, &transformation), Fit::General);
+        assert_eq!(fit(&transformation, &harmonising), Fit::None);
     }
 
     /// Broad companion words never count alone; the field name `HR` heads job titles and

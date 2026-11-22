@@ -1,5 +1,5 @@
 //! What moved a score, for the reader's "why this number": the musts met, the optional
-//! requirements, the target role, the wishes, a text with little evidence,
+//! requirements, the target role, a text with little evidence,
 //! the factor of a permanent role and the cap that held the score down. Codes and params
 //! only, read from the evaluation the score came from (it never changes the score). At most
 //! [`MAX_FACTORS`] lines: where there are more, the ones that explain the most stay (a cap,
@@ -15,27 +15,25 @@ use super::types::{EvidenceLevel, Factor, FactorCode, MAX_FACTORS, Summary, Verd
 const PERMANENT_PERCENT: u64 = super::params::PERMANENT_FACTOR / 10;
 
 /// The lines in the order they are read.
-const READING: [FactorCode; 9] = [
+const READING: [FactorCode; 8] = [
     FactorCode::Musts,
     FactorCode::Nice,
     FactorCode::TargetRole,
     FactorCode::Level,
     FactorCode::Field,
-    FactorCode::Wishes,
     FactorCode::Evidence,
     FactorCode::Permanent,
     FactorCode::Cap,
 ];
 
 /// The lines kept first where there are more than [`MAX_FACTORS`].
-const KEPT_FIRST: [FactorCode; 9] = [
+const KEPT_FIRST: [FactorCode; 8] = [
     FactorCode::Cap,
     FactorCode::Permanent,
     FactorCode::Musts,
     FactorCode::Level,
     FactorCode::Field,
     FactorCode::TargetRole,
-    FactorCode::Wishes,
     FactorCode::Evidence,
     FactorCode::Nice,
 ];
@@ -68,7 +66,7 @@ fn all(profile: &EngineProfile, evaluation: &Evaluation, summary: &Summary) -> V
     }
     if !profile.roles.is_empty() {
         let params = match &evaluation.role {
-            Some((fit, _, _)) => json!({
+            Some((fit, _)) => json!({
                 "role": profile.roles[fit.role].text,
                 "fit": if fit.full { "full" } else { "half" },
             }),
@@ -89,17 +87,6 @@ fn all(profile: &EngineProfile, evaluation: &Evaluation, summary: &Summary) -> V
             FactorCode::Field,
             &json!({ "field": field, "distance": distance.code() }),
         ));
-    }
-    let wish_points = evaluation
-        .wishes
-        .iter()
-        .map(|w| w.points)
-        .sum::<i64>()
-        .clamp(-super::params::WISH_MAX, super::params::WISH_MAX);
-    if wish_points != 0 {
-        // Per-mille of the score: one point is ten.
-        let points = (wish_points + wish_points.signum() * 5) / 10;
-        out.push(factor(FactorCode::Wishes, &json!({ "points": points })));
     }
     let evidence = match evaluation.evidence {
         EvidenceLevel::Full => None,
@@ -152,7 +139,8 @@ pub(crate) fn factors(
 mod tests {
     use serde_json::json;
 
-    use crate::matching::{FactorCode, JobInput, TextKind, assess, compile_profile};
+    use crate::matching::params::LEVEL_CAP;
+    use crate::matching::{Assessment, FactorCode, JobInput, TextKind, assess, compile_profile};
     use crate::portal::Portal;
 
     fn job<'a>(title: &'a str, text: &'a str) -> JobInput<'a> {
@@ -204,33 +192,92 @@ mod tests {
 
     #[test]
     fn a_permanent_role_and_a_cap_say_so_and_the_lines_stay_five() {
-        // A senior profile (20 years) and a junior role on site: the junior cap holds the
-        // score, the remote wish missed lowers it.
+        // A senior profile (20 years) and a permanent junior role of its own field: the junior
+        // cap holds the score; the controller stands rungs below the CFO (the level line
+        // takes the place of the nice-to-haves).
         let mut data = crate::profile::parse(PROFILE).unwrap();
         data.years = Some(20);
         let profile = compile_profile(&data);
         let requirements = AD.split_once("\n\n").map_or(AD, |(_, rest)| rest);
         let ad = format!(
             "Wir suchen einen Controller in Festanstellung, Vollzeit und unbefristet, \
-             zu 100 % vor Ort in Hamburg.\n\n{requirements}"
+             zu 100 % remote.\n\n{requirements}"
         );
-        let a = assess(&profile, &job("Junior Controller (m/w/d)", &ad)).unwrap();
+        let title = "Junior Finance Controller Konsolidierung IFRS (m/w/d)";
+        let a = assess(&profile, &job(title, &ad)).unwrap();
         let codes: Vec<FactorCode> = a.factors.iter().map(|f| f.code).collect();
         assert_eq!(
             codes,
             [
                 FactorCode::Musts,
                 FactorCode::TargetRole,
-                FactorCode::Wishes,
+                FactorCode::Level,
                 FactorCode::Permanent,
                 FactorCode::Cap
-            ],
-            "the optional requirements give way to the cap"
+            ]
         );
         let cap = &a.factors[4];
         assert_eq!(cap.params["cap"], json!("junior"));
         assert_eq!(cap.params["max"], json!(a.score));
         assert_eq!(a.factors[3].params["percent"], json!(90));
+    }
+
+    /// A senior specialist offered as an employment stands two rungs below a plant manager:
+    /// it caps at 40 with the level as its reason, however well the musts fit; the same title
+    /// as an interim project is an engagement of every level and keeps its score.
+    #[test]
+    fn a_specialist_employment_two_rungs_below_caps() {
+        let data = crate::profile::parse(
+            r#"{
+                "kernkompetenzen": [
+                    {"kompetenz": "Qualitätsmanagement"}, {"kompetenz": "IATF 16949"},
+                    {"kompetenz": "VDA 6.3"}, {"kompetenz": "8D-Methodik"},
+                    {"kompetenz": "FMEA"}, {"kompetenz": "Six Sigma"}
+                ],
+                "wunschrollen": ["Interim Werksleiter", "Interim COO"],
+                "vertragsarten": ["projekt", "festanstellung", "zeitarbeit"]
+            }"#,
+        )
+        .unwrap();
+        let profile = compile_profile(&data);
+        let musts = "Ihr Profil\n\
+            • Erfahrung im Qualitätsmanagement\n\
+            • Kenntnisse der IATF 16949\n\
+            • Erfahrung mit VDA 6.3 und FMEA\n\
+            • Reklamationsbearbeitung mit 8D-Methodik\n";
+        let title = "Senior Qualitätsingenieur (m/w/d) Serienbetreuung";
+        let cap = |a: &Assessment| {
+            a.factors
+                .iter()
+                .find(|f| f.code == FactorCode::Cap)
+                .map(|f| f.params["cap"].clone())
+        };
+        let employed = assess(
+            &profile,
+            &job(
+                title,
+                &format!(
+                    "Für einen Zulieferer suchen wir einen Senior Qualitätsingenieur in \
+                     Festanstellung, unbefristet und in Vollzeit.\n\n{musts}"
+                ),
+            ),
+        )
+        .unwrap();
+        assert_eq!(employed.score, LEVEL_CAP);
+        assert_eq!(cap(&employed), Some(json!("level")));
+        let project = assess(
+            &profile,
+            &job(
+                title,
+                &format!(
+                    "Für einen Zulieferer suchen wir für ein Interim-Projekt über sechs Monate \
+                     einen freiberuflichen Senior Qualitätsingenieur.\n\n{musts}"
+                ),
+            ),
+        )
+        .unwrap();
+        assert!(project.score > LEVEL_CAP, "{}", project.score);
+        assert_ne!(cap(&project), Some(json!("level")));
     }
 
     #[test]

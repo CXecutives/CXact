@@ -2,9 +2,9 @@
 //! and regions. Each wish is off while it is empty; a wish never excludes (exclusions are the
 //! hard criteria). The industries of the profile are experience, no wish (21).
 //!
-//! Every wish ends in a state: met adds its points, clearly missed takes them, near and
-//! unknown change nothing. The points are `WISH_RATE`, `WISH_REMOTE` and `WISH_REGION`
-//! per-mille; their sum is bounded by `WISH_MAX`, so the wishes never outweigh the fit.
+//! Every wish ends in a state: met, near, clearly missed or unknown. They are part of the
+//! frame of the Passungsgrad (`scorer.rs`): near counts in part, missed against, unknown
+//! fits.
 //!
 //! - Day rate (`tagessatz_wunsch`, not for permanent roles): the upper bound of the stated
 //!   EUR rate per day (hourly x 8) at or above the wish is met, at least `WISH_RATE_NEAR`
@@ -34,7 +34,7 @@ use super::job::contains_word;
 use super::lexicon::{engine as core_lex, wishes as lex};
 use super::params::{
     HYBRID_SHARE, ONSITE_MAX, REGION_REMOTE_NEAR, REMOTE_FULL, REMOTE_MARGIN, REMOTE_NAMED_SHARE,
-    REMOTE_PARTLY, WISH_RATE, WISH_RATE_NEAR, WISH_REGION, WISH_REMOTE, WORKDAYS,
+    REMOTE_PARTLY, WISH_RATE_NEAR, WORKDAYS,
 };
 use super::types::{ReasonCode, ReasonKind, WishInfo, WishKey};
 use crate::profile::{ProfileForm, WorkWish, key};
@@ -298,22 +298,13 @@ impl State {
             Self::Missed | Self::Unknown => ReasonKind::Open,
         }
     }
-
-    fn points(self, weight: i64) -> i64 {
-        match self {
-            Self::Met => weight,
-            Self::Missed => -weight,
-            Self::Near | Self::Unknown => 0,
-        }
-    }
 }
 
-/// One wish for one job, with its points (per-mille) and the passages behind it.
+/// One wish for one job, with the passages behind it.
 #[derive(Debug, Clone)]
 pub(crate) struct WishResult {
     pub code: ReasonCode,
     pub state: State,
-    pub points: i64,
     pub params: Value,
     pub spans: Vec<Range<usize>>,
 }
@@ -321,18 +312,13 @@ pub(crate) struct WishResult {
 fn result(
     code: ReasonCode,
     state: State,
-    weight: i64,
     mut params: Value,
     spans: Vec<Range<usize>>,
 ) -> WishResult {
-    let points = state.points(weight);
     params["state"] = json!(state.name());
-    // Points on the score scale (per-mille / 10).
-    params["points"] = json!(points / 10);
     WishResult {
         code,
         state,
-        points,
         params,
         spans,
     }
@@ -373,18 +359,12 @@ fn rate(wish: u64, ad: &Ad<'_>) -> WishResult {
     // A wage is employment pay, no day rate.
     let Some((rate, span)) = facts::stated_rate(ad.job, ad.segments).filter(|(r, _)| !r.wage)
     else {
-        return result(
-            code,
-            State::Unknown,
-            WISH_RATE,
-            json!({ "wish": wish }),
-            Vec::new(),
-        );
+        return result(code, State::Unknown, json!({ "wish": wish }), Vec::new());
     };
     let spans: Vec<Range<usize>> = span.into_iter().collect();
     if let Some(currency) = rate.currency {
         let params = json!({ "wish": wish, "currency": currency.to_uppercase() });
-        return result(code, State::Unknown, WISH_RATE, params, spans);
+        return result(code, State::Unknown, params, spans);
     }
     let per_day = rate.per_day();
     let state = if per_day >= wish {
@@ -396,7 +376,7 @@ fn rate(wish: u64, ad: &Ad<'_>) -> WishResult {
     };
     let mut params = json!({ "wish": wish, "rate": per_day, "hourly": rate.hourly });
     facts::rate_amounts(&mut params, &rate);
-    result(code, state, WISH_RATE, params, spans)
+    result(code, state, params, spans)
 }
 
 /// Does a folded text name one of `list` (whole words, word starts from six letters on, or
@@ -562,7 +542,7 @@ fn remote(wish: RemoteWish, share: Option<(u64, u64)>) -> WishResult {
     let code = ReasonCode::RemoteWish;
     let mut params = wish.params();
     let Some((from, to)) = share else {
-        return result(code, State::Unknown, WISH_REMOTE, params, Vec::new());
+        return result(code, State::Unknown, params, Vec::new());
     };
     if from == to {
         params["share"] = json!(from);
@@ -581,7 +561,7 @@ fn remote(wish: RemoteWish, share: Option<(u64, u64)>) -> WishResult {
     } else {
         State::Near
     };
-    result(code, state, WISH_REMOTE, params, Vec::new())
+    result(code, state, params, Vec::new())
 }
 
 /// The place of `places` a folded text names first (`München, Bayern` names München).
@@ -622,13 +602,7 @@ fn region(places: &[String], ad: &Ad<'_>, share: Option<(u64, u64)>) -> WishResu
     let code = ReasonCode::RegionWish;
     let from = share.map_or(0, |(from, _)| from);
     if from >= 100 {
-        return result(
-            code,
-            State::Met,
-            WISH_REGION,
-            json!({ "remote": true }),
-            Vec::new(),
-        );
+        return result(code, State::Met, json!({ "remote": true }), Vec::new());
     }
     let job = ad.job;
     let raw = fact(job.facts, super::fact_key::LOCATION)
@@ -648,7 +622,7 @@ fn region(places: &[String], ad: &Ad<'_>, share: Option<(u64, u64)>) -> WishResu
     for (folded, range, written) in &sources {
         if let Some(place) = first_named(folded, places.iter().map(String::as_str)) {
             let params = json!({ "location": as_written(written, place), "remote": false });
-            return result(code, State::Met, WISH_REGION, params, spans(range));
+            return result(code, State::Met, params, spans(range));
         }
     }
     for (folded, range, written) in &sources {
@@ -659,10 +633,10 @@ fn region(places: &[String], ad: &Ad<'_>, share: Option<(u64, u64)>) -> WishResu
                 State::Missed
             };
             let params = json!({ "location": as_written(written, place), "remote": false });
-            return result(code, state, WISH_REGION, params, spans(range));
+            return result(code, state, params, spans(range));
         }
     }
-    result(code, State::Unknown, WISH_REGION, json!({}), Vec::new())
+    result(code, State::Unknown, json!({}), Vec::new())
 }
 
 #[cfg(test)]

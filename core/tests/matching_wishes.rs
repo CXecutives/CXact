@@ -5,8 +5,8 @@
 use std::path::Path;
 
 use jobalert_core::matching::{
-    Assessment, JobInput, Reason, ReasonCode, ReasonKind, TextKind, Verdict, WishKey, assess,
-    compile_profile,
+    Assessment, JobInput, PartCode, Reason, ReasonCode, ReasonKind, TextKind, Verdict, WishKey,
+    assess, compile_profile,
 };
 use jobalert_core::portal::Portal;
 use jobalert_core::profile::{ProfileForm, WorkWish, parse};
@@ -72,6 +72,18 @@ fn reason(a: &Assessment, code: ReasonCode) -> Option<&Reason> {
     a.reasons.iter().find(|r| r.code == code)
 }
 
+/// The frame lines of the Passungsgrad: the aspect and the points each takes.
+fn frame(a: &Assessment) -> Vec<(String, i16)> {
+    a.parts
+        .iter()
+        .filter(|p| p.code == PartCode::Frame)
+        .map(|p| {
+            let aspect = p.params.get("aspect").and_then(Value::as_str);
+            (aspect.unwrap_or_default().to_owned(), p.points)
+        })
+        .collect()
+}
+
 fn state(a: &Assessment, code: ReasonCode) -> String {
     reason(a, code)
         .and_then(|r| r.params.get("state"))
@@ -107,20 +119,22 @@ fn target_roles_full_half_and_none() {
         (r.kind, r.params["fit"].as_str()),
         (ReasonKind::Met, Some("full"))
     );
-    assert_eq!(r.params["points"], 8);
     assert!(
-        (7..=9).contains(&(full.score - plain.score)),
+        full.score > plain.score,
         "{} vs {}",
         full.score,
         plain.score
     );
-    // The field without the lead level: half.
-    let half = run(&roles, &titled("Interim Finance Manager (m/w/d)"));
+    // The field without the lead level: half, still a lift.
+    let title = "Interim Finance Manager (m/w/d)";
+    let half = run(&roles, &titled(title));
     let r = reason(&half, ReasonCode::TargetRole).expect("half role");
     assert_eq!(
-        (r.kind, r.params["points"].as_i64()),
-        (ReasonKind::Partial, Some(4))
+        (r.kind, r.params["fit"].as_str()),
+        (ReasonKind::Partial, Some("half"))
     );
+    let without = run(&base(), &titled(title)).score;
+    assert!(half.score > without, "{} vs {without}", half.score);
     // Another role: nothing.
     let other = run(&roles, &titled("Senior Controller (m/w/d)"));
     assert!(reason(&other, ReasonCode::TargetRole).is_none());
@@ -130,19 +144,34 @@ fn target_roles_full_half_and_none() {
     );
 }
 
+/// A target role is the field of the role, never a foreign field (the rubric: a title that
+/// meets a target role is never foreign): with every must open the musts still cost their
+/// share, and an exclusion holds.
 #[test]
 fn a_target_role_never_lifts_a_capped_or_excluded_ad() {
     let roles = roles(&["Interim CFO"]);
-    let off_field = Ad {
+    let open = Ad {
         title: "Interim CFO (m/w/d) Klinikverbund",
         text: "Ihr Profil\n- Erfahrung in der Krankenhausbuchhaltung\n\
                - Kenntnisse im DRG-System\n- Erfahrung in Pflegesatzverhandlungen\n\
                Rahmenbedingungen\nTagessatz 1.400 € pro Tag\n",
         ..AD
     };
-    let a = run(&roles, &off_field);
+    let met = Ad {
+        text: "Ihr Profil\n- Erfahrung im Controlling\n- Erfahrung im Treasury\n\
+               - Erfahrung in der Restrukturierung\n\
+               Rahmenbedingungen\nTagessatz 1.400 € pro Tag\n",
+        ..open
+    };
+    let a = run(&roles, &open);
     assert!(reason(&a, ReasonCode::TargetRole).is_some());
-    assert!(a.score <= 25, "off-field cap holds, got {}", a.score);
+    let fits = run(&roles, &met);
+    assert!(
+        a.score < fits.score && a.score < 80,
+        "open musts cost their share: {} vs {}",
+        a.score,
+        fits.score
+    );
     let anue = Ad {
         title: "Interim CFO (m/w/d)",
         text: "Ihr Profil\n- Erfahrung im Treasury\n- Erfahrung im Controlling\n\
@@ -171,22 +200,31 @@ fn day_rate_wish_met_near_missed_unknown() {
         let plain = run(&base(), &ad(&body));
         (i32::from(a.score) - i32::from(plain.score), a)
     };
+    // A day rate at or above the wish fits the frame: no line, no change.
     let (delta, met) = check("Tagessatz 1.100 € pro Tag", "met");
-    assert!(
-        (2..=4).contains(&delta),
-        "met adds three points, got {delta}"
-    );
+    assert_eq!(delta, 0, "a met wish adds nothing");
+    assert!(frame(&met).is_empty(), "{:?}", met.parts);
     let r = reason(&met, ReasonCode::DayRateWish).expect("reason");
     assert_eq!(
         (r.params["wish"].as_u64(), r.params["rate"].as_u64()),
         (Some(1000), Some(1100))
     );
-    assert_eq!(check("Tagessatz 960 € pro Tag", "near").0, 0);
-    let (delta, _) = check("Tagessatz 850 € pro Tag", "missed");
-    assert!(
-        (-4..=-2).contains(&delta),
-        "missed takes three points, got {delta}"
-    );
+    // Between the minimum and the wish (near or missed): one frame line, 5 % of the score.
+    for (rate, wished) in [
+        ("Tagessatz 960 € pro Tag", "near"),
+        ("Tagessatz 850 € pro Tag", "missed"),
+    ] {
+        let (delta, a) = check(rate, wished);
+        let lines = frame(&a);
+        assert_eq!(lines.len(), 1, "{rate}: {:?}", a.parts);
+        assert_eq!(lines[0].0, "rate");
+        assert_eq!(
+            i32::from(lines[0].1),
+            delta,
+            "{rate}: the line is the difference"
+        );
+        assert!((-5..=-3).contains(&delta), "{rate}: {delta}");
+    }
     assert_eq!(check("Start ab sofort", "unknown").0, 0);
     let (_, chf) = check("Tagessatz CHF 1.200 pro Tag", "unknown");
     assert_eq!(
@@ -298,17 +336,13 @@ fn wishes_are_bounded_and_never_exclude() {
     let plain = run(&base(), &missed);
     let a = run(&profile, &missed);
     assert_eq!(a.verdict, Verdict::Scored, "wishes never exclude");
-    let delta = i32::from(plain.score) - i32::from(a.score);
-    assert!(
-        (7..=9).contains(&delta),
-        "all three missed take eight points, got {delta}"
-    );
-    let points: i64 = a
-        .reasons
-        .iter()
-        .filter_map(|r| r.params.get("points").and_then(Value::as_i64))
-        .sum();
-    assert_eq!(points, -8);
+    // The day rate and the place (work mode and region are one aspect) each keep 95 %.
+    let lines = frame(&a);
+    let aspects: Vec<&str> = lines.iter().map(|(aspect, _)| aspect.as_str()).collect();
+    assert_eq!(aspects, ["rate", "place"], "{:?}", a.parts);
+    let taken: i32 = lines.iter().map(|(_, points)| i32::from(*points)).sum();
+    assert_eq!(i32::from(a.score) - i32::from(plain.score), taken);
+    assert!((-10..=-6).contains(&taken), "two steps of 5 %, got {taken}");
     for r in &a.reasons {
         assert_ne!(r.kind, ReasonKind::Violation, "{r:?}");
     }

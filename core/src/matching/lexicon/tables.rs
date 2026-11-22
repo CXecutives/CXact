@@ -270,6 +270,7 @@ pub(crate) const SYNONYM_WORDS: &[(&str, Option<&str>)] = &[
     ("consulting", Some("beratung")),
     ("cs", Some("cs")),
     ("fi", Some("fi")),
+    ("fico", Some("fi")),
     ("führungsentwicklung", Some("leadershipdevelopment")),
     ("hana", None),
     ("hr", Some("hr")),
@@ -403,6 +404,8 @@ pub(crate) const NICE_HEADINGS: &[&str] = &[
     "good to have",
     "ideal",
     "idealerweise",
+    "kann-anforderungen",
+    "kann-kriterien",
     "nice to have",
     "nice to haves",
     "nice-to-have",
@@ -771,29 +774,236 @@ pub(crate) const JOB_SKILL_VOCAB: &[&str] = &[
 
 /// Hygiene requirements every candidate is expected to meet (folded, sorted): office tools,
 /// a driving licence, willingness to travel, soft traits and native German. They carry no
-/// information about the fit.
-#[allow(dead_code)] // Read by the engine once main wires it.
+/// information about the fit: met or open, they are no must (the rubric's rule 4).
 pub(crate) const HYGIENE: &[&str] = &[
+    "analytical thinking",
+    "analytische fahigkeiten",
+    "analytisches denken",
+    "analytisches denkvermogen",
     "communication skills",
     "deutsch muttersprache",
     "driver's licence",
     "driving licence",
     "excel",
     "fuhrerschein",
+    "hands on",
     "kommunikationsstarke",
+    "microsoft office",
     "ms office",
     "native german",
     "powerpoint",
     "reisebereitschaft",
     "team player",
     "teamfahigkeit",
+    "teamplayer",
     "willingness to travel",
+];
+
+/// Kinds of tools with the names of each (folded, whole words; a hyphen reads as a space):
+/// another tool of the same kind meets a requirement in part (the rubric's rule 3, `HubSpot`
+/// for `Salesforce`). A bare family (`SAP`, `Oracle`, `Microsoft`) names no kind.
+// external contract - do not translate (matching lexicon)
+pub(crate) const TOOL_KINDS: &[(&str, &[&str])] = &[
+    (
+        "crm",
+        &[
+            "crm",
+            "dynamics crm",
+            "dynamics 365 sales",
+            "hubspot",
+            "pipedrive",
+            "salesforce",
+            "sap c4c",
+            "sap crm",
+            "sap sales cloud",
+            "siebel",
+            "sugarcrm",
+            "zoho",
+        ],
+    ),
+    (
+        "erp",
+        &[
+            "abas",
+            "business central",
+            "dynamics 365 finance",
+            "dynamics ax",
+            "dynamics nav",
+            "erp",
+            "infor",
+            "jd edwards",
+            "navision",
+            "netsuite",
+            "odoo",
+            "oracle ebs",
+            "oracle erp",
+            "oracle fusion",
+            "proalpha",
+            "s/4hana",
+            "s4hana",
+            "sap ecc",
+            "sap erp",
+            "sap fi",
+            "sap fi/co",
+            "sap fico",
+            "sap mm",
+            "sap pp",
+            "sap r/3",
+            "sap s/4",
+            "sap s/4hana",
+            "sap sd",
+            "warenwirtschaft",
+            "warenwirtschaftssystem",
+        ],
+    ),
+    (
+        "bi",
+        &[
+            "bi tool",
+            "bi tools",
+            "business intelligence",
+            "cognos",
+            "looker",
+            "microstrategy",
+            "power bi",
+            "powerbi",
+            "qlik",
+            "qlik sense",
+            "qlikview",
+            "sap analytics cloud",
+            "sap bo",
+            "sap businessobjects",
+            "sap bw",
+            "tableau",
+            "thoughtspot",
+        ],
+    ),
+    (
+        "ticketing",
+        &[
+            "bmc remedy",
+            "freshdesk",
+            "freshservice",
+            "itsm tool",
+            "itsm tools",
+            "jira service desk",
+            "jira service management",
+            "otrs",
+            "remedy",
+            "servicenow",
+            "ticket system",
+            "ticketsystem",
+            "topdesk",
+            "zendesk",
+        ],
+    ),
+    (
+        "ccaas",
+        &[
+            "acd",
+            "amazon connect",
+            "avaya",
+            "ccaas",
+            "cisco uccx",
+            "contact center software",
+            "cxone",
+            "five9",
+            "genesys",
+            "nice cxone",
+            "talkdesk",
+            "twilio flex",
+        ],
+    ),
+    (
+        "hcm",
+        &[
+            "adp",
+            "hris",
+            "loga",
+            "oracle hcm",
+            "personio",
+            "sap hcm",
+            "sap hr",
+            "sap successfactors",
+            "successfactors",
+            "workday",
+        ],
+    ),
+    (
+        "projects",
+        &[
+            "asana",
+            "azure devops",
+            "jira",
+            "microsoft project",
+            "monday.com",
+            "ms project",
+            "planview",
+            "smartsheet",
+            "trello",
+        ],
+    ),
+    (
+        "consolidation",
+        &[
+            "bpc",
+            "cch tagetik",
+            "hfm",
+            "konsolidierungssoftware",
+            "lucanet",
+            "onestream",
+            "oracle hfm",
+            "sap bpc",
+            "sap group reporting",
+            "tagetik",
+        ],
+    ),
+    (
+        "planning",
+        &["anaplan", "hyperion", "jedox", "oracle pbcs", "sap ibp"],
+    ),
+    (
+        "procurement",
+        &[
+            "ariba",
+            "coupa",
+            "ivalua",
+            "jaggaer",
+            "sap ariba",
+            "sap srm",
+        ],
+    ),
+    (
+        "rpa",
+        &[
+            "automation anywhere",
+            "blue prism",
+            "power automate",
+            "rpa",
+            "uipath",
+        ],
+    ),
+    ("cloud", &["aws", "azure", "gcp", "google cloud"]),
+    (
+        "quality standard",
+        &["as9100", "en 9100", "iatf 16949", "iso 13485", "iso 9001"],
+    ),
 ];
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::matching::atoms::fold;
+
+    #[test]
+    fn tool_kinds_are_folded() {
+        for (kind, names) in TOOL_KINDS {
+            for name in *names {
+                assert_eq!(fold(name), *name, "{kind}");
+                assert!(!name.contains('-'), "{kind}: {name}");
+            }
+        }
+    }
 
     #[test]
     fn hygiene_is_folded_and_sorted() {

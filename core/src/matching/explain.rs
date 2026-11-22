@@ -15,11 +15,16 @@ use super::fit;
 use super::job::{Class, Stage};
 use super::limits;
 use super::normalize::{char_len, strip};
-use super::params::{E_FULL, E_NONE};
+use super::params::{
+    CORE_SATURATION, E_FULL, E_NONE, FRAME_STEP, MUST_SATURATION, NICE_MAX, PERMANENT_FACTOR,
+    W_CORE, W_MUSTS, W_ROLE,
+};
 use super::permanent;
+use super::signals::{self, FRAME_CODES, Sig};
 use super::types::{
-    Assessment, CriterionKey, CriterionState, CriterionStatus, Evidence, EvidenceLevel, Highlight,
-    Reason, ReasonCode, ReasonKind, Summary, Via, Weight,
+    Assessment, CapCode, CapLine, CriterionKey, CriterionState, CriterionStatus, Evidence,
+    EvidenceLevel, Highlight, Part, PartCode, Reason, ReasonCode, ReasonKind, Summary, Verdict,
+    Via, Weight,
 };
 
 /// Longest quote in a reason.
@@ -179,6 +184,7 @@ pub(crate) fn assessment(
         b.reason(ReasonKind::Check, Weight::Info, ReasonCode::LowEvidence);
     }
     let factors = factors::factors(profile, evaluation, &summary);
+    let (parts, caps) = passung(profile, evaluation);
     Assessment {
         verdict: evaluation.verdict,
         score: evaluation.score,
@@ -189,7 +195,134 @@ pub(crate) fn assessment(
         facts: evaluation.facts.key_facts(),
         rank: evaluation.rank,
         factors,
+        parts,
+        caps,
     }
+}
+
+fn max_of(weight: u64) -> u8 {
+    u8::try_from(weight).unwrap_or(u8::MAX)
+}
+
+/// What the role and field part was read from: the field class, the target role and the level.
+fn role_params(profile: &EngineProfile, evaluation: &Evaluation) -> Value {
+    let (role, fit) = match &evaluation.role {
+        Some((fit, _)) => (
+            Some(profile.roles[fit.role].text.clone()),
+            if fit.full { "full" } else { "half" },
+        ),
+        None => (None, "none"),
+    };
+    let level = ["at", "oneAbove", "oneBelow", "twoAbove", "twoBelow"]
+        .get(usize::from(evaluation.signals.get(Sig::Level)))
+        .copied()
+        .unwrap_or("at");
+    json!({
+        "class": evaluation.percent.class.map_or("far", |c| c.code()),
+        "role": role,
+        "fit": fit,
+        "level": level,
+    })
+}
+
+/// The Passungsgrad line by line and every cap that fired with its reason, the lowest first
+/// (none for an unscorable job): the three content parts with their points of their weight,
+/// the nice-to-have bonus, one line per frame condition worse than wished (it keeps
+/// `percent` of the score), the permanent line and the cap that held. The points of the
+/// lines add up to the score.
+fn passung(profile: &EngineProfile, evaluation: &Evaluation) -> (Vec<Part>, Vec<CapLine>) {
+    if evaluation.verdict == Verdict::Unscorable {
+        return (Vec::new(), Vec::new());
+    }
+    let p = &evaluation.percent;
+    let s = &evaluation.signals;
+    let line = |code, points: u8, max: u64, params: Value| Part {
+        code,
+        points: i16::from(points),
+        max: max_of(max),
+        params: object(&params),
+    };
+    let counts = |met: Sig, partial: Sig, open: Sig| {
+        let (m, pa, o) = (s.get(met), s.get(partial), s.get(open));
+        (m, pa, m + pa + o)
+    };
+    let (core_met, core_partial, core_total) =
+        counts(Sig::CoreMet, Sig::CorePartial, Sig::CoreOpen);
+    let (musts_met, musts_partial, musts_total) =
+        counts(Sig::OtherMet, Sig::OtherPartial, Sig::OtherOpen);
+    let (nice_met, nice_partial, nice_total) =
+        counts(Sig::NiceMet, Sig::NicePartial, Sig::NiceOpen);
+    let mut parts = vec![
+        line(
+            PartCode::Role,
+            p.points[0],
+            W_ROLE,
+            role_params(profile, evaluation),
+        ),
+        line(
+            PartCode::Core,
+            p.points[1],
+            W_CORE,
+            json!({
+                "met": core_met,
+                "partial": core_partial,
+                "total": core_total,
+                "counted": u64::from(core_total).max(CORE_SATURATION),
+            }),
+        ),
+        line(
+            PartCode::Musts,
+            p.points[2],
+            W_MUSTS,
+            json!({
+                "met": musts_met,
+                "partial": musts_partial,
+                "total": musts_total,
+                "counted": u64::from(musts_total).max(MUST_SATURATION),
+            }),
+        ),
+    ];
+    if nice_total > 0 {
+        parts.push(line(
+            PartCode::Nice,
+            p.nice,
+            NICE_MAX,
+            json!({ "met": nice_met, "partial": nice_partial, "total": nice_total }),
+        ));
+    }
+    let worse = signals::frame_aspects(&evaluation.findings, &evaluation.wishes)
+        .into_iter()
+        .zip(FRAME_CODES)
+        .filter(|(state, _)| *state > 0);
+    for ((state, aspect), points) in worse.zip(&p.frame[..usize::from(p.steps)]) {
+        parts.push(Part {
+            code: PartCode::Frame,
+            points: -i16::from(*points),
+            max: 0,
+            params: object(&json!({
+                "aspect": aspect,
+                "state": if state == 1 { "near" } else { "missed" },
+                "percent": FRAME_STEP / 10,
+            })),
+        });
+    }
+    if s.get(Sig::Permanent) == 1 {
+        parts.push(Part {
+            code: PartCode::Permanent,
+            points: -i16::from(p.permanent),
+            max: 0,
+            params: object(&json!({ "percent": PERMANENT_FACTOR / 10 })),
+        });
+    }
+    if let Some((code, max)) = evaluation.capped {
+        parts.push(Part {
+            code: PartCode::Cap,
+            points: i16::from(evaluation.score) - i16::from(p.total),
+            max,
+            params: object(&json!({ "cap": code.code(), "max": max })),
+        });
+    }
+    (parts, cap_lines(evaluation, core_total))
 }
 
 /// The params of a requirement: where it stands and its class; the years it asks (a range
@@ -241,7 +374,7 @@ fn requirement_params(profile: &EngineProfile, scored: &Scored) -> Value {
 
 /// Reasons of the version-4 inputs: the target role the title matches, every wish.
 fn preferences(profile: &EngineProfile, b: &mut Builder<'_>, evaluation: &Evaluation) {
-    if let Some((fit, points, title)) = &evaluation.role {
+    if let Some((fit, title)) = &evaluation.role {
         let role = &profile.roles[fit.role];
         let (kind, name, via) = if fit.full {
             (ReasonKind::Met, "full", Via::Exact)
@@ -249,7 +382,7 @@ fn preferences(profile: &EngineProfile, b: &mut Builder<'_>, evaluation: &Evalua
             (ReasonKind::Partial, "half", Via::General)
         };
         let reason = b.reason(kind, Weight::Info, ReasonCode::TargetRole);
-        reason.params = object(&json!({ "role": role.text, "fit": name, "points": points / 10 }));
+        reason.params = object(&json!({ "role": role.text, "fit": name }));
         reason.evidence = Some(Evidence {
             profile: role.text.clone(),
             path: role.path.clone(),
@@ -547,5 +680,251 @@ fn workload_state(c: &HardCriteria, ad: &AdFacts, text: &str) -> CriterionState 
             criterion(key, told(ok), &params, stated.span.as_ref(), text)
         }
         None => criterion(key, CriterionStatus::NotMentioned, &json!({}), None, text),
+    }
+}
+
+/// Every cap that fired with its reason, the lowest first.
+fn cap_lines(evaluation: &Evaluation, core_total: u16) -> Vec<CapLine> {
+    let s = &evaluation.signals;
+    let mut caps: Vec<CapLine> = evaluation
+        .caps
+        .iter()
+        .map(|&(max, code)| CapLine {
+            code,
+            max,
+            params: object(&match code {
+                CapCode::CoreOpen => json!({
+                    "open": s.get(Sig::CoreOpen),
+                    "total": core_total,
+                }),
+                CapCode::Level => json!({
+                    "level": evaluation.level.map(|(l, _)| l),
+                    "gap": evaluation.level.map(|(_, g)| g),
+                }),
+                CapCode::OffField => json!({
+                    "field": evaluation.field.map(|(f, _)| f),
+                }),
+                CapCode::Formal | CapCode::Junior => json!({}),
+            }),
+        })
+        .collect();
+    caps.sort_by_key(|c| c.max);
+    caps
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::matching::{
+        Assessment, CapCode, JobInput, PartCode, TextKind, assess, compile_profile,
+    };
+    use crate::portal::Portal;
+
+    // external contract - do not translate (profile JSON keys)
+    const PROFILE: &str = r#"{
+        "kernkompetenzen": [
+            {"kompetenz": "Controlling"}, {"kompetenz": "Reporting nach IFRS"},
+            {"kompetenz": "Konsolidierung"}, {"kompetenz": "Liquiditätsplanung"},
+            {"kompetenz": "Restrukturierung"}, {"kompetenz": "Treasury"}
+        ],
+        "wunschrollen": ["Interim CFO"],
+        "arbeitsmodell": "remote"
+    }"#;
+
+    // external contract - do not translate (German ads)
+    const CFO: &str = "Wir suchen einen Interim CFO für ein Familienunternehmen.\n\n\
+        Ihr Profil\n\
+        • Erfahrung im Controlling\n\
+        • Reporting nach IFRS\n\
+        • Erfahrung in der Konsolidierung\n\
+        • Liquiditätsplanung\n\n\
+        Wünschenswert\n\
+        • Erfahrung mit Treasury\n\n\
+        Der Einsatz ist zu 100 % remote.\n";
+
+    fn assessed(title: &str, text: &str) -> Assessment {
+        let profile = compile_profile(&crate::profile::parse(PROFILE).unwrap());
+        let job = JobInput {
+            title,
+            company: "",
+            location: "Hamburg",
+            portal: Portal::Freelancermap,
+            text,
+            facts: None,
+            posted: None,
+            kind: TextKind::Full,
+        };
+        assess(&profile, &job).unwrap()
+    }
+
+    fn points(a: &Assessment, code: PartCode) -> i16 {
+        a.parts
+            .iter()
+            .find(|p| p.code == code)
+            .map_or(0, |p| p.points)
+    }
+
+    /// The lines of the Passungsgrad add up to the score: the three content parts, the
+    /// nice-to-have bonus, the frame lines, the permanent line and the cap that held.
+    #[test]
+    fn the_lines_add_up_to_the_score() {
+        let permanent = CFO.replace(
+            "Wir suchen einen Interim CFO für ein Familienunternehmen.",
+            "Wir suchen einen CFO in Festanstellung, Vollzeit und unbefristet.",
+        );
+        let open_core = CFO.replace("Reporting nach IFRS", "Steuerung nach US-GAAP und HGB");
+        let onsite = CFO.replace(
+            "Der Einsatz ist zu 100 % remote.",
+            "Der Einsatz ist zu 100 % vor Ort.",
+        );
+        let foreign = "Wir suchen eine Pflegefachkraft.\n\nIhr Profil\n\
+            • Examen in der Gesundheits- und Krankenpflege\n• Erfahrung in der Intensivpflege\n\
+            • Kenntnisse der Wundversorgung\n";
+        for (title, text) in [
+            ("Interim CFO (m/w/d)", CFO),
+            ("CFO (m/w/d)", permanent.as_str()),
+            ("Interim CFO (m/w/d)", open_core.as_str()),
+            ("Interim CFO (m/w/d)", onsite.as_str()),
+            ("Pflegefachkraft Intensivstation (m/w/d)", foreign),
+        ] {
+            let a = assessed(title, text);
+            let sum: i16 = a.parts.iter().map(|p| p.points).sum();
+            assert_eq!(sum, i16::from(a.score), "{title}: {:?}", a.parts);
+            let codes: Vec<PartCode> = a.parts.iter().map(|p| p.code).take(3).collect();
+            assert_eq!(codes, [PartCode::Role, PartCode::Core, PartCode::Musts]);
+            for part in &a.parts {
+                match part.code {
+                    PartCode::Role | PartCode::Core | PartCode::Musts | PartCode::Nice => {
+                        assert!(
+                            part.points >= 0 && part.points <= i16::from(part.max),
+                            "{part:?}"
+                        );
+                    }
+                    PartCode::Frame | PartCode::Permanent | PartCode::Cap => {
+                        assert!(part.points <= 0, "{part:?}");
+                    }
+                }
+            }
+            assert!(a.caps.windows(2).all(|w| w[0].max <= w[1].max));
+        }
+        let p = assessed("CFO (m/w/d)", &permanent);
+        assert!(points(&p, PartCode::Permanent) < 0, "{:?}", p.parts);
+    }
+
+    /// Role and field: the target role in full is the same field; a nursing role is foreign
+    /// to a finance profile and caps at 24.
+    #[test]
+    fn rolle_und_fach_follows_the_role_and_the_field() {
+        let cfo = assessed("Interim CFO (m/w/d)", CFO);
+        let role = &cfo.parts[0];
+        assert_eq!(role.params["class"], "same", "{role:?}");
+        assert_eq!(role.points, i16::from(role.max));
+        let nurse = assessed(
+            "Pflegefachkraft Intensivstation (m/w/d)",
+            "Wir suchen eine Pflegefachkraft.\n\nIhr Profil\n\
+             • Examen in der Gesundheits- und Krankenpflege\n• Erfahrung in der Intensivpflege\n\
+             • Kenntnisse der Wundversorgung\n",
+        );
+        assert_eq!(
+            nurse.parts[0].params["class"], "foreign",
+            "{:?}",
+            nurse.parts
+        );
+        assert_eq!(nurse.parts[0].points, 0);
+        assert!(nurse.caps.iter().any(|c| c.code == CapCode::OffField));
+        assert!(nurse.score <= 24, "{}", nurse.score);
+    }
+
+    /// Core of the role: the musts on the field of the role count; open, they cost the part and
+    /// cap at 49.
+    #[test]
+    fn the_core_counts_the_musts_on_the_role() {
+        let met = assessed("Interim CFO (m/w/d)", CFO);
+        assert!(
+            met.parts[1].params["total"].as_u64().unwrap() > 0,
+            "{:?}",
+            met.parts
+        );
+        let open = assessed(
+            "Interim CFO (m/w/d)",
+            &CFO.replace(
+                "Erfahrung im Controlling",
+                "Erfahrung in der Aktuarmathematik",
+            )
+            .replace("Reporting nach IFRS", "Bilanzierung nach US-GAAP")
+            .replace(
+                "Erfahrung in der Konsolidierung",
+                "Erfahrung im Asset Management",
+            )
+            .replace("Liquiditätsplanung", "Kenntnisse der Solvency-II-Bilanz"),
+        );
+        assert!(
+            points(&open, PartCode::Core) < points(&met, PartCode::Core),
+            "{:?} {:?}",
+            met.parts,
+            open.parts
+        );
+        assert!(open.score < met.score);
+    }
+
+    /// Weitere Muss-Punkte: an open must off the core costs its share of the part.
+    #[test]
+    fn an_open_other_must_costs_its_share() {
+        let base = assessed("Interim CFO (m/w/d)", CFO);
+        let more = assessed(
+            "Interim CFO (m/w/d)",
+            &CFO.replace(
+                "• Liquiditätsplanung\n",
+                "• Liquiditätsplanung\n• Sehr gute Kenntnisse in Anaplan\n",
+            ),
+        );
+        assert!(
+            points(&more, PartCode::Musts) < points(&base, PartCode::Musts)
+                || points(&more, PartCode::Core) < points(&base, PartCode::Core),
+            "{:?} {:?}",
+            base.parts,
+            more.parts
+        );
+        assert!(more.score <= base.score);
+    }
+
+    /// Frame: what the ad does not state fits (no line); a work mode against the wish is a
+    /// line of its own that keeps 95 % of the score.
+    #[test]
+    fn the_frame_is_a_factor_with_a_line_per_condition() {
+        let frames = |a: &Assessment| -> Vec<serde_json::Map<String, serde_json::Value>> {
+            a.parts
+                .iter()
+                .filter(|p| p.code == PartCode::Frame)
+                .map(|p| p.params.clone())
+                .collect()
+        };
+        let remote = assessed("Interim CFO (m/w/d)", CFO);
+        assert!(frames(&remote).is_empty(), "{:?}", remote.parts);
+        let unstated = assessed(
+            "Interim CFO (m/w/d)",
+            &CFO.replace("Der Einsatz ist zu 100 % remote.\n", ""),
+        );
+        assert!(frames(&unstated).is_empty(), "{:?}", unstated.parts);
+        let onsite = assessed(
+            "Interim CFO (m/w/d)",
+            &CFO.replace(
+                "Der Einsatz ist zu 100 % remote.",
+                "Der Einsatz ist zu 100 % vor Ort.",
+            ),
+        );
+        let lines = frames(&onsite);
+        assert_eq!(lines.len(), 1, "{:?}", onsite.parts);
+        assert_eq!(lines[0]["aspect"], "place");
+        assert_eq!(lines[0]["percent"], 95);
+        let content: i16 = onsite.parts[..3].iter().map(|p| p.points).sum::<i16>()
+            + points(&onsite, PartCode::Nice);
+        assert_eq!(
+            i16::from(onsite.score),
+            content + points(&onsite, PartCode::Frame),
+            "{:?}",
+            onsite.parts
+        );
+        assert!(points(&onsite, PartCode::Frame) < 0);
+        assert!(onsite.score < remote.score);
     }
 }

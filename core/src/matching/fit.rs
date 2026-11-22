@@ -22,6 +22,9 @@ pub(crate) struct Entry {
     pub years: Option<u32>,
     /// What ESCO names in it (competences, tools and certificates only).
     pub broad: Broad,
+    /// General business work any field does (`Projektmanagement`, `Stakeholder Management`;
+    /// `atoms::general_work`): it meets requirements, but it shows no field.
+    pub method: bool,
 }
 
 /// What ESCO, the broad layer under the engine's own words, names in a text
@@ -247,6 +250,7 @@ impl Skills {
                 } else {
                     Broad::default()
                 },
+                method: atoms::general_work(&entry.text),
                 text: entry.text.clone(),
                 path: entry.path.clone(),
             })
@@ -456,6 +460,27 @@ fn covered(skills: &Skills, atom: &str) -> bool {
                 .all(related))
 }
 
+/// The best entry on the ladder for the atoms of a requirement (`industries`: the profile's
+/// industries count too), the first of equals.
+fn best_entry(skills: &Skills, job: &[String], industries: bool) -> ItemFit {
+    let expanded = expand(job);
+    let mut best = NONE;
+    for (index, entry) in skills.entries.iter().enumerate() {
+        if !industries && entry.path.starts_with(key::INDUSTRIES) {
+            continue;
+        }
+        let (value, via) = entry_fit(job, &expanded, entry);
+        if value > best.value {
+            best = ItemFit {
+                value,
+                entry: Some(index),
+                via,
+            };
+        }
+    }
+    best
+}
+
 /// The ladder over all entries; `broad`: ESCO too (not for a soft skill, which counts half
 /// unproven anyway).
 fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
@@ -463,16 +488,14 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
     if job.is_empty() {
         return NONE;
     }
-    let expanded = expand(&job);
-    let mut best = NONE;
-    for (index, entry) in skills.entries.iter().enumerate() {
-        let (value, via) = entry_fit(&job, &expanded, entry);
-        if value > best.value {
-            best = ItemFit {
-                value,
-                entry: Some(index),
-                via,
-            };
+    let mut best = best_entry(skills, &job, true);
+    // The industry is the setting of a requirement (`Qualitätsmanagement produzierender
+    // Unternehmen`): without a fit the function alone is read, the setting costs little
+    // (the rubric's rule 5).
+    if best.value == E_NONE && job.iter().any(|a| industry_atom(a)) {
+        let function: Vec<String> = job.iter().filter(|a| !industry_atom(a)).cloned().collect();
+        if function.iter().any(|a| !atoms::is_generic(a)) {
+            best = best_entry(skills, &function, false);
         }
     }
     // A generic family asked for alone (`SAP-Kenntnisse`) is met by an entry that names a
@@ -534,6 +557,18 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
             best.via = Via::General;
         }
     }
+    // Another tool of the same kind (`HubSpot` for `Salesforce`, both CRM) is similar:
+    // partly met, never open (the rubric's rule 3).
+    if broad
+        && best.value < E_HALF
+        && let Some(index) = same_kind(skills, text)
+    {
+        best = ItemFit {
+            value: E_HALF,
+            entry: Some(index),
+            via: Via::General,
+        };
+    }
     // ESCO, the broad layer: a concept the item and an entry both name.
     if broad && best.value < E_FULL && skills.entries.iter().any(|e| !e.broad.terms.is_empty()) {
         let item = Broad::skills(text, &skills.vocab);
@@ -552,6 +587,66 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
     best
 }
 
+/// Does a requirement ask only for experience in an industry (`Erfahrung in der
+/// Pharmaindustrie`, `Banking background`)? Its atoms are industries, industry endings and
+/// generic or experience words.
+pub(crate) fn industry_only(text: &str, vocab: &Vocab) -> bool {
+    let mut any = false;
+    for atom in atoms::atoms(text, vocab) {
+        if industry_atom(&atom) {
+            any = true;
+        } else if !(atoms::is_generic(&atom) || experience_atom(&atom)) {
+            return false;
+        }
+    }
+    any
+}
+
+/// Does an atom name an industry or a setting (`pharmaindustri`, `banken`, `produzierend`)?
+fn industry_atom(atom: &str) -> bool {
+    use super::lexicon::{terms, wishes};
+    wishes::INDUSTRIES
+        .iter()
+        .chain(wishes::INDUSTRY_WORDS)
+        .any(|(w, _)| {
+            // A generic atom is never the start of an industry's name: `financ` (`finance`,
+            // the function) is no `financial services`.
+            atom == *w
+                || (w.len() >= 6
+                    && (atom.starts_with(w) || (w.starts_with(atom) && !atoms::is_generic(atom))))
+        })
+        || terms::INDUSTRY_ENDINGS
+            .iter()
+            .chain(terms::INDUSTRY_TAILS)
+            .any(|e| atom.ends_with(atoms::stem(e).as_str()))
+        || terms::INDUSTRY_NOUNS
+            .iter()
+            .any(|n| atom.starts_with(atoms::stem(n).as_str()))
+        || lex::SETTING_WORDS.iter().any(|w| atom.starts_with(w))
+}
+
+/// The kinds of tool a text names (`TOOL_KINDS`).
+fn tool_kinds(text: &str) -> Vec<&'static str> {
+    let folded = fold(text).replace('-', " ");
+    super::lexicon::TOOL_KINDS
+        .iter()
+        .filter(|(_, names)| names.iter().any(|n| contains_word(&folded, n)))
+        .map(|(kind, _)| *kind)
+        .collect()
+}
+
+/// The first profile entry that names a tool of a kind the text names.
+fn same_kind(skills: &Skills, text: &str) -> Option<usize> {
+    let kinds = tool_kinds(text);
+    if kinds.is_empty() {
+        return None;
+    }
+    skills
+        .entries
+        .iter()
+        .position(|e| tool_kinds(&e.text).iter().any(|k| kinds.contains(k)))
+}
+
 /// An atom that only says experience (`berufserfahr`, `projekterfahr`, `praxis`), not
 /// the experience of a function (`Vertriebserfahrung`).
 fn experience_atom(atom: &str) -> bool {
@@ -561,6 +656,28 @@ fn experience_atom(atom: &str) -> bool {
         .map(|w| atoms::stem(w))
         .any(|w| atom.starts_with(&w))
         || atom == atoms::stem("projekterfahrung")
+}
+
+/// Does a requirement ask only for what a role at `level` brings (`ROLE_BRINGS`:
+/// `Führungserfahrung`, `Budgetverantwortung`, `Stakeholder-Management` for a head of)?
+pub(crate) fn role_brings(level: u8, text: &str, vocab: &Vocab) -> bool {
+    let brought: Vec<&str> = lex::ROLE_BRINGS
+        .iter()
+        .filter(|(from, _)| *from <= level)
+        .flat_map(|(_, words)| words.iter().copied())
+        .collect();
+    let named = |a: &str| brought.iter().any(|w| a.starts_with(w));
+    let filler = |a: &str| atoms::is_generic(a) || experience_atom(a);
+    let mut any = false;
+    for atom in atoms::atoms(text, vocab) {
+        let parts: Vec<&str> = atom.split('-').filter(|p| !p.is_empty()).collect();
+        if parts.iter().any(|p| named(p)) && parts.iter().all(|p| named(p) || filler(p)) {
+            any = true;
+        } else if !filler(&atom) {
+            return false;
+        }
+    }
+    any
 }
 
 /// An atom of leadership (`fuhrung`, `personalverantwortung`).
@@ -681,7 +798,7 @@ fn packs_of(atom: &str) -> Vec<&'static str> {
 
 /// Is a profile atom a compound of another field than the job atom it narrows
 /// (`Personalcontrolling`, an HR word, for `Controlling`)?
-fn other_field(job: &str, profile: &str) -> bool {
+pub(crate) fn other_field(job: &str, profile: &str) -> bool {
     let own = packs_of(job);
     let theirs = packs_of(profile);
     !theirs.is_empty() && theirs.iter().all(|p| !own.contains(p))
@@ -775,12 +892,14 @@ pub(crate) fn item_fit(skills: &Skills, item: &Item) -> ItemFit {
                 } else {
                     None
                 });
+        // Asked years cost little and never leave a requirement open (the rubric's rule 5):
+        // fewer years meet it at least in half.
         if general && fit.value == E_NONE {
             // General experience is judged by the profile's own years alone (none stated: no
             // verdict, the item stays open and the engine does not weigh it).
             if let Some(have) = have {
                 fit = ItemFit {
-                    value: years_value(have, needed),
+                    value: years_value(have, needed).max(E_HALF),
                     entry: None,
                     via: Via::Exact,
                 };
@@ -789,7 +908,7 @@ pub(crate) fn item_fit(skills: &Skills, item: &Item) -> ItemFit {
             && let Some(have) = have
             && have < needed
         {
-            fit.value = years_value(have, needed).min(fit.value);
+            fit.value = years_value(have, needed).max(E_HALF).min(fit.value);
         }
     }
     fit
@@ -985,9 +1104,10 @@ mod tests {
             fit("Datenvisualisierungssoftware", "Tableau"),
             (E_HALF, Via::Semantic)
         );
-        // Through another name in the profile: two products are no match.
+        // Through another name in the profile: no match; two products of the same kind are
+        // similar, met in part (the rubric's rule 3), never in full.
         assert_eq!(fit("Buchhaltung", "Accounting").0, E_NONE);
-        assert_eq!(fit("Power BI", "Tableau").0, E_NONE);
+        assert_eq!(fit("Power BI", "Tableau").0, E_HALF);
         // Where the engine's own words know both, they decide.
         assert_eq!(
             fit("Projektleitung", "Projektmanagement"),

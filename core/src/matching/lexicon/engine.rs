@@ -209,6 +209,7 @@ pub(crate) const GENERIC_ATOMS: &[&str] = &[
     "berater",
     "beratung",
     "business",
+    "central",
     "chief",
     "consult",
     "consultant",
@@ -226,6 +227,7 @@ pub(crate) const GENERIC_ATOMS: &[&str] = &[
     "finanz",
     "funktion",
     "head",
+    "integration",
     "international",
     "it",
     "kapazitat",
@@ -263,6 +265,18 @@ pub(crate) const GENERIC_ATOMS: &[&str] = &[
     "werkzeug",
     "zugang",
     "zusammenarbeit",
+];
+
+/// Generic atoms that name a field, with the field: too broad to meet a requirement alone,
+/// but a must that names the field of the title stands on the core of the role (`10+ years
+/// in finance` for a `Finance Transformation Lead`).
+pub(crate) const FIELD_ATOMS: &[(&str, &str)] = &[
+    ("erp", "erp"),
+    ("financ", "finance"),
+    ("finance", "finance"),
+    ("finanz", "finance"),
+    ("it", "it"),
+    ("sap", "sap"),
 ];
 
 /// Compound modifiers that do not narrow a skill (`Konzernkonsolidierung` is still
@@ -629,6 +643,7 @@ pub(crate) const FRAME_WORDS: &[&str] = &[
     "verlangerung",
     "vertragsart",
     "vollzeit",
+    "vor-ort-anteil",
     "vor-ort-prasenz",
     "willingness",
     "workload",
@@ -664,6 +679,7 @@ pub(crate) const FRAME_HEADS: &[&str] = &[
     "model",
     "modell",
     "option",
+    "paket",
     "pflicht",
     "presence",
     "quote",
@@ -782,6 +798,53 @@ pub(crate) const SOFT_HEADS: &[&str] = &[
     "vermogen",
     "vorgehen",
     "vorgehensweise",
+];
+
+/// Words of the setting of a role, like an industry (`produzierender Unternehmen`,
+/// `Mittelstand`, `Konzernumfeld`): never its function (atom prefixes, folded).
+// external contract - do not translate (matching lexicon)
+pub(crate) const SETTING_WORDS: &[&str] = &[
+    "eigentumergefuhrt",
+    "fertigend",
+    "industriell",
+    "konzern",
+    "manufacturing",
+    "mittelstand",
+    "produzierend",
+];
+
+/// What a role brings (the rubric's rule 2): from this level of the profile's own roles on
+/// (its target roles and the roles its competences name, never its years), a requirement
+/// that asks only for these counts as shown (atom prefixes, folded). 4, a team lead:
+/// leadership; 5, the lead of a function and above: budget, results and stakeholders too.
+// external contract - do not translate (matching lexicon)
+pub(crate) const ROLE_BRINGS: &[(u8, &[&str])] = &[
+    (3, &["incident", "interface", "release", "schnittstell"]),
+    (
+        4,
+        &[
+            "disziplinarisch",
+            "fuhrung",
+            "leadership",
+            "mitarbeiterfuhrung",
+            "personalfuhrung",
+            "personalverantwort",
+            "teamfuhrung",
+            "teamleitung",
+        ],
+    ),
+    (
+        5,
+        &[
+            "budget",
+            "ergebnisverantwort",
+            "executive",
+            "kostenverantwort",
+            "management",
+            "senior",
+            "stakeholder",
+        ],
+    ),
 ];
 
 /// Short tokens that name a skill or role (`QP`, `R`, `Go`, `5S`, `8D`, `IQ/OQ/PQ`, `CI/CD`)
@@ -1424,6 +1487,17 @@ pub(crate) const NICE_CUES: &[&str] = &[
     "bevorzugt",
     "desirable",
     "beneficial",
+];
+/// Nice cues that open a clause after a comma (`10+ years in finance, ideally in
+/// controlling`): the clause from the cue on is nice, what stands before it keeps its kind.
+pub(crate) const NICE_LEADS: &[&str] = &[
+    "bestenfalls",
+    "bevorzugt",
+    "idealerweise",
+    "ideally",
+    "optimalerweise",
+    "preferably",
+    "vorzugsweise",
 ];
 /// Nice cues that close a line (`X und Y von Vorteil`): the whole line is nice.
 pub(crate) const NICE_CLOSING: &[&str] = &[
@@ -2432,6 +2506,10 @@ pub(crate) const CITIES: &[(&str, &str)] = &[
     ("zug", "CH"),
     ("zurich", "CH"),
 ];
+
+/// Words before a place that name it as a landmark, not as the place of work (a town "near" a
+/// city across a border): the place after them is no country of the job (folded).
+pub(crate) const NEAR_WORDS: &[&str] = &["nahe", "naehe", "near", "unweit", "nahe von"];
 
 /// Words that turn a country mention into a work location.
 pub(crate) const ONSITE_WORDS: &[&str] = &[
@@ -3481,6 +3559,26 @@ pub(crate) const TITLE_HEAD_PHRASES: &[(&str, u8)] = &[
     ("interim manager", 6),
     ("managing director", 6),
     ("vice president", 6),
+];
+/// Heads of the levels 2 and 3 that name an engagement of every level, not a rung below a
+/// lead (`title::engagement`): consulting, a project, architecture, expertise, coaching.
+pub(crate) const TITLE_ENGAGEMENTS: &[&str] = &[
+    "architect",
+    "architekt",
+    "berater",
+    "beraterin",
+    "coach",
+    "consultant",
+    "expert",
+    "experte",
+    "expertin",
+    "project lead",
+    "project manager",
+    "projektleiter",
+    "projektleiterin",
+    "projektleitung",
+    "projektmanager",
+    "projektmanagerin",
 ];
 /// Words after which a title names whom the role serves, not the role (`der`, `to`).
 pub(crate) const TITLE_SERVES: &[&str] = &["der", "des", "to", "fur"];

@@ -30,8 +30,10 @@ mod relevance;
 mod requirements;
 mod roles;
 mod score;
+mod scorer;
 mod sections;
 mod seniority;
+mod signals;
 mod terms;
 mod title;
 mod types;
@@ -49,6 +51,10 @@ use crate::profile::ProfileForm;
 #[cfg(debug_assertions)]
 pub use gaps::{Gap, JobGaps, vocabulary_gaps};
 pub use layout::{TextLayout, text_layout};
+pub use signals::{
+    MAX as SIGNAL_MAX, N as SIGNALS, NAMES as SIGNAL_NAMES, SIGN, Sig, Signals, Trace, TraceItem,
+    signals, trace,
+};
 pub use terms::{CoreTerm, TERM_CHARS, TERM_WORDS, TermField, core_term, is_term, term_key};
 pub use types::*;
 pub use vocabulary::{Vocabulary, vocabulary};
@@ -112,8 +118,20 @@ use facts::{Availability, HardCriteria};
 /// one line level below the profile's target roles costs points and two or more cap at 40, a
 /// full target role needs its level, the ad's field family against the profile's (a far field
 /// halves every must); the musts a short list does not name stand half way between the fit
-/// of the named ones and the relevance.
-pub const ENGINE_VERSION: u32 = 23;
+/// of the named ones and the relevance. 24: the fit is learned from teacher labels (the Qwen
+/// consensus and Claude's gold grades; `signals.rs`, `scorer.rs`, tables by
+/// `tools/scorer/train.py`) in place of the hand formula, notes calibrated by an isotonic
+/// map; wishes, the permanent factor and the caps the ablation kept stay, a target role lifts
+/// no cap; salary headings and lower bounds far below the minimum decide. 25: the
+/// Passungsgrad (`scorer.rs`) in place of the learned tables: content x frame factor, then
+/// the lowest cap. The content is the share of what matters that the profile fits, in three
+/// parts with weights fixed by meaning (role and field 40, core of the role 40, other musts
+/// 20; what an ad does not name counts as its role does), met in part counts `PARTIAL`, the
+/// nice-to-haves only add; each stated condition worse than wished keeps 95 %, a permanent
+/// role 90 %, each a line of its own; the caps carry their reasons (the core clearly open at
+/// most 49, a foreign field at most 24; a title that meets a target role is never foreign).
+/// Only `PARTIAL` is fitted, on teacher labels; `UNNAMED` follows the rubric's rule 8.
+pub const ENGINE_VERSION: u32 = 25;
 
 /// Keys of the facts JSON the engine reads ([`JobInput::facts`]) - the one definition for
 /// the engine and for the pipeline that hands it the facts stored from the job page.

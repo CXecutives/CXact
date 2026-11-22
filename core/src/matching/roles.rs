@@ -15,8 +15,8 @@
 //! - none otherwise, and always when a role of generic words only (`Head of Finance`)
 //!   meets a title that names a specific topic of its own (`S/4HANA Finance Lead`).
 //!
-//! The best role adds `ROLE_FULL` or `ROLE_HALF` to the shrunk fit before the caps, so it
-//! never lifts an off-field ad over its cap and never touches an exclusion.
+//! The best role is a signal of the learned scorer (`signals`: in full or in half) before
+//! the caps, so it never lifts an off-field ad over its cap and never touches an exclusion.
 
 use std::sync::LazyLock;
 
@@ -230,6 +230,23 @@ fn role_fit(
         return None;
     }
     Some(full)
+}
+
+/// The core of a title (engine 24): its specific atoms without the words of lead, level,
+/// contract, junior roles and the role's shape. An open must on them is an open core.
+pub(crate) fn title_core(title: &str, vocab: &Vocab) -> Vec<String> {
+    let shape: Vec<String> = lex::LEAD_WORDS
+        .iter()
+        .chain(lex::LEVEL_WORDS)
+        .chain(lex::ROLE_CONTRACT_WORDS)
+        .chain(lex::ROLE_SHAPE_WORDS)
+        .chain(lexicon::engine::JUNIOR_TITLES)
+        .flat_map(|w| atoms::atoms(w, vocab))
+        .collect();
+    atoms::atoms(title, vocab)
+        .into_iter()
+        .filter(|a| !atoms::is_generic(a) && !shape.contains(a))
+        .collect()
 }
 
 /// The topic atoms of every target role (what a title may name).

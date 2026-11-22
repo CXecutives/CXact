@@ -53,6 +53,10 @@ const HIDDEN: &[&str] = &[
     "interim manag",
     "change managment",
     "projekt management",
+    // Inflected forms and false friends that only read ads.
+    "safe operating area",
+    "skalierte agile",
+    "skalierten agilen",
     // Phrases that lost their small words (`of`, `&`, `to`) to the folding, and written-out
     // hyphen ellipses (`Absatz- und Produktionsplanung`).
     "absatzplanung produktionsplanung",
@@ -65,6 +69,11 @@ const HIDDEN: &[&str] = &[
     "financial planning analysis",
     "forschung entwicklung",
     "governance risk compliance",
+    "harmonisation hr processes",
+    "harmonisierung hr prozesse",
+    "harmonisierung hr-prozesse",
+    "harmonisierung personalprozesse",
+    "harmonization hr processes",
     "health safety environment",
     "infrastructure code",
     "know customer",
@@ -93,6 +102,8 @@ const HIDDEN: &[&str] = &[
     "herstellungspraxis",
     "vertriebspraxis",
     // Second spellings of a term that is shown.
+    "hr process harmonization",
+    "hr prozessharmonisierung",
     "apis",
     "cicd",
     "clean room",

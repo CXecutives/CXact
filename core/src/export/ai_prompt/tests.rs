@@ -329,6 +329,8 @@ fn assessment() -> Assessment {
             ),
             factor(FactorCode::Wishes, json!({ "points": 3 })),
         ],
+        parts: Vec::new(),
+        caps: Vec::new(),
     }
 }
 
@@ -442,8 +444,8 @@ fn every_section_of_one_job_in_order() {
             "**Wunschrolle und Wünsche**",
             "# Arbeitsweise\n",
             "# Bewertungsregel\n",
-            "## Punkte von 0 bis 100\n",
-            "## Obergrenzen",
+            "## Passungsgrad von 0 bis 100\n",
+            "## Grenzen",
             "# Antwortformat\n",
             "## Ergebnis\n",
             "## Anforderungen\n",
@@ -567,18 +569,18 @@ fn the_rubric_is_filled_with_the_limits_of_the_app() {
     assert!(flat.contains(&format!(
         "Ab {HIGH_FROM} Punkten ist die Übereinstimmung hoch, ab {MID_FROM} mittel, darunter gering."
     )));
-    assert!(flat.contains(&format!("heben keinen Job auf {HIGH_FROM} oder mehr")));
     for part in [
-        "- 90 bis 100 Kernfeld, alle Muss-Punkte erfüllt",
-        "- 0 bis 29 außerhalb des Fachgebiets",
-        "Ein fehlender Kann-Punkt kostet höchstens 5 Punkte.",
+        "- 90 bis 100 alles Wesentliche passt",
+        "- unter 25 passt nicht",
+        "Rolle und Fach (40)",
+        "Kern der Rolle (40)",
+        "Weitere Muss-Punkte (20)",
+        "kostet 5 % der Zahl",
+        "offene kosten nichts",
         "(CXact rechnet sie mit 90 %)",
-        "kostet eine andere Art etwa 10 Punkte",
-        "ein Plus von höchstens 10 Punkten",
         "(tagessatz_wunsch, arbeitsmodell und regionen)",
-        "höchstens 10 Punkte nach oben oder unten",
-        "Kein fachlicher Muss-Punkt erfüllt höchstens 30",
-        "Nichts offen mindestens 40",
+        "Der Kern der Rolle ist klar offen: höchstens 49",
+        "Was eine Anzeige nicht oder nur vage sagt, kostet nichts",
     ] {
         assert!(flat.contains(part), "{part}");
     }
@@ -642,7 +644,7 @@ fn what_moved_the_score_is_said_with_the_cap() {
         factor(FactorCode::Wishes, json!({ "points": -1 })),
         factor(FactorCode::Evidence, json!({ "evidence": "teaser" })),
         factor(FactorCode::Permanent, json!({ "percent": 90 })),
-        factor(FactorCode::Cap, json!({ "cap": "titleOpen", "max": 60 })),
+        factor(FactorCode::Cap, json!({ "cap": "coreOpen", "max": 49 })),
     ];
     let de = prompt_of(&profile(), item(&view, Some(AD), Some(&a)));
     let result = de.split("**Harte Kriterien**").next().unwrap();
@@ -651,7 +653,7 @@ fn what_moved_the_score_is_said_with_the_cap() {
         "- Wünsche: senken die Punktzahl um 1 von 100 Punkten",
         "- Text: nur der Anriss, die Punktzahl rückt zur Mitte",
         "- Festanstellung: zählt mit 90 % der fachlichen Passung",
-        "- Obergrenze: Muss-Anforderung zum Kern der Rolle offen, höchstens 60 von 100 Punkten",
+        "- Obergrenze: Kern der Rolle klar offen, höchstens 49 von 100 Punkten",
     ] {
         assert!(result.contains(part), "{part}:\n{result}");
     }
@@ -919,6 +921,8 @@ fn an_excluded_job_says_why() {
         },
         rank: 900,
         factors: Vec::new(),
+        parts: Vec::new(),
+        caps: Vec::new(),
     };
     let mut job = view();
     let de = prompt_of(&profile(), item(&job, Some(ad), Some(&excluded)));
@@ -1041,7 +1045,7 @@ fn every_factor() -> Vec<Factor> {
     }
     let params = json!({
         "met": 1, "partial": 0, "total": 2, "role": "Interim CFO", "fit": "half",
-        "points": 2, "evidence": "low", "percent": 90, "cap": "severalOpen", "max": 40,
+        "points": 2, "evidence": "low", "percent": 90, "cap": "coreOpen", "max": 49,
         "level": 1, "gap": 2, "field": "it", "distance": "far"
     });
     all.iter()
@@ -1126,6 +1130,8 @@ fn every_reason() -> Assessment {
         },
         rank: 1,
         factors: every_factor(),
+        parts: Vec::new(),
+        caps: Vec::new(),
     }
 }
 
@@ -1221,7 +1227,9 @@ fn the_real_engine_behind_a_stored_job() {
     let prompt = prompt_of(&profile, fits.job());
     for part in [
         "- Ergebnis: ",
-        " von 100 Punkten von CXact, hohe Übereinstimmung",
+        // The engine's own score and band, whatever they are.
+        " von 100 Punkten von CXact, ",
+        " Übereinstimmung (ab 80 hoch, ab 40 mittel)",
         "- Tagessatz mindestens 1.000 €: erfüllt, 1.200 € pro Tag („Tagessatz 1.200 €“)",
         "- Vergütung: 1.200 € pro Tag",
         "- Start: ab sofort",

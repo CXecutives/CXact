@@ -638,16 +638,16 @@
     {
       "id": "K38", "portal": "freelance", "location": "D-60311 Frankfurt am Main", "mailDate": "2026-09-16", "kind": "full", "facts": null, "duplicateOf": null,
       "expect": {
-        "fin": {"band": [0, 30], "status": "unscorable", "violations": [], "checks": ["shortText"], "mustOpen": [],
-          "why": "Title only; 'Interim CFO' looks relevant but there is no text to assess."},
+        "fin": {"band": [60, 90], "status": "scored", "violations": [], "checks": ["shortText"], "mustOpen": [],
+          "why": "Title only: a short ad is judged from its title and field (rule 8), and 'Interim CFO' is the profile's field."},
         "it": {"band": [0, 30], "status": "unscorable", "violations": [], "checks": ["shortText", "availabilityGap"], "mustOpen": [],
           "why": "Title only. Start 'sofort' is 46 days before the availability 01.11.2026 (check only)."},
-        "senior": {"band": [0, 30], "status": "unscorable", "violations": [], "checks": ["shortText"], "mustOpen": [],
-          "why": "Title only."},
+        "senior": {"band": [60, 95], "status": "scored", "violations": [], "checks": ["shortText"], "mustOpen": [],
+          "why": "Title only: judged from the title and the field (rule 8)."},
         "sap": {"band": [0, 30], "status": "unscorable", "violations": [], "checks": ["shortText"], "mustOpen": [],
-          "why": "Title only."},
-        "wish": {"band": [0, 30], "status": "unscorable", "violations": [], "checks": ["shortText"], "mustOpen": [],
-          "why": "Unscorable as for senior."},
+          "why": "Title only, and the title names neither the field nor a target role."},
+        "wish": {"band": [60, 95], "status": "scored", "violations": [], "checks": ["shortText"], "mustOpen": [],
+          "why": "Scored from the title as for senior."},
         "wishSap": {"band": [0, 30], "status": "unscorable", "violations": [], "checks": ["shortText"], "mustOpen": [],
           "why": "Unscorable as for sap."}
       }

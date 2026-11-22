@@ -234,7 +234,6 @@ Aufgaben:
 Anforderungen:
 - Erfahrung im Controlling
 - Erfahrung mit Power BI
-- Budgetierung und Forecast
 - Kenntnisse in Zollabwicklung
 - Erfahrung in der Tarifkalkulation für Terminals
 - Staplerschein

@@ -594,6 +594,20 @@ pub(crate) fn broad_search_term(term: &str) -> bool {
     })
 }
 
+/// Is a text general business work any field does (`Projektmanagement`, `Stakeholder
+/// Management`, leadership)? Every atom of it is generic, a concept of general business work
+/// (`lex::CORE_CONCEPTS`) or leadership: it meets requirements, but shows no field.
+pub(crate) fn general_work(text: &str) -> bool {
+    let general: Vec<&str> = lex::CORE_CONCEPTS.iter().map(|&(_, to)| to).collect();
+    let atoms = atoms(text, &ALL_PACKS);
+    !atoms.is_empty()
+        && atoms.iter().all(|atom| {
+            is_generic(atom)
+                || general.contains(&atom.as_str())
+                || lex::LEADERSHIP_ATOMS.contains(&atom.as_str())
+        })
+}
+
 /// The atoms of each pack's names of its field (`Domain::search`), without the generic ones.
 static PACK_NAMES: LazyLock<Vec<Vec<String>>> = LazyLock::new(|| {
     DOMAINS
@@ -868,6 +882,34 @@ mod tests {
 
     fn all(text: &str) -> Vec<String> {
         atoms(text, &Vocab::all())
+    }
+
+    /// `SAFe` is scaled agile work (the safe operating area of power electronics is none), the
+    /// general ledger the Hauptbuch, cost centres their accounting, FICO the FI module.
+    #[test]
+    fn scaled_agile_ledger_cost_centres_and_fico() {
+        assert_eq!(all("SAFe"), all("Scaled Agile Framework"));
+        assert_eq!(all("SAFe"), all("Agile Skalierung"));
+        assert_ne!(all("Safe Operating Area"), all("SAFe"));
+        assert_eq!(all("Hauptbuch"), all("General Ledger"));
+        assert_eq!(all("Kostenstellen"), all("Kostenstellenrechnung"));
+        assert!(
+            all("SAP FICO").contains(&"fi".to_owned()),
+            "{:?}",
+            all("SAP FICO")
+        );
+    }
+
+    /// `Integration` and `Central` alone are too broad: `Post-Merger-Integration` does not
+    /// meet integration technologies, `Central Finance` not `Employee Central`.
+    #[test]
+    fn integration_and_central_alone_meet_nothing() {
+        assert_eq!(fit("integration", "post-merger-integration"), Fit::None);
+        assert_eq!(fit("central", "central-finance"), Fit::None);
+        assert_eq!(
+            fit("post-merger-integration", "post-merger-integration"),
+            Fit::Equal
+        );
     }
 
     /// English process words are their German concepts; an AI tool meets AI in half; a

@@ -74,7 +74,7 @@ Every new job's ad is fetched and scored by the matching engine. The list sorts 
 
 ## Matching
 
-The engine (`core/src/matching`, pure, synchronous, integer only, `ENGINE_VERSION` 21) reads the profile
+The engine (`core/src/matching`, pure, synchronous, integer only, `ENGINE_VERSION` 24) reads the profile
 (Profil-JSON v19 through its typed form, `core/src/profile/form.rs`) and the ad:
 - **Exclusions:** contract types (Zeitarbeit, Festanstellung), exclusion words, countries, the minimum day
   rate, permanent-role rules, a mandatory formal requirement (degree, licence, certificate).
@@ -88,7 +88,7 @@ The engine (`core/src/matching`, pure, synchronous, integer only, `ENGINE_VERSIO
 
 It gives a score of 0 to 100 in three bands, or an exclusion with its reason. An excluded job can be
 scored anyway ("Trotzdem bewerten"). Measured on a corpus and on held-out sets of invented ads, and
-since engine 21 on 154 real ads graded blind (private; `docs/MATCHING.md`). The copied AI prompt ("Prompt kopieren") hands a job, the profile and the engine's
+since engine 21 on 154 real ads graded blind, since engine 24 on a gold set of 300 pairs graded by Claude (private; `docs/MATCHING.md`). Since engine 24 the fit is learned from teacher labels (`docs/MATCHING.md` "Learned scorer"). The copied AI prompt ("Prompt kopieren") hands a job, the profile and the engine's
 pre-assessment to any AI chat for a deeper check.
 
 ## Screens

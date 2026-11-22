@@ -68,6 +68,41 @@ impl LocalMatcher {
     /// its page stated; a teaser is judged as one. A job without text is judged from title
     /// and location alone - usually `unscorable`, but a clear location can already exclude it.
     pub fn assessment(&self, job: &JobRow, text: Option<&str>) -> Option<Assessment> {
+        Self::with_input(job, text, |input, full, stripped| {
+            let mut assessment = matching::assess(&self.profile, input)?;
+            if stripped {
+                let contact = application::contact(full);
+                let facts = &mut assessment.facts;
+                facts.deadline = application::deadline(full, input.posted).map(|d| d.to_string());
+                facts.contact_name = contact.name;
+                facts.contact_email = contact.email;
+                facts.contact_phone = contact.phone;
+            }
+            Some(assessment)
+        })
+    }
+
+    /// The signals of a job, read as [`LocalMatcher::assessment`] reads it (the learned
+    /// scorer's inputs; the private trainer dumps them).
+    pub fn signals(&self, job: &JobRow, text: Option<&str>) -> matching::Signals {
+        Self::with_input(job, text, |input, _, _| {
+            matching::signals(&self.profile, input)
+        })
+    }
+
+    /// How the points of a stored job came about (the private trainer replays them).
+    pub fn trace(&self, job: &JobRow, text: Option<&str>) -> matching::Trace {
+        Self::with_input(job, text, |input, _, _| {
+            matching::trace(&self.profile, input)
+        })
+    }
+
+    /// What a stored job hands the engine.
+    fn with_input<T>(
+        job: &JobRow,
+        text: Option<&str>,
+        read: impl FnOnce(&JobInput<'_>, &str, bool) -> T,
+    ) -> T {
         let title = if is_usable_title(&job.title) {
             job.title.clone()
         } else {
@@ -94,16 +129,7 @@ impl LocalMatcher {
             posted: Some(posted),
             kind,
         };
-        let mut assessment = matching::assess(&self.profile, &input)?;
-        if matches!(scored, Cow::Owned(_)) {
-            let contact = application::contact(full);
-            let facts = &mut assessment.facts;
-            facts.deadline = application::deadline(full, Some(posted)).map(|d| d.to_string());
-            facts.contact_name = contact.name;
-            facts.contact_email = contact.email;
-            facts.contact_phone = contact.phone;
-        }
-        Some(assessment)
+        read(&input, full, matches!(scored, Cow::Owned(_)))
     }
 }
 
@@ -454,7 +480,7 @@ Rahmenbedingungen:
         let matcher = LocalMatcher::from_form(&profile());
         let record = assess(&matcher, "Interim CFO (m/w/d)", "Hamburg", FIT);
         assert_eq!(record.status, MatchStatus::Scored);
-        assert!(record.score >= 40, "{record:?}");
+        assert!(record.score > 0 && record.rank > 0, "{record:?}");
         // SAP S/4HANA is met only through the tools: half (engine 22).
         assert_eq!((record.must_met, record.must_total), (2, 4), "{record:?}");
         assert_eq!(
@@ -536,6 +562,7 @@ Anforderungen:
 
 Wünschenswert:
 - Erfahrung mit Qlik Sense
+- Erfahrung mit Jedox
 - Portugiesisch in Wort und Schrift
 
 Rahmenbedingungen:
@@ -545,7 +572,9 @@ Rahmenbedingungen:
         let judged = matcher.judge(&row, Some(text)).unwrap();
         assert_eq!(
             judged.terms,
-            ["Kenntnisse in Zollabwicklung", "Erfahrung mit Qlik Sense"],
+            // Qlik Sense is another BI tool like the profile's Power BI: met in part (the
+            // rubric's rule 3), no open term.
+            ["Kenntnisse in Zollabwicklung", "Erfahrung mit Jedox"],
             "{:?}",
             matcher.explain(&row, Some(text)).map(|a| a.reasons)
         );
@@ -604,10 +633,8 @@ Wünschenswert:
             term("Kenntnisse in Anaplan"),
             Some(("Anaplan".into(), TermField::Tool))
         );
-        assert_eq!(
-            term("Branchenerfahrung Energie"),
-            Some(("Energie".into(), TermField::Industry))
-        );
+        // An industry the profile lacks is met in part (the rubric's rule 5): no open term.
+        assert_eq!(term("Branchenerfahrung Energie"), None, "an industry");
         assert_eq!(
             term("Erfahrung mit Jedox von Vorteil"),
             Some(("Jedox".into(), TermField::Tool))
@@ -652,8 +679,12 @@ Wünschenswert:
                 .all(|v| !v.is_array() && !v.is_object()),
             "lists are flattened for the interface: {country:?}"
         );
-        let untold = assess(&matcher, "Interim CFO", "Hamburg", "");
-        assert_eq!(untold.status, MatchStatus::Unscorable);
+        // A text too short to read is judged from its title (the rubric's rule 8); a title
+        // that names neither the field nor a target role stays unscorable.
+        let titled = assess(&matcher, "Interim CFO", "Hamburg", "");
+        assert_eq!(titled.status, MatchStatus::Scored, "{titled:?}");
+        let untold = assess(&matcher, "Pflegefachkraft Intensivstation", "Hamburg", "");
+        assert_eq!(untold.status, MatchStatus::Unscorable, "{untold:?}");
         assert_eq!(
             (untold.score, untold.note.unwrap().code.as_str()),
             (0, "shortText")

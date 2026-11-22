@@ -171,19 +171,62 @@ kommt aus dem Profil, ein Schlüssel, den das Profil nicht setzt, schaltet seine
 Die weiteren Anzeigen, die ein Portal unter einer Anzeige zeigt (etwa „Ähnliche Projekte“ oder
 „Similar jobs“), gehören nicht zu ihr. Keine Regel liest sie, und sie schließen nichts aus.
 
-## Punkte von 0 bis 100
+## Grundsatz
 
-Die Skala ist dieselbe wie in CXact.
+Bewertet wird wie ein erfahrener Personalberater für Interim-Manager und freie Berater: fair,
+logisch und eher wohlwollend, aber glaubwürdig. Was eine Anzeige nicht oder nur vage sagt, kostet
+nichts, denn man kann nachfragen. Punkte kostet nur, was klar nicht passt.
 
-- 90 bis 100 Kernfeld, alle Muss-Punkte erfüllt
-- 70 bis 89 Kernfeld, kleine Lücken oder überqualifiziert
-- 50 bis 69 ein Muss-Punkt zum Kern der Rolle offen
-- 30 bis 49 mehrere Muss-Punkte oder eine formale Pflicht offen
-- 0 bis 29 außerhalb des Fachgebiets
+## Passungsgrad von 0 bis 100
 
-Ab 80 Punkten ist die Übereinstimmung hoch, ab 40 mittel, darunter gering. Jede Kompetenz
-zählt gleich. Ein fehlender Kann-Punkt kostet höchstens 5 Punkte. Die Entfernung kostet bei Interim und
-Projekten nichts.
+Die Zahl ist der Anteil dessen, worauf es bei der Stelle ankommt, den das Profil erfüllt, mal dem
+Rahmen. Der Inhalt setzt sich aus drei Teilen zusammen, jeder mit seinem festen Gewicht:
+
+- Rolle und Fach (40): Passen Titel und Fachgebiet zu den Wunschrollen (wunschrollen) und zum
+  Profil? Gleiches Fach zählt voll, ein nahes 0,7, ein fernes 0,2, ein fremdes nichts. Dazu die
+  Ebene (siehe unten). Ein Titel, der eine Wunschrolle trifft, ist nie ein fremdes Fach.
+  Allgemeine Methoden wie Projekt- oder Stakeholder-Management erfüllen Muss-Punkte, zeigen aber
+  kein Fachgebiet.
+- Kern der Rolle (40): der Anteil der erfüllten Muss-Punkte zum Thema der Rolle, gezählt als
+  mindestens drei. Was die Anzeige zum Kern nicht nennt, zählt wie Rolle und Fach und die übrigen
+  Muss-Punkte im Mittel.
+- Weitere Muss-Punkte (20): der Anteil der übrigen erfüllten Muss-Punkte, gezählt als mindestens
+  sieben. Was eine kurze Liste nicht nennt, zählt zu 70 % wie Rolle und Fach.
+
+Ein teilweise erfüllter Punkt zählt fast voll (CXact rechnet 90 %). Was unklar ist, zählt nicht mit.
+Erfüllte Kann-Punkte bringen bis zu 5 Punkte dazu, offene kosten nichts.
+
+Dann der Rahmen: Tagessatz, Arbeitsmodell und Ort, Start, Dauer und Auslastung gegen die Wünsche. Was
+die Anzeige nicht nennt, passt. Jede genannte Bedingung, die schlechter ist als gewünscht, aber kein
+hartes Kriterium verletzt, kostet 5 % der Zahl. Eine Festanstellung kostet danach 10 %, solange das
+Profil sie nicht ausschließt. Zuletzt gilt die niedrigste Grenze (siehe unten).
+
+So liest sich die Zahl:
+
+- 90 bis 100 alles Wesentliche passt
+- 75 bis 89 passt, eine kleine Lücke
+- 50 bis 74 passt in Teilen
+- 25 bis 49 passt wenig
+- unter 25 passt nicht
+
+Ab 80 Punkten ist die Übereinstimmung hoch, ab 40 mittel, darunter gering.
+
+## Wie ein Berater liest
+
+1. Wunschlisten sind keine Pflicht. Es zählen die wichtigsten Punkte, bei „A oder B“ reicht ein
+   Zweig, und Kann-Punkte bringen nur Plus.
+2. Was aus der Rolle folgt, gilt als belegt. Wer eine Leitungsrolle sucht oder hatte (Head of,
+   Leiter, Interim-Manager), bringt Führung, Budget und Stakeholder-Management mit. Das folgt aus den
+   Wunschrollen und der Ebene des Profils, nie aus den Jahren allein.
+3. Ähnliches ist teilweise erfüllt, nicht offen: ein anderes Tool derselben Art (CRM, ERP, BI,
+   Ticketing, Contact-Center-Software), ein nahes Fach, gleichwertige Normen.
+4. Floskeln und Selbstverständlichkeiten zählen nicht: analytisches Denken, Hands-on-Mentalität,
+   Reisebereitschaft, MS Office, Teamfähigkeit.
+5. Branche und geforderte Berufsjahre kosten wenig und deckeln nie.
+6. Eine Ebene Abstand kostet kaum etwas. Erst zwei Ebenen zählen deutlich.
+7. Im Zweifel gilt die günstige Lesart: bei Spannen das obere Ende, bei „6 Monate plus Verlängerung“
+   die Verlängerung, bei „80 bis 100 %“ beides. Ausgeschlossen wird nur bei klarem Widerspruch.
+8. Eine kurze Anzeige wird nicht bestraft. Sie wird aus Titel und Fach beurteilt.
 
 ## Muss-Punkte
 
@@ -194,44 +237,37 @@ Projekten nichts.
   Titel nennt das Tool. Kernkompetenzen zählen voll. Jahre und Sterne gewichten nichts.
 - Was das Profil wörtlich nennt, ist erfüllt, auch wenn die Anzeige Erfahrung oder Berufserfahrung
   davor schreibt.
-- Eine Anzeige mit wenigen Muss-Punkten belegt wenig. Die Punkte, die sie nicht nennt, zählen halb
-  so, wie die genannten erfüllt sind, und halb so, wie der übrige Text zum Fachgebiet passt.
 - Verlangt die Anzeige einen Abschluss und nennt das Profil keinen (abschluesse), ist er unklar. Das
-  kostet wenig und deckelt nicht, außer die Anzeige verlangt ihn zwingend und ohne „oder vergleichbar“.
+  deckelt nicht, außer die Anzeige verlangt ihn zwingend und ohne „oder vergleichbar“.
 
-## Ebene und Fachgebiet
+## Ebene
 
-- Die Ebene einer Rolle kommt aus dem Titel: Sachbearbeitung, Agent und Assistenz, dann Spezialist,
-  Berater und Referent, dann Senior und Projektleitung, dann Teamleitung, dann die Leitung eines
-  Bereichs (Head, Leiter, Manager), dann Direktion, Bereichsleitung, Interim-Management und C-Level.
-  Disziplinarische Führung in der Anzeige macht eine Rolle zur Führungsrolle, ohne
-  Personalverantwortung ist sie keine.
-- Nur operative Rollen (Sachbearbeitung, Agent, Assistenz, Teamleitung) liegen unter einem Profil.
-  Eine Stufe unter der nächsten Wunschrolle kostet etwa 5 Punkte, zwei oder mehr Stufen heißen
-  höchstens 40, außer eine Wunschrolle nennt diese Stufe. Beratungs-, Experten- und Projektrollen
-  liegen nie darunter. Das ist nie ein Ausschluss.
-- Eine Wunschrolle passt nur voll, wenn die Ebene des Titels mindestens ihre ist.
-- Liegt das Fachgebiet der Anzeige fern von dem des Profils, zählen die erfüllten Muss-Punkte halb:
-  Was dort passt, bringt das Profil aus seinem eigenen Fach mit.
+- Die Ebene einer Rolle kommt aus dem Titel: Sachbearbeitung, Agent und Assistenz, dann Fachkraft,
+  dann Spezialist, Senior und Referent, dann Teamleitung, Projektleitung und Beratung, dann die Leitung
+  eines Bereichs (Head, Leiter, Programmleitung), dann Geschäftsführung und C-Level. Interim ist eine
+  Vertragsform, keine Ebene. Disziplinarische Führung in der Anzeige macht eine Rolle zur
+  Führungsrolle, ohne Personalverantwortung ist sie keine.
+- Nennt eine Wunschrolle die Ebene der Anzeige, passt die Ebene voll.
+- Eine Ebene über oder unter dem Profil kostet wenig (Rolle und Fach zählen zu 85 %).
+- Zwei Ebenen über dem Profil halbieren Rolle und Fach.
+- Zwei oder mehr Ebenen unter dem Profil heißen höchstens 40, außer eine Wunschrolle nennt diese
+  Ebene. Das ist nie ein Ausschluss.
 
-## Obergrenzen
+## Grenzen
 
-- Eine formale Pflicht offen (Abschluss, Zulassung, Zertifikat) höchstens 40
-- Mindestens zwei und mindestens die Hälfte der Muss-Punkte offen, darunter der Kern der Rolle,
-  höchstens 40. Ein offener Nebenpunkt kostet nur seinen Anteil, etwa 5 Punkte.
-- Eine Junior- oder Einstiegsrolle bei mindestens 10 Jahren Berufserfahrung höchstens 40
-- Eine operative Rolle zwei oder mehr Stufen unter der nächsten Wunschrolle höchstens 40
-- Ein Muss-Punkt zum Kern der Rolle, also zum Thema des Titels, offen höchstens 60
-- Eine Anzeige ohne erkennbare Anforderungen höchstens 60
-- Kein fachlicher Muss-Punkt erfüllt höchstens 30
-- Nichts offen mindestens 40
+Jede Grenze braucht einen klaren Grund in der Anzeige.
+
+- Der Kern der Rolle ist klar offen: höchstens 49
+- Das Fachgebiet ist fremd: höchstens 24
+- Eine zwingende formale Pflicht ist offen (Abschluss, Zulassung, Zertifikat): höchstens 40
+- Eine Junior- oder Einstiegsrolle bei mindestens 10 Jahren Berufserfahrung: höchstens 40
+- Zwei oder mehr Ebenen unter dem Profil: höchstens 40
 
 ## Vertragsart und ANÜ
 
 - Die Vertragsart zählt so, wie das Profil sucht: Interim und Projekte (Tagessatz, freiberuflich,
-  Werkvertrag, Contract) zählen voll, eine Festanstellung etwa ein Zehntel weniger (CXact rechnet
-  sie mit 90 %), solange das Profil keine ausschließt.
-- Zeigen Wunschrollen und Konditionen des Profils klar nur eine Art, kostet eine andere Art etwa 10 Punkte.
+  Werkvertrag, Contract) zählen voll, eine Festanstellung ein Zehntel weniger (CXact rechnet sie mit
+  90 %), solange das Profil keine ausschließt.
 - Eine unklare Vertragsart ist ein Punkt zum Prüfen, nie ein Ausschluss, auch wenn das Profil
   Festanstellungen ausschließt.
 - Eine Personalagentur ohne Angaben zur Vertragsart ist unklar. Das Gehalt wird wie bei einer
@@ -248,6 +284,7 @@ Projekten nichts.
   unter tagessatz_min, ein Land außerhalb von laender (eine voll remote Stelle nie), ein Gehalt unter
   mindestgehalt bei einer genannten Festanstellung, eine zwingende formale Pflicht und ein Wort aus
   ausschlusswoerter.
+- Bei Spannen entscheidet das obere Ende, bei „ab“ der genannte Wert.
 - Ein Ausschlusswort schließt nur aus, wenn es die Stelle selbst beschreibt, also im Titel, in der
   Karrierestufe der Portalseite oder in einem Satz über die angebotene Rolle und ihre Bedingungen.
   Erwähnt die Anzeige es nur, etwa beim Team, bei Menschen, die die Rolle betreut, in einer
@@ -255,13 +292,10 @@ Projekten nichts.
 
 ## Wunschrollen und Wünsche
 
-- Eine passende Wunschrolle (wunschrollen) ist ein Plus von höchstens 10 Punkten. Sie hebt keine
-  Obergrenze auf.
-- Wünsche (tagessatz_wunsch, arbeitsmodell und regionen) schließen nie aus und bewegen die
-  Bewertung zusammen höchstens 10 Punkte nach oben oder unten. Nennt die Anzeige einen Wert nicht,
-  zählt der Wunsch nicht.
-- Wunschrolle und Wünsche heben keinen Job auf 80 oder mehr, wenn weniger als die Hälfte der
-  Muss-Punkte erfüllt ist.
+- Eine passende Wunschrolle gehört zu Rolle und Fach. Sie bringt keinen eigenen Bonus und hebt keine
+  Grenze auf.
+- Wünsche (tagessatz_wunsch, arbeitsmodell und regionen) schließen nie aus. Sie zählen nur im
+  Rahmen und heben die Zahl nie. Nennt die Anzeige einen Wert nicht, passt der Wunsch.
 
 # Antwortformat
 

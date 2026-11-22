@@ -312,13 +312,34 @@ fn is_contract(line: &str) -> bool {
     ]
     .iter()
     .any(|word| lower.contains(word))
+        || english_contract(&lower).is_some()
+}
+
+/// Hays' English contract labels in the words of its German pages, which the engine reads
+/// (`Temporary employment` is its temporary agency work).
+// external contract - do not translate (Hays page labels)
+const ENGLISH_CONTRACTS: &[(&str, &str)] = &[
+    (
+        "permanent employment",
+        "Festanstellung durch unseren Kunden",
+    ),
+    ("temporary employment", "Arbeitnehmerüberlassung"),
+];
+
+fn english_contract(lower: &str) -> Option<&'static str> {
+    ENGLISH_CONTRACTS
+        .iter()
+        .find(|(label, _)| lower.starts_with(label))
+        .map(|&(_, german)| german)
 }
 
 fn facts(doc: &Html) -> Facts {
     let mut facts = Facts::default();
     for line in meta(doc) {
         if is_contract(&line) {
-            facts.employment_type = Facts::value(&line);
+            facts.employment_type = english_contract(&line.to_lowercase())
+                .map(str::to_owned)
+                .or_else(|| Facts::value(&line));
         } else if let Some(start) = line.strip_prefix("Startdatum:") {
             facts.start = Facts::value(start);
         }
@@ -511,6 +532,24 @@ mod tests {
             facts.industries.as_deref(),
             Some("Software / EDV / IT-Dienstleistung")
         );
+    }
+
+    /// The English page's contract label is a contract, never the place.
+    #[test]
+    fn english_contract_labels_are_contracts() {
+        for (label, german) in [
+            ("Temporary employment", "Arbeitnehmerüberlassung"),
+            (
+                "Permanent employment with our customer (remote)",
+                "Festanstellung durch unseren Kunden",
+            ),
+        ] {
+            let page = AD.replace("freiberuflich für ein Projekt", label);
+            let doc = Html::parse_document(&page);
+            let parsed = parse(&doc);
+            assert_eq!(parsed.fields.location, "Klagenfurt");
+            assert_eq!(parsed.facts.employment_type.as_deref(), Some(german));
+        }
     }
 
     #[test]

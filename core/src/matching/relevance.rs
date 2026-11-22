@@ -124,6 +124,10 @@ fn title_fit_with(query: &[(String, u64)], title: &str, vocab: &Vocab, drop_cont
                 .map(|(p, weight)| {
                     let full = (*weight).clamp(SPECIFIC_WEIGHT / 2, SPECIFIC_WEIGHT);
                     match atoms::fit(t, p) {
+                        // A compound of another field names the title's word as part of
+                        // other work (`Personalcontrolling` for `Head of Controlling`): half,
+                        // as for a requirement (`fit::item_fit`).
+                        Fit::Specific if super::fit::other_field(t, p) => full / 2,
                         Fit::Equal | Fit::Specific => full,
                         Fit::General => full / 2,
                         Fit::None => 0,

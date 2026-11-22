@@ -40,7 +40,18 @@ use sha2::Digest as _;
 /// Version 22: the aggregation repaired (one must, saturating musts, a fixed relevance share,
 /// a prior from the title, tools half); every exclusion, status and band row holds. Version
 /// 23: the frame of the title (levels, fields), the half way pads; the rows hold again.
-const GOLDEN_DIGEST: &str = "84aa5136c6fcf26e";
+/// Version 24: the learned scorer in place of the hand formula, a target role lifts no
+/// off-field cap, salary headings and lower bounds far below the minimum; the corpus's band,
+/// status and exclusion checks hold. Version 25: the Passungsgrad (content x frame factor,
+/// then the caps) in place of the learned scorer, and the rubric's rules: a short ad is judged
+/// from its title (K38 of fin, senior and wish are scored), an industry costs little (rule
+/// 5), a similar tool is met in part (rule 3); the status, exclusion and check rows hold, the
+/// bands are the report's. Then `UNNAMED` 700 (rule 8: a short list of other musts counts as
+/// the role does) and a specialist offered as an employment is a rung below a lead. Then the
+/// causes of held-out sets 1 and 6: a nice cue after a comma makes only its clause nice, a
+/// field word is no industry, a must naming the title's field word stands on the core, general
+/// business work shows no field, a compound of another field fits a title in half.
+const GOLDEN_DIGEST: &str = "a10924f5ee84074a";
 
 fn fixtures() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/matching")
