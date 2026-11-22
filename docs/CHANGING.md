@@ -367,17 +367,43 @@ a word that occurs nowhere stays out.
    lowered to let a change pass), then both reports:
    `cargo test -p jobalert-core --test matching_corpus -- --ignored report --nocapture` and
    `cargo test -p jobalert-core --test matching_heldout -- --ignored heldout_report --nocapture`.
-4. Words change the signals, so retrain the learned scorer (private data): run
-   `core/tests/fixtures/private/bench/retrain.sh` with `CORE`, `LABELS` and `TRAIN_SPLITS`
-   (`docs/MATCHING.md` "Learned scorer (engine 24)"); it writes
-   `core/src/matching/scorer_tables.rs` (generated, never edited by hand) and prints the
-   numbers. Measure once on the gold set's `gold-locked` part with `bench/gold/eval.py`.
-   Then re-pin `GOLDEN_DIGEST` with its reason, regenerate the demo snapshot
-   (`cargo test -p jobalert-core --test ui_demo_snapshot`, commit what it writes) and follow a
-   held-out floor only for a loss within 0.03, with a one-line reason.
+4. Words change the signals, so measure the Passungsgrad again (private data): run
+   `core/tests/fixtures/private/bench/retrain.sh` with `CORE` and `WORK` (see "Change the
+   Passungsgrad"); refit only when its fitter prints other values. Measure once on the gold
+   set's `gold-locked` part with `bench/gold/eval.py`. Then re-pin `GOLDEN_DIGEST` with its
+   reason, regenerate the demo snapshot (`cargo test -p jobalert-core --test
+   ui_demo_snapshot`, commit what it writes) and follow a held-out floor only for a loss
+   within 0.03, with a one-line reason.
 5. A change that moves a score raises `ENGINE_VERSION` (`core/src/matching/mod.rs`; the app
    scores the stored jobs again) and updates the rules and measurements in `docs/MATCHING.md`;
    the numbers before and after go into the commit message.
+
+## Change the Passungsgrad
+
+The score is `content x frame factor`, then the lowest cap (`core/src/matching/scorer.rs`, its
+constants in `params.rs`, the rules in `core/src/export/ai_rubric.de.md`; `docs/MATCHING.md`
+"Passungsgrad (engine 25)"). Every change goes into three places at once: `scorer.rs`, the
+replay in `tools/scorer/train.py` (it refuses to fit while it differs from a dumped score) and
+the rubric's text, which the AI prompts quote.
+
+- **A weight** (`W_ROLE`, `W_CORE`, `W_MUSTS`, sum 100), the field or level values, the frame
+  step (`FRAME_STEP`), the permanent factor or a cap: these are fixed by meaning, so the change
+  is a product decision. Change the constant and the rubric's number, then measure (below).
+- **A part**: a signal for it in `signals.rs` (its range in `MAX`, its direction in `SIGN`,
+  its name in `NAMES`; the dump writes it), its share in `scorer::shares` with a weight, its
+  line in `explain::passung` (a `PartCode` with its params in `types.rs`, which the lines must
+  still add up to), the same in `train.py`, a test with an invented ad in `explain.rs` and the
+  rubric's list.
+- **A frame condition**: an aspect in `signals::frame_aspects` and `FRAME_CODES`; each
+  condition worse than wished is one step.
+- **Refit** the two free values (`PARTIAL`, `UNNAMED`) after a change of the signals or the
+  parts: `CORE=<core> WORK=<folder> SIGNALS=<folder>/signals.jsonl bash
+  core/tests/fixtures/private/bench/retrain.sh` dumps the signals, fits on the teacher labels
+  (train and lockbox, never a gold pair) and prints the constants; put them into `params.rs`
+  and run it again with `SKIP_TRAIN=1`. It prints the three checks: the gold tune part, the
+  owner's 154 and the teacher test split. Never fit on them.
+- Then the steps of "Add words to the engine" from 4: `GOLDEN_DIGEST`, the demo snapshot, the
+  held-out floors, `ENGINE_VERSION` and `docs/MATCHING.md`.
 
 ## Release a version
 
