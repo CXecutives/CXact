@@ -6,6 +6,10 @@ edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
+[lib]
+# No doc examples run: the tests live in the modules and in tests/.
+doctest = false
+
 [lints]
 workspace = true
 

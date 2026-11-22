@@ -29,6 +29,11 @@ opt-level = "s"
 strip = true
 # Deliberately no panic = "abort": a panic in a background task must not end the app.
 
+[profile.dev]
+# Line tables only: backtraces keep file and line, the build and the link stay light.
+debug = "line-tables-only"
+
 [profile.dev.package."*"]
-# Dependencies (SQLite, regex, HTML parser) stay fast in the debug build too.
+# Dependencies (SQLite, regex, HTML parser) stay fast in the debug build too, without debug info.
 opt-level = 2
+debug = false

@@ -77,7 +77,7 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Tests
-        run: cargo test --workspace
+        run: cargo test --workspace --lib --tests
 
       # The smoke probe sits behind `debug_assertions` - it exists only in the debug build.
       - name: Debug build

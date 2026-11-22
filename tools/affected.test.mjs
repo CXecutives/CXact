@@ -103,7 +103,7 @@ test('lib.rs and the manifests reach everything', () => {
   assert.deepEqual(run('Cargo.lock'), [
     'cargo fmt --all --check',
     'cargo clippy --workspace --all-targets -- -D warnings',
-    'cargo test --workspace',
+    'cargo test --workspace --lib --tests',
   ]);
 });
 

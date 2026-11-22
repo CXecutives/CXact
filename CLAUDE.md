@@ -51,7 +51,7 @@ generated files and the guardrails.
   (`--full` for everything) runs them at once with one line per step.
 - After a fresh clone: `git config core.hooksPath .githooks` (the pre-push gate), `npm ci`,
   `npx playwright install chromium webkit` (the harness); the Rust toolchain comes from `rust-toolchain.toml`.
-- `cargo fmt --all --check` · `cargo clippy --workspace --all-targets -- -D warnings` · `cargo test --workspace`
+- `cargo fmt --all --check` · `cargo clippy --workspace --all-targets -- -D warnings` · `cargo test --workspace --lib --tests` (no doc tests, examples only through clippy)
 - `npm run check` (svelte-check, eslint, stylelint, prettier, tokens, `tools/architecture.mjs`) ·
   `npm run harness` · `npm run build`
 - `npx tauri build` (release bundles) · `tools/portable.cmd` (`target/portable/CXact.exe`) · debug smoke:

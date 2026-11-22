@@ -200,7 +200,7 @@ export function commands(result) {
         .map((c) => `-p ${c}`)
         .join(' ')} --all-targets -- -D warnings`,
     );
-  if (result.workspaceTests) lines.push('cargo test --workspace');
+  if (result.workspaceTests) lines.push('cargo test --workspace --lib --tests');
   else {
     if (result.lib === 'all') lines.push(`cargo test -p ${CORE} --lib`);
     else if (result.lib?.size)

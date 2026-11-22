@@ -6,7 +6,7 @@
 //
 //     node tools/gate.mjs                 the checks the change needs (tools/affected.mjs)
 //     node tools/gate.mjs --all           the same with clippy over the whole workspace
-//     node tools/gate.mjs --full          fmt, clippy, cargo test --workspace, npm run check,
+//     node tools/gate.mjs --full          fmt, clippy, cargo test (lib and tests), npm run check,
 //                                         the code map and the tools' own tests
 //     node tools/gate.mjs --base <ref>    the change since the merge base with <ref>
 //     node tools/gate.mjs --staged        the staged change only
@@ -30,7 +30,7 @@ function steps(argv) {
     return [
       FMT,
       CLIPPY_ALL,
-      'cargo test --workspace',
+      'cargo test --workspace --lib --tests',
       'npm run check',
       'node tools/codemap.mjs --check',
       ...(tests.length ? [`node --test ${tests.map((name) => `tools/${name}`).join(' ')}`] : []),
