@@ -144,7 +144,7 @@ function testReaches(test, name, path) {
 /* ------------------------------------------------------------- the specs */
 
 function addSpecs(out, path, ui) {
-  if (out.specs === 'all' || !/^(ui|tools\/ui-harness)\//.test(path)) return;
+  if (ui.frozen || out.specs === 'all' || !/^(ui|tools\/ui-harness)\//.test(path)) return;
   if (path.startsWith('tools/ui-harness/baselines/')) return;
   const spec = new RegExp(`^${SPECS}(.+)\\.spec\\.ts$`).exec(path);
   if (spec) return void out.specs.add(spec[1]);
@@ -431,8 +431,17 @@ export function collectFacts() {
     tauriUses: tauriUses.includes('all') ? [...core.deps.keys()] : tauriUses,
     codemap: existsSync(join(repo, 'tools/codemap.mjs')),
     nodeTests: tracked('tools').filter((p) => /^tools\/[^/]+\.test\.mjs$/.test(p)),
-    ui: uiFacts(),
+    ui: { ...uiFacts(), frozen: uiFrozen() },
   };
+}
+
+/**
+ * Main's old UI is frozen until the new one lands (CLAUDE.md "Commands"): its type check is
+ * off, so no spec of it runs either. The type check in package.json is the one place that says so.
+ */
+function uiFrozen() {
+  const scripts = JSON.parse(read('package.json')).scripts ?? {};
+  return !String(scripts['check:types'] ?? '').includes('svelte-check');
 }
 
 function uiFacts() {
