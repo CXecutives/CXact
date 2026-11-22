@@ -47,11 +47,9 @@
 // `save_mailbox` refuses the password `falschfalschfals` with `mailAuth` (the server said no;
 // at GMX and WEB.DE with `allowImap`);
 // with `?alerts=none` its check finds no alert mail. `?reset=clean`: the reset left nothing.
-// `?file=focus` lets `pick_profile` choose a file with seven Schwerpunkte (the form takes five).
 // Several profiles, one active (core's profile::set): with a profile the work folder holds
 // the scenario's profile (1, active) and two invented test profiles (2 SAP FI/CO, 3 Cloud
-// Architect, tools/test-profiles/); the page's "Aus Datei laden" picks a file into the form
-// (`pick_profile`). A deleted active profile gives
+// Architect, tools/test-profiles/). A deleted active profile gives
 // the place back to the one active before it, like core. A switch scores the jobs with the new active profile at once: the list rows take the
 // engine's matches of that profile from the snapshot (`DEMO.profiles`); the reader keeps the
 // demo profile's reasons under the new score (the snapshot has one profile's readers).

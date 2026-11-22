@@ -892,9 +892,8 @@ pub struct JobQuery {
     /// jobs this run brought, the ones its toast counts (`RunSummary.newJobs`: first seen in
     /// it, not excluded). `null` = every job.
     pub run: Option<i64>,
-    /// The filter "Gefunden": only jobs that came at or after this moment (Unix seconds;
-    /// the alert mail's date, else when the app first saw the job, as "Nach Datum" orders
-    /// them). The page names the start of today, of the last 7 or of the last 30 days in
+    /// The filter "Gefunden": only jobs the app first saw at or after this moment (Unix
+    /// seconds; the day "Nach Datum" orders by first). The page names the start of today, of the last 7 or of the last 30 days in
     /// the user's time zone. `null` = every job.
     pub received_since: Option<i64>,
     /// At most [`MAX_PAGE`]; 0 = counts only.

@@ -105,8 +105,8 @@ pub struct ListFilter {
     /// Only jobs scored in these bands (`model::band` of their score); unscored and excluded
     /// jobs pass only while it is empty.
     pub bands: Vec<Band>,
-    /// Only jobs that came at or after this moment, in Unix seconds: the alert mail's date,
-    /// else the first sighting (`None` = every job).
+    /// Only jobs CXact first saw at or after this moment (`first_seen_at`), in Unix seconds
+    /// (`None` = every job).
     pub received_since: Option<i64>,
 }
 
