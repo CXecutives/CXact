@@ -1,15 +1,15 @@
 //! The Passungsgrad (engine 25): the score is the share of what matters for the job that the
 //! profile fits, in four named parts with their weights (`params.rs`):
 //!
-//! - Rolle und Fach: the field of the role (the same field or a target role in full, near,
+//! - role and field: the field of the role (the same field or a target role in full, near,
 //!   far, foreign; from the target role, the title and how the ad's text and its musts fit
 //!   the profile's field) at its level (a wished level full, one above or below
 //!   `LEVEL_ONE`, two or more above `LEVEL_TWO_ABOVE`; two or more below caps);
-//! - Kern der Rolle: the share of the musts on the core of the role that the profile meets
-//!   (without any, the share of Rolle und Fach);
-//! - weitere Muss-Punkte: the share of the other musts, counted as at least
-//!   `MUST_SATURATION`, the ones a short list does not name at `UNNAMED` of Rolle und Fach;
-//! - Rahmen: day rate, remote and place, start, duration and workload; what the ad does not
+//! - core of the role: the share of the musts on the core of the role that the profile meets
+//!   (without any, the share of role and field);
+//! - other musts: the share of the other musts, counted as at least
+//!   `MUST_SATURATION`, the ones a short list does not name at `UNNAMED` of role and field;
+//! - frame: day rate, remote and place, start, duration and workload; what the ad does not
 //!   state fits.
 //!
 //! A requirement met in part counts `PARTIAL`; what is unclear or missing never counts
@@ -28,8 +28,8 @@ use super::score::div_round_half_even;
 use super::signals::{FRAME_ASPECTS, Sig, Signals};
 use super::types::CapCode;
 
-/// The weights of the parts in their order: Rolle und Fach, Kern, weitere Muss-Punkte,
-/// Rahmen.
+/// The weights of the parts in their order: role and field, core, other musts,
+/// frame.
 pub(crate) const WEIGHTS: [u64; 4] = [W_ROLE, W_CORE, W_MUSTS, W_FRAME];
 
 /// The field of the role against the profile's.
@@ -84,7 +84,7 @@ pub(crate) fn class(s: &Signals) -> FieldClass {
     }
 }
 
-/// The share of Rolle und Fach the level keeps (per-mille).
+/// The share of role and field the level keeps (per-mille).
 fn level_factor(level: u16) -> u64 {
     match level {
         0 => 1000,
@@ -104,18 +104,18 @@ fn share(met: u16, partial: u16, open: u16, units: u64, fill: u64) -> u64 {
     (u64::from(met) * u64::from(E_FULL) + u64::from(partial) * PARTIAL + (units - n) * fill) / units
 }
 
-/// How the score of one job came about: the parts, the Kann bonus and the permanent line, in
+/// How the score of one job came about: the parts, the nice-to-have bonus and the permanent line, in
 /// whole points that add up to `total` (before the caps).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) struct Percent {
     pub class: Option<FieldClass>,
-    /// The share of each part (per-mille): Rolle und Fach, Kern, weitere Muss-Punkte, Rahmen.
+    /// The share of each part (per-mille): role and field, core, other musts, frame.
     pub shares: [u16; 4],
-    /// The Kern without musts on the core of the role takes the share of Rolle und Fach.
+    /// The core without musts on the core of the role takes the share of role and field.
     pub core_fallback: bool,
     /// The points of each part, at most its weight.
     pub points: [u8; 4],
-    /// The Kann bonus (points, at most `NICE_MAX`).
+    /// The nice-to-have bonus (points, at most `NICE_MAX`).
     pub nice: u8,
     /// The points a permanent role takes.
     pub permanent: u8,
@@ -288,7 +288,7 @@ mod tests {
         assert!(FIELD_VALUES.windows(2).all(|w| w[0] >= w[1]));
     }
 
-    /// The lines add up: the four parts, the Kann bonus, minus the permanent line, are the
+    /// The lines add up: the four parts, the nice-to-have bonus, minus the permanent line, are the
     /// total, and every part stays within its weight.
     #[test]
     fn the_parts_add_up_to_the_total() {
@@ -365,7 +365,7 @@ mod tests {
         }
     }
 
-    /// Rolle und Fach: the same field in full, near, far and foreign at their values; one
+    /// Role and field: the same field in full, near, far and foreign at their values; one
     /// level off keeps `LEVEL_ONE`, two above `LEVEL_TWO_ABOVE`.
     #[test]
     fn the_role_part_follows_field_and_level() {
@@ -386,8 +386,8 @@ mod tests {
         );
     }
 
-    /// Without musts on the core the Kern takes the share of Rolle und Fach; the musts a short
-    /// list does not name count as Rolle und Fach does.
+    /// Without musts on the core the core takes the share of role and field; the musts a short
+    /// list does not name count as role and field does.
     #[test]
     fn missing_musts_count_as_the_role_does() {
         let p = percent(&sig(&[(Sig::Role, 1)]));

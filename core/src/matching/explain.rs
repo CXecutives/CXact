@@ -203,7 +203,7 @@ fn max_of(weight: u64) -> u8 {
     u8::try_from(weight).unwrap_or(u8::MAX)
 }
 
-/// What Rolle und Fach was read from: the field class, the target role and the level.
+/// What the role and field part was read from: the field class, the target role and the level.
 fn role_params(profile: &EngineProfile, evaluation: &Evaluation) -> Value {
     let (role, fit) = match &evaluation.role {
         Some((fit, _)) => (
@@ -753,7 +753,7 @@ mod tests {
             .map_or(0, |p| p.points)
     }
 
-    /// The lines of the Passungsgrad add up to the score: the four parts, the Kann bonus, the
+    /// The lines of the Passungsgrad add up to the score: the four parts, the nice-to-have bonus, the
     /// permanent line and the cap that held.
     #[test]
     fn the_lines_add_up_to_the_score() {
@@ -796,7 +796,7 @@ mod tests {
         assert!(points(&p, PartCode::Permanent) < 0, "{:?}", p.parts);
     }
 
-    /// Rolle und Fach: the target role in full is the same field; a nursing role is foreign
+    /// Role and field: the target role in full is the same field; a nursing role is foreign
     /// to a finance profile and caps at 24.
     #[test]
     fn rolle_und_fach_follows_the_role_and_the_field() {
@@ -820,7 +820,7 @@ mod tests {
         assert!(nurse.score <= 24, "{}", nurse.score);
     }
 
-    /// Kern der Rolle: the musts on the field of the role count; open, they cost the part and
+    /// Core of the role: the musts on the field of the role count; open, they cost the part and
     /// cap at 49.
     #[test]
     fn the_core_counts_the_musts_on_the_role() {
@@ -873,7 +873,7 @@ mod tests {
         assert!(more.score <= base.score);
     }
 
-    /// Rahmen: what the ad does not state fits; a work mode against the wish costs.
+    /// Frame: what the ad does not state fits; a work mode against the wish costs.
     #[test]
     fn the_frame_counts_what_the_ad_states() {
         let remote = assessed("Interim CFO (m/w/d)", CFO);

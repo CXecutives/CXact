@@ -124,10 +124,10 @@ use facts::{Availability, HardCriteria};
 /// map; wishes, the permanent factor and the caps the ablation kept stay, a target role lifts
 /// no cap; salary headings and lower bounds far below the minimum decide. 25: the
 /// Passungsgrad (`scorer.rs`) in place of the learned tables: the share of what matters that
-/// the profile fits, in four parts with fitted weights (Rolle und Fach, Kern der Rolle,
-/// weitere Muss-Punkte, Rahmen), met in part counts `PARTIAL`, the nice-to-haves only add, a
+/// the profile fits, in four parts with fitted weights (role and field, core of the role,
+/// other musts, frame), met in part counts `PARTIAL`, the nice-to-haves only add, a
 /// permanent role a line of its own, the caps with their reasons (the core clearly open at
-/// most 49, a foreign field at most 24); the wishes count in the Rahmen.
+/// most 49, a foreign field at most 24); the wishes count in the frame.
 pub const ENGINE_VERSION: u32 = 25;
 
 /// Keys of the facts JSON the engine reads ([`JobInput::facts`]) - the one definition for

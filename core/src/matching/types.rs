@@ -87,7 +87,7 @@ pub struct Assessment {
     /// unscorable job): the reader's "why this number".
     pub factors: Vec<Factor>,
     /// The Passungsgrad line by line (empty for an unscorable job): the four parts with their
-    /// points of their weight, the Kann bonus, the permanent line and the cap that held; the
+    /// points of their weight, the nice-to-have bonus, the permanent line and the cap that held; the
     /// points add up to `score`.
     pub parts: Vec<Part>,
     /// Every cap that fired, with its reason, the lowest first.
@@ -109,15 +109,15 @@ pub struct Part {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum PartCode {
-    /// Rolle und Fach: `class` same, near, far or foreign, the target role (`role`, `fit`),
+    /// Role and field: `class` same, near, far or foreign, the target role (`role`, `fit`),
     /// the level (`level`: at, oneAbove, oneBelow, twoAbove, twoBelow).
     Role,
-    /// Kern der Rolle: the musts on the core met (`met`), in part (`partial`) of `total`;
-    /// `fallback` without any (the share of Rolle und Fach).
+    /// Core of the role: the musts on the core met (`met`), in part (`partial`) of `total`;
+    /// `fallback` without any (the share of role and field).
     Core,
     /// Weitere Muss-Punkte: `met`, `partial` of `total`, counted as at least `counted`.
     Musts,
-    /// Rahmen: the aspects met in part (`near`) and missed (`missed`) of `aspects`.
+    /// Frame: the aspects met in part (`near`) and missed (`missed`) of `aspects`.
     Frame,
     /// The nice-to-haves (`met`, `partial` of `total`): only a plus.
     Nice,

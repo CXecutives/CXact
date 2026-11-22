@@ -3,7 +3,7 @@
 //! hard criteria). The industries of the profile are experience, no wish (21).
 //!
 //! Every wish ends in a state: met, near, clearly missed or unknown. They are part of the
-//! Rahmen of the Passungsgrad (`scorer.rs`): near counts in part, missed against, unknown
+//! frame of the Passungsgrad (`scorer.rs`): near counts in part, missed against, unknown
 //! fits.
 //!
 //! - Day rate (`tagessatz_wunsch`, not for permanent roles): the upper bound of the stated

@@ -3,7 +3,7 @@
 //! (V17, V18), the signals of the job ([`signals`]) and the Passungsgrad ([`scorer`],
 //! engine 25). Integer arithmetic only.
 //!
-//! `score = min(parts + Kann - permanent line, lowest cap)`, every line in whole points.
+//! `score = min(parts + nice-to-haves - permanent line, lowest cap)`, every line in whole points.
 
 use std::ops::Range;
 
@@ -256,8 +256,8 @@ fn formal(profile: &EngineProfile, items: &[Scored]) -> (Vec<Finding>, bool) {
 
 /// No skill must met at all: outside the field (at least two, or the only one when the title
 /// names little of the profile either). Only explicit requirements, never a teaser's
-/// vocabulary terms; a must of generic words and leadership alone (`SAP-Kenntnisse`, `Erste
-/// Führungserfahrung`) names no field.
+/// vocabulary terms; a must of generic words and leadership alone names no field
+/// (`SAP-Kenntnisse`, `Erste Führungserfahrung`).
 fn off_field(items: &[Scored], vocab: &Vocab, title_fit: u64) -> bool {
     let names_field = |s: &Scored| {
         let atoms = atoms::atoms(&s.item.text, vocab);
