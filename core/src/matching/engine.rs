@@ -685,8 +685,9 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
     let short = char_len(strip(text)) < MIN_TEXT_CHARS;
     // The title without gender markers and marketing tails (what the role is).
     let title = title::clean(job.title);
-    // A short teaser still has its title: the portal hides the ad, it is not empty.
-    let title_only = short && job.kind == TextKind::Teaser;
+    // A short text still has its title: it is judged from the title and the field, without a
+    // penalty for little text (the rubric's rule 8).
+    let title_only = short;
     let doc = if short {
         job::JobDoc::default()
     } else {
@@ -719,7 +720,7 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
     } else {
         (None, Vec::new())
     };
-    // A short teaser whose title names neither the field nor a target role stays unscorable.
+    // A short text whose title names neither the field nor a target role stays unscorable.
     let unscorable = !readable || (short && relevance == 0 && role.is_none());
     let (role, wishes) = if unscorable {
         (None, Vec::new())

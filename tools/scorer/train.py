@@ -70,6 +70,10 @@ NOTE_TARGET = {0: 120, 1: 450, 2: 680, 3: 880}
 # target role, at most 10 (the mirror of `ROLE_POINTS` in scorer.rs; change both together).
 FIXED = {"role": [0, 50, 100]}
 
+# Signals outside the fit without points: how much text the ad has never costs (the
+# rubric's rule 8).
+NEUTRAL = {"evidence"}
+
 # The mirror of engine.rs `points` and `final_score` (change both together).
 WISH_MAX = 100
 PERMANENT_FACTOR = 900
@@ -441,7 +445,7 @@ def main():
 
     X = np.asarray([r["v"] for r in train], dtype=np.int64)
     y = np.asarray([NOTE_TARGET[note_of(labels[r["pair"]])] / 10 for r in train])
-    edges = [[0] if names[j] in FIXED else bin_edges(X[:, j]) for j in range(X.shape[1])]
+    edges = [[0] if names[j] in FIXED or names[j] in NEUTRAL else bin_edges(X[:, j]) for j in range(X.shape[1])]
     fixed = [(j, FIXED[n]) for j, n in enumerate(names) if n in FIXED]
 
     def plus(v):
