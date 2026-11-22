@@ -59,7 +59,12 @@ function runStep(command, index) {
       if (done) return;
       done = true;
       const text = Buffer.concat(output).toString('utf8').replace(/\r\n/g, '\n') + extra;
-      const log = join(LOGS, `${index + 1}-${command.split(' ').slice(0, 3).join('-')}.log`);
+      const name = command
+        .split(' ')
+        .slice(0, 3)
+        .join('-')
+        .replace(/[^\w.-]+/g, '-');
+      const log = join(LOGS, `${index + 1}-${name}.log`);
       writeFileSync(log, text);
       const step = { command, ok, seconds: (Date.now() - started) / 1000, output: text, log };
       console.log(`${ok ? 'PASS' : 'FAIL'}  ${step.seconds.toFixed(1).padStart(6)}s  ${command}`);
