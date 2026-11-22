@@ -6,7 +6,7 @@ use jiff::civil::Date;
 use serde_json::{Map, Value};
 
 use super::{Labels, Requirement, Wording, Words, flag, grouped, int, list_param, text_param};
-use crate::matching::{CriterionKey, CriterionStatus, FactorCode, ReasonCode, Via};
+use crate::matching::{CriterionKey, CriterionStatus, Part, PartCode, ReasonCode, Via};
 use crate::model::{Band, HIGH_FROM, MID_FROM};
 use crate::view::WorkMode;
 
@@ -210,6 +210,48 @@ fn percent(n: i64) -> String {
     format!("{n} %")
 }
 
+/// What the role and field part was read from: the field, the target role and the level.
+fn role_read(p: &Map<String, Value>) -> String {
+    let mut read = vec![
+        match text_param(p, "class") {
+            Some("same") => "gleiches Fachgebiet",
+            Some("near") => "nahes Fachgebiet",
+            Some("foreign") => "fremdes Fachgebiet",
+            _ => "fernes Fachgebiet",
+        }
+        .to_owned(),
+    ];
+    match (text_param(p, "fit"), text_param(p, "role")) {
+        (Some("full"), Some(role)) => read.push(format!("Wunschrolle {role} passt zum Titel")),
+        (Some("half"), Some(role)) => {
+            read.push(format!("der Titel kommt der Wunschrolle {role} nahe"));
+        }
+        (Some("none"), _) => read.push("keine Wunschrolle im Titel".to_owned()),
+        _ => {}
+    }
+    let level = match text_param(p, "level") {
+        Some("oneAbove") => Some("eine Stufe über dem Profil"),
+        Some("oneBelow") => Some("eine Stufe unter dem Profil"),
+        Some("twoAbove") => Some("zwei Stufen über dem Profil"),
+        Some("twoBelow") => Some("zwei Stufen unter dem Profil"),
+        _ => None,
+    };
+    read.extend(level.map(str::to_owned));
+    read.join(", ")
+}
+
+/// Why a cap holds the score (`CapCode`).
+fn cap_why(cap: Option<&str>) -> &'static str {
+    match cap {
+        Some("formal") => "formale Pflicht offen",
+        Some("coreOpen") => "Kern der Rolle klar offen",
+        Some("offField") => "fremdes Fachgebiet",
+        Some("junior") => "Einstiegsrolle bei langer Berufserfahrung",
+        Some("level") => "Rolle zwei oder mehr Stufen unter dem Profil",
+        _ => "eine Obergrenze der Bewertungsregel",
+    }
+}
+
 impl Wording for German {
     fn words(&self) -> &'static Words {
         &WORDS
@@ -345,52 +387,74 @@ impl Wording for German {
         format!("Kann-Anforderungen: {met} von {total} erfüllt")
     }
 
-    fn factor(&self, code: FactorCode, p: &Map<String, Value>) -> Option<String> {
-        let said = match code {
-            FactorCode::Musts | FactorCode::Nice => return None,
-            FactorCode::TargetRole => match (text_param(p, "fit"), text_param(p, "role")) {
-                (Some("full"), Some(role)) => format!("Wunschrolle: {role} passt zum Titel"),
-                (Some("half"), Some(role)) => format!("Wunschrolle: der Titel kommt {role} nahe"),
-                _ => "Wunschrolle: keine im Titel".to_owned(),
-            },
-            FactorCode::Level => match int(p, "gap").unwrap_or(1) {
-                1 => "Ebene: eine Stufe unter dem Profil".to_owned(),
-                n => format!("Ebene: {n} Stufen unter dem Profil"),
-            },
-            FactorCode::Field => {
-                "Fachgebiet: fern vom Profil, die Muss-Anforderungen zählen halb".to_owned()
+    fn part(&self, part: &Part) -> String {
+        let p = &part.params;
+        let points = i64::from(part.points);
+        let of_max = format!("{points} von {} Punkten", part.max);
+        // What a line takes off the score (nothing when it takes nothing).
+        let minus = if points < 0 {
+            format!(", minus {}", plural(-points, "Punkt", "Punkte"))
+        } else {
+            String::new()
+        };
+        let counts = |what: &str| -> String {
+            let total = int(p, "total").unwrap_or(0);
+            if total == 0 {
+                return format!("die Anzeige nennt keine {what}");
             }
-            FactorCode::Wishes => match int(p, "points").unwrap_or(0) {
-                n if n < 0 => format!("Wünsche: senken die Punktzahl um {} von 100 Punkten", -n),
-                n => format!("Wünsche: heben die Punktzahl um {n} von 100 Punkten"),
-            },
-            FactorCode::Evidence => match text_param(p, "evidence") {
-                Some("teaser") => "Text: nur der Anriss, die Punktzahl rückt zur Mitte".to_owned(),
-                _ => "Text: wenig Prüfbares, die Punktzahl rückt zur Mitte".to_owned(),
-            },
-            FactorCode::Permanent => match int(p, "percent") {
-                Some(share) => format!(
-                    "Festanstellung: zählt mit {} der fachlichen Passung",
-                    percent(share)
-                ),
-                None => "Festanstellung: zählt etwas weniger".to_owned(),
-            },
-            FactorCode::Cap => {
-                let why = match text_param(p, "cap") {
-                    Some("formal") => "formale Pflicht offen",
-                    Some("coreOpen") => "Kern der Rolle klar offen",
-                    Some("offField") => "fremdes Fachgebiet",
-                    Some("junior") => "Einstiegsrolle bei langer Berufserfahrung",
-                    Some("level") => "Rolle zwei oder mehr Stufen unter dem Profil",
-                    _ => "eine Obergrenze der Bewertungsregel",
-                };
-                match int(p, "max") {
-                    Some(max) => format!("Obergrenze: {why}, höchstens {max} von 100 Punkten"),
-                    None => format!("Obergrenze: {why}"),
-                }
+            let met = int(p, "met").unwrap_or(0);
+            match int(p, "partial").filter(|n| *n > 0) {
+                Some(partial) => format!("{met} von {total} {what} erfüllt, {partial} teilweise"),
+                None => format!("{met} von {total} {what} erfüllt"),
             }
         };
-        Some(said)
+        match part.code {
+            PartCode::Role => format!("Rolle und Fachgebiet: {of_max} ({})", role_read(p)),
+            PartCode::Core => format!(
+                "Kern der Rolle: {of_max} ({})",
+                counts("Muss-Anforderungen am Kern")
+            ),
+            PartCode::Musts => format!(
+                "Weitere Muss-Anforderungen: {of_max} ({})",
+                counts("weiteren Muss-Anforderungen")
+            ),
+            PartCode::Nice => format!(
+                "Kann-Anforderungen: plus {points} von höchstens {} Punkten ({})",
+                part.max,
+                counts("Kann-Anforderungen")
+            ),
+            PartCode::Frame => {
+                let aspect = match text_param(p, "aspect") {
+                    Some("rate") => "Tagessatz",
+                    Some("place") => "Ort und Arbeitsmodell",
+                    Some("start") => "Start",
+                    Some("duration") => "Dauer",
+                    Some("workload") => "Auslastung",
+                    _ => "Rahmen",
+                };
+                let state = match text_param(p, "state") {
+                    Some("near") => "knapp anders als gewünscht",
+                    _ => "nicht wie gewünscht",
+                };
+                format!("Rahmen, {aspect}: {state}{minus}")
+            }
+            PartCode::Permanent => match int(p, "percent") {
+                Some(share) => format!(
+                    "Festanstellung: zählt mit {} der Punkte{minus}",
+                    percent(share)
+                ),
+                None => format!("Festanstellung: zählt weniger{minus}"),
+            },
+            PartCode::Cap => {
+                let why = cap_why(text_param(p, "cap"));
+                match int(p, "max") {
+                    Some(max) => {
+                        format!("Obergrenze: {why}, höchstens {max} von 100 Punkten{minus}")
+                    }
+                    None => format!("Obergrenze: {why}{minus}"),
+                }
+            }
+        }
     }
 
     fn criterion(&self, key: CriterionKey, profile: &Map<String, Value>) -> String {

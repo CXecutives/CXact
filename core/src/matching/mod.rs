@@ -10,7 +10,6 @@ mod contract;
 mod engine;
 mod exclusion;
 mod explain;
-mod factors;
 pub(crate) mod facts;
 mod fit;
 /// The gap finder (`core/examples/vocab_gaps.rs`), a developer's tool: in debug builds only, so

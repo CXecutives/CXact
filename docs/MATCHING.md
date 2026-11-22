@@ -415,8 +415,7 @@ Integer per-mille, parameters in `params.rs`.
 - Field: the families of `FIELD_PACKS` (finance, IT, project, HR, procurement, sales, service,
   engineering, legal); the ad's family is the one the title (x3) and the musts trigger most
   (at least 3), a tie with a profile family is the same field; near pairs `NEAR_FIELDS`; in a
-  far field every must counts half. Factor codes `level` (`level`, `gap`) and `field`
-  (`field`, `distance`), cap code `level`.
+  far field every must counts half. Cap code `level` (`level`, `gap`).
 - Target role: the title meets a role (topic atoms without lead words, contract words such as
   `Interim` met by the title or an interim contract, a lead role needs a lead title) = full;
   a junior title or a lead role without lead title = half (the signal `role`, 2 or 1).
@@ -459,7 +458,9 @@ integers with a range and a direction), integer only, every line in whole points
   the nice-to-have bonus, one `frame` line per worse condition (`aspect` rate, place, start,
   duration, workload; `state` near or missed; it keeps `percent` 95), the `permanent` line (90)
   and the `cap` line; the points add up to the score exactly (`explain.rs` test). Example: role
-  and field 40/40, core 31/40, other musts 11/20, nice 4/5, place -4 (95 %): 86 - 4 = 82.
+  and field 40/40, core 31/40, other musts 11/20, nice 4/5, place -4 (95 %): 86 - 4 = 82. The
+  reader gets the parts and the caps on `MatchDetail` (`view.rs`), the AI prompt says them line
+  by line (`export/ai_prompt`).
 - The rank (`fine`) is the same arithmetic in per-mille before rounding and caps: it orders
   jobs with the same score.
 
@@ -522,13 +523,6 @@ facts of every ad (`KeyFacts`: rate with `rateFrom`, hourly, currency, rateOpen,
 `now`/`vague`/ISO date, months or `weeks` with `durationFrom`, remote from/to, workload,
 contract, `salaryFrom`, `salaryBonus`, the application deadline and the contact,
 `application.rs`) are stored in the match note and sent on `JobMatch.facts`.
-
-The assessment also says what moved its score (`Assessment::factors`, the reader's "Warum diese
-Zahl?"): the musts met, the optional requirements, the target role, the summed wishes, a text
-with little evidence, the factor of a permanent role and the cap that held the score down
-(`engine::CapKind`, only when the rounded score lay above it). At most five lines
-(`MAX_FACTORS`; a cap, the permanent factor and the musts stay first), codes and params only
-(`factors.rs`); they never change a score.
 
 ### Limits of an engagement
 

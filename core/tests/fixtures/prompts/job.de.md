@@ -121,9 +121,11 @@ Rahmen
 Ein maschineller Wortabgleich zwischen Anzeige und Profil, kein Urteil. Unter dem Ergebnis steht, was die Punktzahl bewegt. Prüfe jeden Punkt, statt ihn zu übernehmen.
 
 - Ergebnis: 68 von 100 Punkten von CXact, mittlere Übereinstimmung (ab 80 hoch, ab 40 mittel)
-- Muss-Anforderungen: 3 von 4 erfüllt, 1 offen
-- Kann-Anforderungen: 0 von 1 erfüllt
-- Wünsche: heben die Punktzahl um 3 von 100 Punkten
+- Rolle und Fachgebiet: 32 von 40 Punkten (gleiches Fachgebiet)
+- Kern der Rolle: 24 von 40 Punkten (2 von 3 Muss-Anforderungen am Kern erfüllt)
+- Weitere Muss-Anforderungen: 14 von 20 Punkten (1 von 1 weiteren Muss-Anforderungen erfüllt)
+- Kann-Anforderungen: plus 0 von höchstens 5 Punkten (0 von 1 Kann-Anforderungen erfüllt)
+- Rahmen, Tagessatz: knapp anders als gewünscht, minus 2 Punkte
 
 **Harte Kriterien**
 - Tagessatz mindestens 1.100 €: erfüllt, 1.250 € pro Tag („Tagessatz bis 1.250 €“)

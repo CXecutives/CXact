@@ -19,7 +19,9 @@ use crate::error::{BusyActivity, ErrorInfo, ErrorKind, InvalidInput};
 use crate::fetch::PortalHealth;
 use crate::fetch::policy::PauseReason;
 use crate::mail::MailProvider;
-use crate::matching::{CriterionKey, ProfileWarningCode, ReasonCode, Via};
+use crate::matching::{
+    CapCode, CapLine, CriterionKey, Part, PartCode, ProfileWarningCode, ReasonCode, Via,
+};
 use crate::model::{AppNote, Band, KeyFacts, MatchStatus, NoteCode, Notice, Place};
 use crate::pipeline::{
     NewJobs, Outcome, PortalSummary, RunEvent, RunKind, RunKindName, RunRequest, RunSnapshot,
@@ -189,6 +191,10 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<Reason>();
     f.add::<Criterion>();
     f.add::<Highlight>();
+    f.add::<PartCode>();
+    f.add::<Part>();
+    f.add::<CapCode>();
+    f.add::<CapLine>();
     f.add::<MatchDetail>();
     f.add::<TextLayout>();
     f.add::<JobMail>();

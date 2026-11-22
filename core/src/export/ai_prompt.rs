@@ -33,7 +33,7 @@ use serde_json::{Map, Value};
 
 use crate::error::Result;
 use crate::matching::{
-    Assessment, CriterionInfo, CriterionKey, CriterionState, CriterionStatus, FactorCode, Reason,
+    Assessment, CriterionInfo, CriterionKey, CriterionState, CriterionStatus, Part, Reason,
     ReasonCode, ReasonKind, Verdict, Via, Weight,
 };
 use crate::model::{Band, HIGH_FROM, MID_FROM, band};
@@ -289,9 +289,9 @@ trait Wording: Sync {
     fn unscorable(&self) -> &'static str;
     fn musts(&self, met: u16, partial: u16, open: u16, total: u16) -> String;
     fn nices(&self, met: u16, total: u16) -> String;
-    /// A line of what moved the score (`Assessment::factors`); `None` for the musts and the
-    /// optional requirements (their counts are said already).
-    fn factor(&self, code: FactorCode, params: &Map<String, Value>) -> Option<String>;
+    /// A line of the Passungsgrad (`Assessment::parts`): what it was read from and its
+    /// points.
+    fn part(&self, part: &Part) -> String;
     /// The criterion with the profile's threshold (`profile`: the params the engine read).
     fn criterion(&self, key: CriterionKey, profile: &Map<String, Value>) -> String;
     fn criterion_status(&self, status: CriterionStatus) -> &'static str;
@@ -716,32 +716,35 @@ fn result_lines(w: &dyn Wording, item: PromptJob<'_>, assessment: &Assessment) -
             w.scored(assessment.score, band(assessment.score))
         )),
     }
-    let counts = &assessment.summary;
-    lines.push(format!(
-        "- {}",
-        w.musts(
-            counts.must_met,
-            counts.must_partial,
-            counts.must_open,
-            counts.must_total
-        )
-    ));
-    if counts.nice_total > 0 {
-        lines.push(format!("- {}", w.nices(counts.nice_met, counts.nice_total)));
+    // The Passungsgrad line by line; a job without one (unscorable) has its counts.
+    if assessment.parts.is_empty() {
+        let counts = &assessment.summary;
+        lines.push(format!(
+            "- {}",
+            w.musts(
+                counts.must_met,
+                counts.must_partial,
+                counts.must_open,
+                counts.must_total
+            )
+        ));
+        if counts.nice_total > 0 {
+            lines.push(format!("- {}", w.nices(counts.nice_met, counts.nice_total)));
+        }
     }
     // A target role the title meets is said with the wishes below.
     let role_said = assessment
         .reasons
         .iter()
         .any(|r| r.code == ReasonCode::TargetRole);
-    lines.extend(
-        assessment
-            .factors
-            .iter()
-            .filter(|f| !(f.code == FactorCode::TargetRole && role_said))
-            .filter_map(|f| w.factor(f.code, &f.params))
-            .map(|said| format!("- {said}")),
-    );
+    lines.extend(assessment.parts.iter().map(|part| {
+        let mut part = part.clone();
+        if role_said {
+            part.params.remove("role");
+            part.params.remove("fit");
+        }
+        format!("- {}", w.part(&part))
+    }));
     lines.join("\n")
 }
 

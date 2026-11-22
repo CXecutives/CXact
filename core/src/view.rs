@@ -482,6 +482,11 @@ pub struct MatchDetail {
     pub highlights: Vec<Highlight>,
     /// The hard criteria strip.
     pub criteria: Vec<Criterion>,
+    /// The Passungsgrad line by line (empty for an unscorable job): the points of the lines
+    /// add up to `score`.
+    pub parts: Vec<matching::Part>,
+    /// Every cap that fired, with its reason, the lowest first.
+    pub caps: Vec<matching::CapLine>,
 }
 
 /// How the reader lays out the ad's text (UTF-16 ranges of `JobDetail::text`).
@@ -732,6 +737,8 @@ pub fn match_detail(assessment: &Assessment, matcher: &LocalMatcher, at: Timesta
             })
             .collect(),
         criteria,
+        parts: assessment.parts.clone(),
+        caps: assessment.caps.clone(),
     }
 }
 
@@ -3021,5 +3028,37 @@ Anforderungen:
         let took = started.elapsed();
         assert_eq!(asked.len(), MAX_ASKED);
         assert!(took < std::time::Duration::from_millis(500), "{took:?}");
+    }
+
+    /// The reader's Passungsgrad adds up: for every job of the preview's demo (the snapshot
+    /// the real engine computed, `core/tests/ui_demo_snapshot.rs`) the points of the parts are
+    /// its score, and an unscorable job has none.
+    #[test]
+    fn the_parts_add_up_to_the_score_of_every_demo_job() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../tools/ui-harness/demo/snapshot.json");
+        let snapshot: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        let mut checked = 0;
+        for group in ["details", "fetched"] {
+            for (key, detail) in snapshot[group].as_object().unwrap() {
+                let m = &detail["match"];
+                if m.is_null() {
+                    continue;
+                }
+                let parts = m["parts"].as_array().unwrap();
+                let sum: i64 = parts.iter().map(|p| p["points"].as_i64().unwrap()).sum();
+                if m["status"] == "unscorable" {
+                    assert!(parts.is_empty(), "{key}: {parts:?}");
+                } else {
+                    assert_eq!(Some(sum), m["score"].as_i64(), "{key}: {parts:?}");
+                    checked += 1;
+                }
+            }
+        }
+        assert!(
+            checked >= 10,
+            "only {checked} scored demo jobs - did the snapshot move?"
+        );
     }
 }
