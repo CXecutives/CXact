@@ -2,7 +2,7 @@
 // numbers formatted like every other count, rows in short words.
 
 import { expect, open, runFinished, test } from './fixtures';
-import { T } from './helpers';
+import { dayHeadings, stubList, T } from './helpers';
 
 const WIN = '?platform=windows';
 
@@ -20,13 +20,13 @@ test('an empty list during a fetch says the jobs come in as it goes, not at its 
 test('the days of the list: Heute, Gestern, then the weekday and date, not "vor 2 Tagen"', async ({
   page,
 }) => {
-  // The clock stands on Thursday 24.09.2026, 09:30.
+  // The clock stands on Thursday 24.09.2026, 09:30; the days that have scored jobs are the
+  // engine's.
   await open(page, WIN);
-  await expect(page.getByTestId('job-list').getByTestId('day-heading')).toHaveText([
-    'Heute',
-    'Gestern',
-    'Di 22.09.',
-  ]);
+  const days = dayHeadings((await stubList(page)).jobs);
+  expect(days.slice(0, 2)).toEqual(['Heute', 'Gestern']);
+  for (const day of days.slice(2)) expect(day).toMatch(/^(Mo|Di|Mi|Do|Fr|Sa|So) \d\d\.\d\d\.$/);
+  await expect(page.getByTestId('job-list').getByTestId('day-heading')).toHaveText(days);
 });
 
 test('an archived job goes back with In den Eingang verschieben', async ({ page }) => {

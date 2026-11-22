@@ -9,6 +9,7 @@
 
 import type { Locator, Page } from '@playwright/test';
 import type { JobQuery, JobView } from '../../../ui/src/lib/ipc/types';
+import { displayTitle } from '../../../ui/src/lib/i18n/format';
 import { RECEIVED } from '../../../ui/src/lib/state/filter';
 import {
   animationsDone,
@@ -23,6 +24,7 @@ import {
   test,
   visibleCount,
 } from './fixtures';
+import { demoJob, demoRun } from './demo';
 import { MIN_WINDOW, WINDOW } from './scale';
 import {
   checkedSort,
@@ -33,6 +35,7 @@ import {
   chipWordsOf,
   chooseFilter,
   chooseSort,
+  dayHeadings,
   excludedRows,
   expectHighlightOn,
   failNext,
@@ -1030,7 +1033,9 @@ test.describe('filter', () => {
       return match?.status === 'scored' ? match.band : null;
     };
     for (const key of mid) expect(bandOf(key)).toBe('mid');
-    const unscored = jobs.filter((job) => job.match === null).map(keyOf);
+    const unscored = jobs
+      .filter((job) => job.match === null || job.match.status === 'unscorable')
+      .map(keyOf);
     expect(unscored.length).toBeGreaterThan(0);
     for (const key of unscored) expect(await listed(page)).not.toContain(key);
     await expect(page.getByTestId('excluded-divider')).toHaveCount(0);
@@ -1043,21 +1048,24 @@ test.describe('filter', () => {
     await chip(page, 'band-mid').locator('.text').click();
     await expect(chip(page, 'band-mid')).toBeVisible();
     expect(await lastQuery(page)).toMatchObject({ portals: ['linkedin'], bands: ['mid'] });
-    // Gering adds the low band: the jobs of both.
-    await chooseFilter(page, 'band-low');
-    const both = await inbox(page, { portals: ['linkedin'], bands: ['mid', 'low'] });
+    // Another band adds its jobs: those of both (a band LinkedIn's jobs are in, the engine's).
+    const other = (['low', 'high'] as const).find((band) =>
+      jobs.some((job) => job.portal === 'linkedin' && bandOf(keyOf(job)) === band),
+    )!;
+    await chooseFilter(page, `band-${other}`);
+    const both = await inbox(page, { portals: ['linkedin'], bands: ['mid', other] });
     expect(both.length).toBeGreaterThan(mid.length);
     await expect.poll(() => listed(page)).toEqual(both);
-    for (const key of both) expect(['mid', 'low']).toContain(bandOf(key));
+    for (const key of both) expect(['mid', other]).toContain(bandOf(key));
     await expect(chipWords(page)).toHaveText(
-      chipWordsOf('portal-linkedin', 'band-mid', 'band-low'),
+      chipWordsOf('portal-linkedin', 'band-mid', `band-${other}`),
     );
     // A chip's × takes its choice off; a click sets no focus anywhere, not even after the last.
     await chipRemove(page, 'band-mid').click();
     await expect
       .poll(() => listed(page))
-      .toEqual(await inbox(page, { portals: ['linkedin'], bands: ['low'] }));
-    await chipRemove(page, 'band-low').click();
+      .toEqual(await inbox(page, { portals: ['linkedin'], bands: [other] }));
+    await chipRemove(page, `band-${other}`).click();
     await expect.poll(() => listed(page)).toEqual(linkedin);
     await expect(chipWords(page)).toHaveText(chipWordsOf('portal-linkedin'));
     await chipRemove(page, 'portal-linkedin').click();
@@ -1254,18 +1262,25 @@ test.describe('filter', () => {
 
   test('a filter that leaves nothing says so once and takes itself off', async ({ page }) => {
     await open(page, WIN);
-    // A portal whose inbox has no job of the high band.
+    // A portal with jobs in the inbox, none of them in some band (the bands are the
+    // engine's).
     let empty: string | null = null;
+    let band: string | null = null;
     for (const portal of ['freelance', 'freelancermap', 'linkedin'] as const) {
-      const { active, excluded: out } = await stubList(page, {
-        portals: [portal],
-        bands: ['high'],
-      });
-      if (active.length + out.length === 0) empty = `portal-${portal}`;
+      for (const each of ['high', 'mid', 'low'] as const) {
+        const { active, excluded: out } = await stubList(page, {
+          portals: [portal],
+          bands: [each],
+        });
+        if (empty === null && active.length + out.length === 0) {
+          empty = `portal-${portal}`;
+          band = `band-${each}`;
+        }
+      }
     }
     expect(empty).not.toBeNull();
     await chooseFilter(page, empty!);
-    await chooseFilter(page, 'band-high');
+    await chooseFilter(page, band!);
     // An empty state like every other: its title and one sentence, the reset under them.
     const state = page.getByTestId('empty-filter');
     await expect(state.locator('.tile')).toHaveCount(1);
@@ -1286,7 +1301,7 @@ test.describe('filter', () => {
     await expect(funnel(page)).not.toBeFocused();
     expect(await page.evaluate(() => localStorage.getItem('jobs-filter'))).toBeNull();
     await chooseFilter(page, empty!);
-    await chooseFilter(page, 'band-high');
+    await chooseFilter(page, band!);
     await expect(state).toBeVisible();
     await page.keyboard.press('Tab');
     await reset.focus();
@@ -1780,8 +1795,8 @@ test('the last rows above a section go and come back: its heading glides, nothin
   await open(page, WIN);
   const heading = page.getByTestId('unscored-divider');
   const days = page.getByTestId('job-rows').locator('[data-key]');
-  // A word of one scored job and one that is not scored.
-  await page.getByTestId('search').fill('Controller');
+  // A word of one scored job and one that is not scored (both hybrid).
+  await page.getByTestId('search').fill('Hybrid');
   await expect(days).toHaveCount(1);
   await expect(heading).toBeVisible();
   await motionSettled(page);
@@ -1995,7 +2010,9 @@ test.describe('days', () => {
     await expect.poll(() => listed(page)).toEqual(await inbox(page));
     // The fixed clock stands at Thursday 24.09., 09:30 in Berlin; a job that came at 00:30
     // local time (22:30 UTC the day before) is today's.
-    expect(await headings(page)).toEqual(['Heute', 'Gestern', 'Di 22.09.']);
+    const days = dayHeadings((await stubList(page)).jobs);
+    expect(days.slice(0, 2)).toEqual(['Heute', 'Gestern']);
+    expect(await headings(page)).toEqual(days);
     // Within a day the open ads before the closed one, then the best match.
     const { jobs } = await stubList(page);
     const day = jobs.filter((job) => job.firstSeenAt.startsWith('2026-09-22'));
@@ -2443,10 +2460,12 @@ test.describe('search', () => {
     const unscored = page.getByTestId('unscored-divider');
     await unscored.click();
     await expect(unscored).toHaveAttribute('aria-expanded', 'false');
-    await openJob(page, 'linkedin-4100200301');
+    // A word of a scored job (the open one, its ad names it too), an excluded one and one not
+    // scored: the place the three are in (no title names it, so the marks are the ad's).
+    await openJob(page, 'freelancermap-2801');
     const marks = list(page).locator('mark');
     const adMarks = stage(page).getByTestId('ad-text').locator('mark');
-    await page.getByTestId('search').fill('Control');
+    await page.getByTestId('search').fill('Hamburg');
     // On its way the answer changes nothing: the old list stands as it was, the open ad too.
     await expect(unscored).toHaveAttribute('aria-expanded', 'false');
     await expect(page.getByTestId('excluded-divider')).toHaveAttribute('aria-expanded', 'false');
@@ -2455,7 +2474,6 @@ test.describe('search', () => {
     // The answer: its hits at once, the sections open with them, nothing unfolding.
     await expect(excludedRows(page)).toHaveCount(1);
     await expect(unscored).toHaveAttribute('aria-expanded', 'true');
-    await expect(marks.first()).toBeVisible();
     await expect(adMarks.first()).toBeVisible();
     expect(
       await page.getByTestId('excluded-rows').evaluate((node) => node.getAnimations().length),
@@ -3616,13 +3634,16 @@ test.describe('moves and undo', () => {
     page,
   }) => {
     await open(page, WIN);
+    // The job after it in the list (its order is the engine's).
+    const { active } = await stubList(page);
+    const next = active[active.indexOf('linkedin-4100200301') + 1]!;
     await openJob(page, 'linkedin-4100200301');
     await viaMenu(page, 'archive', 'linkedin-4100200301');
     expect(await calls(page, 'move_jobs')).toHaveLength(1);
-    await expect(page.getByTestId('reader-title')).toHaveText('SAP S/4HANA Finance Projektleitung');
+    await expect(page.getByTestId('reader-title')).toHaveText(displayTitle(demoJob(next).title));
     const read = async (): Promise<boolean> =>
       (await calls(page, 'mark_read')).some(
-        ([, args]) => (args as { key: { id: string } }).key.id === '900411',
+        ([, args]) => (args as { key: { id: string } }).key.id === next.split(/-(.*)/)[1],
       );
     expect(await read()).toBe(false);
     await page.getByTestId('reader-title').click();
@@ -3757,8 +3778,9 @@ test.describe('run line', () => {
     await expect(list(page).locator('[data-kept="yes"]')).toHaveCount(1);
     await runFinished(page);
     await expect(line).toHaveCount(0);
-    // Two new jobs (the third is excluded), one of the high band; its way lists them.
-    const toast = page.getByTestId('toast').filter({ hasText: T.toast.runDone(2, 1) });
+    // The new jobs that are not excluded and those of the high band; its way lists them.
+    const { fresh, high } = demoRun();
+    const toast = page.getByTestId('toast').filter({ hasText: T.toast.runDone(fresh, high) });
     await expect(toast).toHaveCount(1);
     await expect(toast.getByTestId('toast-action')).toHaveText(T.toast.show);
     // The run re-sorts the list once it has finished: the new jobs in their places.
@@ -3782,7 +3804,8 @@ test.describe('run line', () => {
     await page.getByTestId('fetch').click();
     await page.getByTestId('nav-settings').click();
     await runFinished(page);
-    const toast = page.getByTestId('toast').filter({ hasText: T.toast.runDone(2, 1) });
+    const { fresh, high } = demoRun();
+    const toast = page.getByTestId('toast').filter({ hasText: T.toast.runDone(fresh, high) });
     await toast.getByTestId('toast-action').click();
     await expect(page.getByTestId('view-jobs')).toBeVisible();
   });

@@ -4,6 +4,7 @@
 
 import type { Page } from '@playwright/test';
 import type { JobView } from '../../../ui/src/lib/ipc/types';
+import { demoRun, demoRunKeys } from './demo';
 import { calls, expect, open, runFinished, settle, test } from './fixtures';
 import {
   ALL_PORTALS,
@@ -19,9 +20,9 @@ import {
 } from './helpers';
 
 const WIN = '?platform=windows';
-/** The end toast of the demo's fetch: two new jobs (the third is excluded), one of the high
- *  band. */
-const DONE = T.toast.runDone(2, 1);
+/** The end toast of the demo's fetch: its new jobs that are not excluded, and those of the
+ *  high band (by the roles of its ads). */
+const DONE = T.toast.runDone(demoRun().fresh, demoRun().high);
 const rows = (page: Page) => page.getByTestId('job-rows').locator('[data-testid^="job-row-"]');
 const row = (page: Page, key: string) => page.getByTestId('job-list').getByTestId(`job-row-${key}`);
 /** The chips of the filter, each with its words (its × is a button of its own, without any). */
@@ -86,19 +87,20 @@ test('the end toast names the new jobs of the high band; Zeigen lists exactly th
   ]);
   const toast = page.getByTestId('toast').filter({ hasText: DONE });
   await toast.getByTestId('toast-action').click();
-  // Eingang with the new jobs of that fetch in the high band: the one the toast names.
+  // Eingang with the new jobs of that fetch in the high band: the ones the toast names.
   await expect(chipWords(page)).toHaveText([T.toolbar.lastFetch, ...chipWordsOf('band-high')]);
   const query = (await lastQuery(page))!;
   expect(query).toMatchObject({ place: 'inbox', bands: ['high'] });
   expect(query.run).toEqual(expect.any(Number));
-  await expect.poll(() => listed(page)).toEqual(['linkedin-4100200399']);
-  // Each chip takes its part off: without the band the two new jobs the toast counts, not
-  // the excluded one of the fetch.
+  const high = demoRunKeys('high');
+  await expect.poll(async () => (await listed(page)).sort()).toEqual([...high].sort());
+  // Each chip takes its part off: without the band the new jobs the toast counts, not the
+  // excluded ones of the fetch.
   await chipRemove(page, 'band-high').click();
   await expect(chipWords(page)).toHaveText([T.toolbar.lastFetch]);
   const { active } = await stubList(page, { run: query.run });
-  expect(active).toHaveLength(2);
-  expect(active).toContain('linkedin-4100200399');
+  expect(active).toHaveLength(demoRun().fresh);
+  expect(active).toEqual(expect.arrayContaining(high));
   await expect.poll(() => listed(page)).toEqual(active);
   // Never kept: the next start lists Eingang as before.
   await open(page, `${WIN}&tick=15`);
@@ -156,8 +158,9 @@ test('the first search of an empty app: the two columns come with its first row'
 test('Zeigen closes the open job its list no longer holds; the one it holds stays', async ({
   page,
 }) => {
-  /** The new job of the high band, the one Zeigen lists. */
-  const shown = 'linkedin-4100200399';
+  /** The new jobs of the high band, the ones Zeigen lists, and one of them. */
+  const high = [...demoRunKeys('high')].sort();
+  const shown = high[0]!;
   const zeigen = page.getByTestId('toast').filter({ hasText: DONE }).getByTestId('toast-action');
   await open(page, `${WIN}&tick=15`);
   await row(page, 'freelancermap-2801').click();
@@ -166,7 +169,7 @@ test('Zeigen closes the open job its list no longer holds; the one it holds stay
   await runFinished(page);
   await zeigen.click();
   await expect(chip(page, 'run')).toHaveText(T.toolbar.lastFetch);
-  await expect.poll(() => listed(page)).toEqual([shown]);
+  await expect.poll(async () => (await listed(page)).sort()).toEqual(high);
   await expect(page.getByTestId('reader-title')).toHaveCount(0);
   await expect(page.getByTestId('place-reader')).toBeVisible();
   // A job of that search stays open beside the jobs Zeigen shows.
@@ -177,7 +180,7 @@ test('Zeigen closes the open job its list no longer holds; the one it holds stay
   const title = await page.getByTestId('reader-title').innerText();
   await zeigen.click();
   await expect(chip(page, 'run')).toHaveText(T.toolbar.lastFetch);
-  await expect.poll(() => listed(page)).toEqual([shown]);
+  await expect.poll(async () => (await listed(page)).sort()).toEqual(high);
   await expect(page.getByTestId('reader-title')).toHaveText(title);
 });
 

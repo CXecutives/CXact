@@ -365,7 +365,8 @@ score, a reason or a prompt into the stub by hand.
   build contains (`specs/preview.spec.ts` checks the release build).
 - Specs read engine values (a score, a reason, a count) from the snapshot
   (`tools/ui-harness/specs/demo.ts`), never as literals, so a regenerated snapshot keeps them
-  green.
+  green; a job of some kind comes by its ad's role (`expect` in `demo/ads.json`) or by what
+  its reader holds.
 
 ## Add words to the engine
 

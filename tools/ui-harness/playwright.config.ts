@@ -9,6 +9,9 @@ import { defineConfig, devices } from '@playwright/test';
 import { WINDOW } from './specs/scale';
 
 const viewport = WINDOW;
+/** The pages' time zone, the runner's too: a spec reckons days as the page does. */
+const TIME_ZONE = 'Europe/Berlin';
+process.env.TZ = TIME_ZONE;
 
 // One port per checkout, so parallel worktrees never test each other's build. HARNESS_PORT
 // overrides it; vite.config.ts reads the same variable for `vite preview`.
@@ -48,7 +51,7 @@ export default defineConfig({
   use: {
     baseURL: origin,
     locale: 'de-DE',
-    timezoneId: 'Europe/Berlin',
+    timezoneId: TIME_ZONE,
     colorScheme: 'light',
     trace: 'retain-on-failure',
   },

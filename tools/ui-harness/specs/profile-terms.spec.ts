@@ -3,8 +3,9 @@
 // comes (the saves go one after the other): an undo takes out its own term only.
 
 import type { Page } from '@playwright/test';
+import { demoAddable, demoJob } from './demo';
 import { calls, expect, open, test } from './fixtures';
-import { openJob } from './helpers';
+import { openJob, openPlace } from './helpers';
 
 /** Every term the stored profile names in the fields a "+" puts one into. */
 const terms = (page: Page): Promise<string[]> =>
@@ -26,7 +27,10 @@ test('DS-3: add two terms, undo the first, then the second; each undo takes out 
 }) => {
   await open(page, '?platform=windows');
   const start = await terms(page);
-  await openJob(page, 'freelancermap-2802');
+  // A job with two missing musts that go into the profile with "+", in its place.
+  const key = demoAddable(2)[0]!;
+  await openPlace(page, demoJob(key).place as 'inbox' | 'archive');
+  await openJob(page, key);
   const adds = page.getByTestId('reader').getByTestId('add-to-profile');
   await expect(adds.nth(1)).toBeVisible();
   const saves = async (): Promise<number> => (await calls(page, 'save_profile')).length;

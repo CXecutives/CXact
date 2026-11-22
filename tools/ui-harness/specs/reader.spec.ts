@@ -11,7 +11,15 @@
 // no temporary agency work. The page's clock stands at 24.09.2026 09:30.
 
 import type { Locator, Page } from '@playwright/test';
-import { demoScore } from './demo';
+import {
+  demoAddable,
+  demoDetail,
+  demoJob,
+  demoReason,
+  demoRequirement,
+  demoScore,
+  demoVerdict,
+} from './demo';
 import { animationsDone, calls, expect, open, runFinished, settle, test } from './fixtures';
 import {
   chooseSort,
@@ -77,6 +85,18 @@ async function cell(page: Page, key: string): Promise<[string, string]> {
   await expect(mark).toHaveCount(verdict === '' || verdict === 'met' ? 0 : 1);
   return [words(await target.locator('.term-line').textContent()), verdict];
 }
+
+/** The list of the form a term of each field goes into (strings: the fields "+" fills). */
+const FORM_LIST = {
+  tool: 'tools',
+  industry: 'industries',
+  degree: 'degrees',
+  certificate: 'certificates',
+} as const;
+
+/** The name of a verdict mark (`data-verdict` of its row). */
+const verdictName = (verdict: string): string =>
+  T.reader.verdict[verdict as keyof typeof T.reader.verdict];
 
 /** The words of the tooltip of a node under the pointer. */
 async function tip(page: Page, target: Locator): Promise<string> {
@@ -777,7 +797,8 @@ test.describe('Jobdetails', () => {
     expect(await terms(page).locator('.term-name').allInnerTexts()).toEqual(shown);
     expect(await cell(page, 'company')).toEqual(['Hanseatic Holding GmbH', '']);
     expect(await cell(page, 'place')).toEqual(['Hamburg', 'met']);
-    expect(await cell(page, 'mode')).toEqual([words(T.facts.remote(60, 60)), 'met']);
+    const mode = demoVerdict(demoReason('freelancermap-2801', 'remoteWish'));
+    expect(await cell(page, 'mode')).toEqual([words(T.facts.remote(60, 60)), mode]);
     expect(await cell(page, 'contract')).toEqual([T.reader.contractKind.interim, 'met']);
     // The value and the verdict only, no word of how it stands to the minimum.
     expect(await cell(page, 'rate')).toEqual([words(T.facts.pay(1200, 'day', null)), 'met']);
@@ -793,9 +814,10 @@ test.describe('Jobdetails', () => {
     await expect(terms(page)).not.toContainText('passt');
     await expect(terms(page)).not.toContainText('Minimum');
     await expect(term(page, 'rate').getByTestId('verdict')).toHaveCount(0);
-    await expect(
-      term(page, 'experience').getByTestId('verdict').locator('.reason'),
-    ).toHaveAttribute('aria-label', T.reader.verdict.partial);
+    await expect(term(page, 'mode').getByTestId('verdict').locator('.reason')).toHaveAttribute(
+      'aria-label',
+      verdictName(mode),
+    );
   });
 
   test('Bewerben bis and Kontakt: urgent within a week, the e-mail writes a mail, the rest copies', async ({
@@ -838,17 +860,37 @@ test.describe('Jobdetails', () => {
     page,
   }) => {
     await openAt(page, 'freelance-900413');
+    const judged = (key: string, code: Parameters<typeof demoReason>[1]): string =>
+      demoVerdict(demoReason(key, code));
     expect(await cell(page, 'start')).toEqual([T.facts.from('01.11.'), 'met']);
-    expect(await cell(page, 'workload')).toEqual([T.facts.workload(40, 40), 'partial']);
+    expect(await cell(page, 'workload')).toEqual([
+      T.facts.workload(40, 40),
+      judged('freelance-900413', 'workload'),
+    ]);
     // Above the minimum, near the wish: met in part.
-    expect(await cell(page, 'rate')).toEqual([words(T.facts.pay(1150, 'day', null)), 'partial']);
-    expect(await cell(page, 'mode')).toEqual([T.facts.mode.onsite, 'partial']);
-    expect(await cell(page, 'place')).toEqual(['München', 'partial']);
+    expect(await cell(page, 'rate')).toEqual([
+      words(T.facts.pay(1150, 'day', null)),
+      judged('freelance-900413', 'dayRateWish'),
+    ]);
+    expect(await cell(page, 'mode')).toEqual([
+      T.facts.mode.onsite,
+      judged('freelance-900413', 'remoteWish'),
+    ]);
+    expect(await cell(page, 'place')).toEqual([
+      'München',
+      judged('freelance-900413', 'regionWish'),
+    ]);
     // A limit missed is met in part; a rate to be agreed has nothing to judge, nor a note.
     await openJob(page, 'freelancermap-2802');
-    expect(await cell(page, 'duration')).toEqual([T.facts.duration(3, null, 'month'), 'partial']);
+    expect(await cell(page, 'duration')).toEqual([
+      T.facts.duration(3, null, 'month'),
+      judged('freelancermap-2802', 'duration'),
+    ]);
     expect(await cell(page, 'rate')).toEqual([T.facts.agreed, '']);
-    expect(await cell(page, 'workload')).toEqual([T.facts.workload(100, 100), 'met']);
+    expect(await cell(page, 'workload')).toEqual([
+      T.facts.workload(100, 100),
+      judged('freelancermap-2802', 'workload'),
+    ]);
     // One case in the row: "Voll remote" like "Vor Ort" and "Hybrid".
     expect(await cell(page, 'mode')).toEqual([T.facts.mode.remote, 'met']);
     // A hybrid job without a share: its mode in the one set of words.
@@ -872,14 +914,13 @@ test.describe('Jobdetails', () => {
   });
 
   test('Erfahrung says what its requirement says among the Anforderungen', async ({ page }) => {
-    // 15 years of Controlling against the profile's 18, the requirement met in part for its
-    // skill: the row and the Anforderungen say the same.
+    // 15 years of Controlling against the profile's 18: the row and the Anforderungen say
+    // the same as the engine's requirement.
+    const fifteen = demoRequirement('freelancermap-2801', 'Mindestens 15 Jahre')!;
     await openAt(page, 'freelancermap-2801');
-    expect(await cell(page, 'experience')).toEqual([T.facts.years(15, null), 'partial']);
+    expect(await cell(page, 'experience')).toEqual([T.facts.years(15, null), demoVerdict(fifteen)]);
     await expect(
-      why(page).locator('li[data-kind="partial"]', {
-        hasText: 'Mindestens 15 Jahre Berufserfahrung im Controlling',
-      }),
+      why(page).locator(`li[data-kind="${fifteen.kind}"]`, { hasText: fifteen.label }),
     ).toHaveCount(1);
     // Ten years of a field the profile does not name: nothing judges the years (no icon),
     // the requirement is not met and says why.
@@ -1099,64 +1140,87 @@ test.describe('Anforderungen', () => {
   test('a missing must that is a term goes into its field of the profile with "+", a sentence has none', async ({
     page,
   }) => {
-    await openAt(page, 'freelancermap-2802');
-    const missing = why(page).locator('li[data-kind="open"]', {
-      hasText: 'Branchenerfahrung Energie',
-    });
+    // A job with two missing musts that are terms (the demo's, by the engine's words).
+    const key = demoAddable(2)[0]!;
+    const [first, second] = demoDetail(key).match!.reasons.filter(
+      (reason) =>
+        reason.kind === 'open' &&
+        reason.weight === 'must' &&
+        typeof reason.params.term === 'string',
+    );
+    const term = String(first!.params.term);
+    const field = first!.params.field as keyof typeof FORM_LIST;
+    const place = demoJob(key).place as 'inbox' | 'archive';
+    /** Jobs again, at this job (the view opens on Eingang). */
+    const backToJob = async (): Promise<void> => {
+      await page.getByTestId('nav-jobs').click();
+      await openPlace(page, place);
+      await openJob(page, key);
+    };
+    await open(page, WIN);
+    await openPlace(page, place);
+    await openJob(page, key);
+    const missing = why(page).locator('li[data-kind="open"]', { hasText: first!.label });
     await expect(missing).toHaveCount(1);
-    // The "+" names the term and the field it goes into: the industry "Energie".
+    // The "+" names the term and the field it goes into.
     const add = missing.getByTestId('add-to-profile');
-    await expect(add).toHaveAccessibleName(T.reader.addTo.industry('Energie'));
-    expect(await tip(page, add)).toBe(T.reader.addTo.industry('Energie'));
+    await expect(add).toHaveAccessibleName(T.reader.addTo[field](term));
+    expect(await tip(page, add)).toBe(T.reader.addTo[field](term));
     // An optional one has none.
+    const optional = demoReason(
+      key,
+      (reason) =>
+        reason.kind === 'open' &&
+        reason.weight !== 'must' &&
+        typeof reason.params.term === 'string',
+    )!;
     await expect(
       why(page)
-        .locator('li[data-kind="open"]', { hasText: 'Französisch' })
+        .locator('li[data-kind="open"]', { hasText: optional.label })
         .getByTestId('add-to-profile'),
     ).toHaveCount(0);
     await add.click();
     // A quiet check takes the place of the red cross and the "+" goes, no word: one icon on
-    // the row. The toast says it, with the term alone (without the ad's "Branchenerfahrung").
+    // the row. The toast says it, with the term alone (without the ad's lead words).
     const added = missing.getByTestId('reason-settled');
     await expect(added).toHaveAttribute('aria-label', T.reader.added);
     await expect(added).toHaveText('');
     await expect(missing.getByTestId('add-to-profile')).toHaveCount(0);
     const toast = page.getByTestId('toast').last();
-    await expect(toast).toContainText(T.reader.addedToProfile('Energie'));
-    // The term is among the profile's industries, saved at once; not among its keywords.
+    await expect(toast).toContainText(T.reader.addedToProfile(term));
+    // The term is in its field of the profile, saved at once, without the ad's words.
     const stored = () => page.evaluate(() => window.__harness.form());
-    expect((await stored())?.industries).toContain('Energie');
+    expect((await stored())?.[FORM_LIST[field]]).toContain(term);
+    const shown = page.getByTestId(`profile-${FORM_LIST[field]}`);
     await page.getByTestId('nav-profile').click();
-    await expect(page.getByTestId('profile-industries')).toContainText('Energie');
-    await expect(page.getByTestId('profile-industries')).not.toContainText('Branchenerfahrung');
+    await expect(shown).toContainText(term);
+    await expect(shown).not.toContainText(first!.label);
     // The toast takes it back.
-    await page.getByTestId('nav-jobs').click();
+    await backToJob();
     await page
       .getByTestId('toast')
-      .filter({ hasText: T.reader.addedToProfile('Energie') })
+      .filter({ hasText: T.reader.addedToProfile(term) })
       .getByTestId('toast-action')
       .click();
     await expect(missing.getByTestId('add-to-profile')).toBeVisible();
-    await expect.poll(async () => (await stored())?.industries).not.toContain('Energie');
+    await expect.poll(async () => (await stored())?.[FORM_LIST[field]]).not.toContain(term);
     await page.getByTestId('nav-profile').click();
-    await expect(page.getByTestId('profile-industries')).not.toContainText('Energie');
-    // The other bullets lose their lead words too, and go into their own field: the tool
-    // "Anaplan" into the tools.
-    await page.getByTestId('nav-jobs').click();
-    const anaplan = why(page).locator('li[data-kind="open"]', {
-      hasText: 'Kenntnisse in Anaplan',
-    });
-    await expect(anaplan.getByTestId('add-to-profile')).toHaveAccessibleName(
-      T.reader.addTo.tool('Anaplan'),
+    await expect(shown).not.toContainText(term);
+    // The other bullets lose their lead words too, and go into their own field.
+    const other = String(second!.params.term);
+    const otherField = second!.params.field as keyof typeof FORM_LIST;
+    await backToJob();
+    const next = why(page).locator('li[data-kind="open"]', { hasText: second!.label });
+    await expect(next.getByTestId('add-to-profile')).toHaveAccessibleName(
+      T.reader.addTo[otherField](other),
     );
-    await anaplan.getByTestId('add-to-profile').click();
-    await expect(page.getByTestId('toast').last()).toContainText(
-      T.reader.addedToProfile('Anaplan'),
-    );
+    await next.getByTestId('add-to-profile').click();
+    await expect(page.getByTestId('toast').last()).toContainText(T.reader.addedToProfile(other));
     await page.getByTestId('nav-profile').click();
-    await expect(page.getByTestId('profile-tools')).toContainText('Anaplan');
+    await expect(page.getByTestId(`profile-${FORM_LIST[otherField]}`)).toContainText(other);
     // A requirement the ad words as a sentence cannot go into the profile.
     await page.getByTestId('nav-jobs').click();
+    await openPlace(page, 'inbox');
     await openJob(page, 'freelancermap-2804');
     const sentence = why(page).locator('li[data-kind="open"]').first();
     await expect(sentence).toContainText('Kenntnisse in Anaplan helfen dabei');
@@ -1525,8 +1589,8 @@ test.describe('the cards', () => {
     // A fact that fits has no mark; one that fits in part its mark 6 after its value, centred
     // on its line.
     await expect(term(page, 'place').getByTestId('verdict')).toHaveCount(0);
-    const value = (await term(page, 'experience').locator('.value').boundingBox())!;
-    const mark = (await term(page, 'experience').getByTestId('verdict').boundingBox())!;
+    const value = (await term(page, 'mode').locator('.value').boundingBox())!;
+    const mark = (await term(page, 'mode').getByTestId('verdict').boundingBox())!;
     expect(Math.round(mark.x - (value.x + value.width))).toBe(6);
     expect(Math.abs(mark.y + mark.height / 2 - (value.y + value.height / 2))).toBeLessThan(1.5);
     // Hairlines between the rows only: one above each row but the first of each column, none
@@ -2024,8 +2088,9 @@ test.describe('the job view keeps true', () => {
 
   test('the verdict mark beside a fact names itself under the pointer', async ({ page }) => {
     await openAt(page, 'freelancermap-2801');
-    const mark = term(page, 'experience').getByTestId('verdict');
-    expect(await tip(page, mark)).toBe(T.reader.verdict.partial);
+    const mark = term(page, 'mode').getByTestId('verdict');
+    const mode = demoVerdict(demoReason('freelancermap-2801', 'remoteWish'));
+    expect(await tip(page, mark)).toBe(verdictName(mode));
   });
 
   test('a retry shows no job before the one it loads', async ({ page }) => {

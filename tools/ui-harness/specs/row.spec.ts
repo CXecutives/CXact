@@ -585,16 +585,22 @@ test.describe('a click on a row that is cut', () => {
     }
     throw new Error('no row under the heading');
   };
-  /** The row the pane's end cuts, and a point of its part in view. */
+  /** The row the pane's end cuts, a point of its part in view, and where the pane stands:
+   *  where it stood, or a little further where a heading met the end instead of a row (the
+   *  demo's days come from the engine). */
   const cutByEnd = async (
     page: Page,
-  ): Promise<{ key: string; x: number; y: number; end: number }> => {
+  ): Promise<{ key: string; x: number; y: number; end: number; start: number }> => {
     const view = (await pane(page).boundingBox())!;
     const end = view.y + (await pane(page).evaluate((node) => node.clientHeight));
-    for (const key of await listed(page)) {
-      const box = (await row(page, key).boundingBox())!;
-      if (box.y < end - 4 && box.y + box.height > end) {
-        return { key, x: box.x + 120, y: end - 2, end };
+    const from = await scrollTop(page);
+    for (let shift = 0; shift <= 80; shift += 8) {
+      if (shift > 0) await scrollTo(page, from + shift);
+      for (const key of await listed(page)) {
+        const box = (await row(page, key).boundingBox())!;
+        if (box.y < end - 4 && box.y + box.height > end) {
+          return { key, x: box.x + 120, y: end - 2, end, start: await scrollTop(page) };
+        }
       }
     }
     throw new Error('no row at the end');
@@ -648,7 +654,7 @@ test.describe('a click on a row that is cut', () => {
     await page.setViewportSize({ width: WINDOW.width, height: 700 });
     await open(page, WIN);
     await scrollTo(page, 70);
-    const { key, x, y, end } = await cutByEnd(page);
+    const { key, x, y, end, start } = await cutByEnd(page);
     const box = (await row(page, key).boundingBox())!;
     const tops = await logTops(page);
     await page.mouse.click(x, y);
@@ -658,7 +664,7 @@ test.describe('a click on a row that is cut', () => {
         return Math.round(end - (at.y + at.height));
       })
       .toBe(0);
-    expect(await scrollTop(page)).toBe(Math.round(70 + box.y + box.height - end));
+    expect(await scrollTop(page)).toBe(Math.round(start + box.y + box.height - end));
     // A glide: it passes places on its way.
     expect(new Set(await tops()).size).toBeGreaterThanOrEqual(3);
     // The pointer that rests still stands on the row it pressed.
@@ -671,12 +677,12 @@ test.describe('a click on a row that is cut', () => {
     await page.setViewportSize({ width: WINDOW.width, height: 700 });
     await open(page, WIN);
     await scrollTo(page, 70);
-    const { key: byEnd, end } = await cutByEnd(page);
+    const { key: byEnd, end, start } = await cutByEnd(page);
     const { key: byHeading, line } = await cutByHeading(page);
     const keys = await listed(page);
     // Its end a little above the pane's.
     const box = (await row(page, byEnd).boundingBox())!;
-    await scrollTo(page, Math.round(70 + box.y + box.height - end + 8));
+    await scrollTo(page, Math.round(start + box.y + box.height - end + 8));
     const top = await scrollTop(page);
     // The mouse itself: Playwright's click scrolls an element out of that room first.
     const pressMiddle = async (key: string): Promise<void> => {
@@ -688,10 +694,10 @@ test.describe('a click on a row that is cut', () => {
     await page.waitForTimeout(250);
     expect(await scrollTop(page)).toBe(top);
     // Its top a little under the heading's lower edge.
-    await scrollTo(page, 70);
+    await scrollTo(page, start);
     const next = keys[keys.indexOf(byHeading) + 1]!;
     const below = (await row(page, next).boundingBox())!;
-    await scrollTo(page, Math.round(70 + below.y - line - 4));
+    await scrollTo(page, Math.round(start + below.y - line - 4));
     const under = await scrollTop(page);
     await pressMiddle(next);
     await expect(row(page, next)).toHaveAttribute('aria-current', 'true');
@@ -703,12 +709,12 @@ test.describe('a click on a row that is cut', () => {
     await page.setViewportSize({ width: WINDOW.width, height: 700 });
     await open(page, WIN);
     await scrollTo(page, 70);
-    const { key, x, y } = await cutByEnd(page);
+    const { key, x, y, start } = await cutByEnd(page);
     await page.mouse.click(x, y);
     await expect.poll(() => wholeInList(page, key)).toBe(true);
     await motionSettled(page);
     await page.waitForTimeout(250);
-    await scrollTo(page, 70);
+    await scrollTo(page, start);
     expect(await wholeInList(page, key)).toBe(false);
     await page.mouse.click(x, y);
     await expect.poll(() => wholeInList(page, key)).toBe(true);
@@ -744,9 +750,9 @@ test.describe('a click on a row that is cut', () => {
     await page.setViewportSize({ width: WINDOW.width, height: 700 });
     await open(page, WIN);
     await scrollTo(page, 70);
-    const { x, y } = await cutByEnd(page);
+    const { x, y, start } = await cutByEnd(page);
     await page.mouse.click(x, y);
-    await expect.poll(() => scrollTop(page)).toBeGreaterThan(71);
+    await expect.poll(() => scrollTop(page)).toBeGreaterThan(start + 1);
     await page.mouse.wheel(0, -30);
     const after = async (): Promise<number> => {
       const at = await scrollTop(page);

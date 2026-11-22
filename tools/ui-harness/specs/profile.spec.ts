@@ -22,6 +22,7 @@ import {
   settle,
   test,
 } from './fixtures';
+import { DEMO } from './demo';
 import { adder, chooseWay, failNext, fillRequired, setToken, stubList, T, WIN } from './helpers';
 import { MIN_WINDOW, PAGE, WINDOW } from './scale';
 
@@ -2503,10 +2504,12 @@ test('a new form typed while the CV is evaluated stays, and goes on top of what 
   await expect(input).toHaveValue('Meine Rolle');
   await leaveField(page);
   await allSaved(page);
-  await expect(chips(roles(page))).toHaveText(['Meine Rolle']);
+  // Like core's merge: the typed role joins the CV's, which came in meanwhile.
+  const both = [...DEMO.profile.form!.roles, 'Meine Rolle'];
+  await expect(chips(roles(page))).toHaveText(both);
   // What was not typed is the CV's.
   await expect(names(page, 'competences').first()).toHaveText('Interim Management');
-  await expect.poll(async () => (await stored(page))?.roles).toEqual(['Meine Rolle']);
+  await expect.poll(async () => (await stored(page))?.roles).toEqual(both);
 });
 
 // ------------------------------------------------------------------ boxes under the head

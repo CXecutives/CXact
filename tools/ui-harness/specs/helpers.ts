@@ -4,6 +4,7 @@
 
 import type { Locator, Page } from '@playwright/test';
 import { de } from '../../../ui/src/lib/i18n/de';
+import { dayKey, formatDayHeading } from '../../../ui/src/lib/i18n/format';
 import type { JobCounts, JobQuery, JobSort, JobView, Portal } from '../../../ui/src/lib/ipc/types';
 import { PORTAL_WAY, PORTALS as CORE_PORTALS } from '../../../ui/src/lib/ipc/types/portals';
 import { inPortalOrder } from '../../../ui/src/lib/portals';
@@ -15,7 +16,8 @@ import {
   SORTS,
   sortEntryId,
 } from '../../../ui/src/lib/state/filter';
-import { animationsDone, calls, expect, settle } from './fixtures';
+import { isExcluded, isUnscored } from '../../../ui/src/lib/state/jobRows';
+import { animationsDone, calls, expect, NOW, settle } from './fixtures';
 
 /** The German catalog (the harness runs in de-DE). */
 export const T = de;
@@ -268,6 +270,21 @@ export async function stubList(page: Page, query: Partial<JobQuery> = {}): Promi
     jobs,
     counts,
   };
+}
+
+/** The day headings the order by date gives the scored rows of a list (the stub's, in its
+ *  order), in the list's words at the fixed clock (the runner keeps the pages' time zone,
+ *  playwright.config.ts): which days have them is the engine's. */
+export function dayHeadings(jobs: readonly JobView[]): string[] {
+  const out: string[] = [];
+  let last = '';
+  for (const job of jobs) {
+    if (isExcluded(job) || isUnscored(job)) continue;
+    const day = dayKey(job.firstSeenAt);
+    if (day !== last) out.push(formatDayHeading(job.firstSeenAt, NOW));
+    last = day;
+  }
+  return out;
 }
 
 /** A job as the stub holds it now. */
