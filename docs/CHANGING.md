@@ -182,6 +182,13 @@ Each role of the UI has one pattern, decided in one place; the components only r
 
 ## What the backend generates for the UI
 
+On this branch (the new UI) the generated files come from main, never from this branch's own
+core: `tools/sync-contract.cmd` copies `ui/src/lib/ipc/types/**` and `demo/vocabulary.json`
+from main, computes `demo/snapshot.json` with main's engine from this branch's
+`demo/ads.json` and `demo/profile.json`, and stamps them in `tools/contract-sync.json`;
+`npm run check` fails while a file differs from its stamp (`--dry` shows what a sync would
+change). Every contract block on main ends with this sync and the stub's update. On main:
+
 `cargo test -p jobalert-core ipc_types` writes `ui/src/lib/ipc/types/` from core and fails
 while a file changed (commit the result); `cargo test -p jobalert-core --test contract`
 writes `commands.ts`. Never edit them by hand. The PascalCase files are the IPC types
@@ -342,10 +349,11 @@ score, a reason or a prompt into the stub by hand.
 
 - An engine, view or prompt change: run `cargo test -p jobalert-core --test ui_demo_snapshot`.
   It rewrites the snapshot and fails while the committed one differs; run it again and commit
-  the file with the change. CI fails while it is stale.
+  the file with the change. CI fails while it is stale. On the new UI's branch the snapshot
+  comes from `tools/sync-contract.cmd` instead ("What the backend generates for the UI").
 - Another demo job, other ad words, another demo state (read, archive, a duplicate,
   details pending or failed, a job of the scripted fetch): edit
-  `tools/ui-harness/demo/ads.json`, then regenerate. The sample profile is
+  `tools/ui-harness/demo/ads.json`, then regenerate (on the new UI's branch: sync). The sample profile is
   `tools/ui-harness/demo/profile.json`.
 - The stub keeps only state: moving, reading, deleting, the list's filter, runs, scenarios and
   errors.
