@@ -1,6 +1,6 @@
 # Matching
 
-How the app scores a job against the consultant profile (`ENGINE_VERSION` 19) and how it is
+How the app scores a job against the consultant profile (`ENGINE_VERSION` 24) and how it is
 measured. How each rule came about, version by version, is in the git history of this file.
 Code: `core/src/matching`. Tests in `core/tests/`: `matching_corpus.rs`, `matching_heldout.rs`,
 `matching_generalisation.rs`, `matching_criteria.rs`, `matching_profiles.rs`, `matching_wishes.rs`,
@@ -346,11 +346,11 @@ comes from the profile.
 | Languages, years | a language one level below the required one is half, further below open; English language names in profiles and ads. Years against the profile's own years (`berufserfahrung_jahre`, else the most years of a competence): general experience (`10 Jahre Berufserfahrung`, plain `Erfahrung`) met at or below them, from four fifths on in part, below open, not weighed without the profile's years; years in a topic (`3 Jahre S/4HANA`) use the competence's own years where the profile names it, else the profile's; a range counts from its lower end and keeps its upper end (`max`); a part of a total (`davon mindestens drei Jahre`) is no minimum |
 | Contract type | stated (`Festanstellung`, `Jahresgehalt`, `Werkvertrag`, `Tagessatz`, `Interim`, `permanent, full-time`, a page's limited employment type `Befristet`, `Contract`, `Freiberuflich`) > hints (benefits, `Why join us`, work permit: permanent, inferred) > portal (freelance portals: interim); both stated = unclear; an agency without details = unclear with `anueRisk`; denied interim wording is no interim signal; `Vakanzüberbrückung`, `übergangsweise` and `fractional` are interim; employment pay (an hourly wage, `Stundenlohn`, `iGZ`, `equal pay`, a pay scale; never a part of another word such as `Lohnbuchhaltung`) states an employment; reason `contractType {type, inferred}` |
 | Hard criteria | read in the ad's own text only. ANÜ: decided when the contract is offered through it, not as an option (`freiberuflich oder ANÜ`), denied (also in English), a topic of the requirements (`Erfahrung mit Arbeitnehmerüberlassung`, `ANÜ-Erfahrung`), the business of the company or the field of a staffing role; the title counts like a contract sentence. Country: the country of the on-site clause decides, second sites and travel are a check, remote work for a place abroad is never decided (full remote work denied in its clause, `unable to consider fully remote`, is none). Day rate: an amount next to a currency or rate unit or after a rate word, in every spelling (`110 EUR/h`, `€420/day - €520/day`, `EUR 1,050 to 1,180`), the upper end of a range compared, an hourly rate x 8 (`HOURS_PER_DAY`); employment pay and the pay of temporary agency work are never a day rate; not for permanent roles. Availability against the stated start |
-| Permanent roles | minimum salary: upper bound with the bonus share its sentence names, EUR per year (LinkedIn's salary chip states a permanent role and its salary; employment pay per hour x 2,080; a monthly amount, a chip `€/Monat` too, decides only when fourteen of them stay below the minimum); decided only for a stated permanent role (`salary`), else a check; no salary = `salaryUnknown`; a salary in another currency is never compared (a `salary` check). Without `festanstellung` among the contract types the engine excludes a stated permanent role (`permanent` as a violation, criterion `noPermanent`), an inferred one is a check. Without `projekt` it excludes an interim or project role (`project`, criterion `noProject`), one offered next to a permanent role is a check |
+| Permanent roles | minimum salary: upper bound with the bonus share its sentence names, EUR per year (LinkedIn's salary chip states a permanent role and its salary; employment pay per hour x 2,080; a monthly amount, a chip `€/Monat` too, decides only when fourteen of them stay below the minimum); decided only for a stated permanent role (`salary`), else a check; a lower bound (`ab EUR 75.000`, `at least 60.000 €`) decides only when a quarter more (`LOWER_BOUND_HEADROOM`) still stays below the minimum; a salary heading of its own (`Gehaltsinformationen`) names the amounts of the line below it; no salary = `salaryUnknown`; a salary in another currency is never compared (a `salary` check). Without `festanstellung` among the contract types the engine excludes a stated permanent role (`permanent` as a violation, criterion `noPermanent`), an inferred one is a check. Without `projekt` it excludes an interim or project role (`project`, criterion `noProject`), one offered next to a permanent role is a check |
 | Seniority | `seniority.rs`, whatever topic the highest years name: a closed range whose upper end is at most half the profile's years, and from `JUNIOR_ROLE_YEARS` 5 on a junior title, a junior or entry level of the page (an internship, a working student) or a must that asks for first experience, is `overqualified` (met in part, never an exclusion); an assistant or associate level without years is `seniorityUnclear`; a junior role caps a profile of `SENIOR_YEARS` 10 or more at `JUNIOR_CAP` 40 |
 | Formal duties | a must degree of another field or a missing licence = `formalOpen` check with a cap of 40; decided only when worded as mandatory (`zwingend`, `unabdingbar`, `mandatory`); no degree in the profile = a check |
 | Relevance | title fit and a BM25F-like lexical score (title 3, requirement lines 2, rest 1) of the ad against the profile's query; an atom only named in an entry long enough to be a sentence weighs half; languages, contract words and quantities are no part of the query |
-| Score | `M`, `K`, `P` and the blend of "Formulas"; permanent roles x 0.9 (second category); caps: open formal must 40, several musts open (at least two and at least half, the core of the role among them) 40, an open must on the title's topic 60 (for a teaser an open field word of the title), no skill must met (at least two) 25, a single open skill must under a title of little fit 30, a text without requirements 60 (judged from its title, low evidence), a junior role for a senior profile 40; a scored ad keeps at least 10 |
+| Score | the learned points of "Learned scorer (engine 24)" plus the bounded wishes; permanent roles x 0.9 (second category); caps: open formal must 40, several musts open (at least two and at least half, the core of the role among them) 40, no skill must met (at least two) 25, a single open skill must under a title of little fit 30, a junior role for a senior profile 40, an operative role two levels below the target roles 40; a target role lifts no cap |
 
 A text long enough to read but without any requirement is scored from its title alone; a short
 teaser is judged from its title, a short full text stays unscorable. Titles lose gender markers
@@ -392,22 +392,15 @@ not read at all. An empty value turns its rule off.
 
 Integer per-mille, parameters in `params.rs`.
 
-- Musts (`engine::is_must`, the one definition the fit, the caps, the evidence, the lift and
-  the summary read): skills, degrees and licences (`w` 1000) and a teaser's terms (`w` 250);
+- Musts (`engine::is_must`, the one definition the signals, the caps, the evidence and the
+  summary read): skills, degrees and licences (`w` 1000) and a teaser's terms (`w` 250);
   never soft skills; a language only when asked at C1 or higher and not met in full (then
   `w` 1000). A must met only through `methoden_tools` counts half unless the title names the
-  tool. A must degree while the profile names none is unknown: no must, `DEGREE_UNKNOWN` 20
-  less, a cap only when the ad makes it mandatory without an equivalent.
-- Requirements: `M = (sum(w*e) + u*(m + R)/2) / max(sum(w), C)` with `C = MUST_SATURATION *
-  1000` (7, the median number of musts of the 641 real ads with musts), the unnamed weight
-  `u = max(0, C - sum(w))` and the named mean `m = sum(w*e)/sum(w)`: the musts a short list does
-  not name stand half way between the fit of the named ones and the relevance. `K`
-  the mean of `e` over the nice-to-haves that are skills, `P = must ? (nice ? (3M+K)/4 : M) :
-  K`; every competence counts the same. The evidence is `n = sum(w_must) + 500 * n_nice`.
-- Blend: `P' = 750*P + 250*R` per-mille (`R_SHARE`, the relevance's fixed share); low
-  evidence (a teaser, vocabulary only, nice-to-haves only, fewer than two items, a long text
-  read thin) leans on a prior from the title, `((n + k)*P' + 1500*prior) / (n + k + 1500)` with
-  `k` = `K_SHRINK` 2000 and `prior = 150 + 400 * title fit / 1000`; permanent roles x 0.9.
+  tool. A must degree while the profile names none is unknown: no must, a cap only when the
+  ad makes it mandatory without an equivalent.
+- Coverage: the coverage signals divide by at least `MUST_SATURATION` 7 musts (the median
+  number of musts of the 641 real ads with musts), so meeting the two musts of a thin list is
+  no full fit; every competence counts the same.
 - Title frame (`title.rs`): the title without IDs, entities, gender markers and tails; its
   level from the head noun (`TITLE_HEADS`, `TITLE_HEAD_PHRASES`: 1 clerical and agent work, 2
   specialist and consultant, 3 senior and project lead, 4 team lead, 5 lead of a function, 6
@@ -415,17 +408,17 @@ Integer per-mille, parameters in `params.rs`.
   raises 1 and 2), moved by the ad (`LEAD_CUES` at least 4, `NO_LEAD_CUES` at most 3, a
   vocational training under a title without head 1). The profile's levels are its target
   roles' (else its years'). Only an operative ad (1 or 4) stands below: one level below the
-  nearest line level of a target role (1, 4, 5, 6) costs `LEVEL_BELOW` 50, two or more cap at
-  `LEVEL_CAP` 40 (no target roles: twice the points, no cap); a level a target role names
-  costs nothing. A full target role needs the title's level at least the role's.
+  nearest line level of a target role (1, 4, 5, 6) is the signal `level_below`, two or more cap
+  at `LEVEL_CAP` 40 (not without target roles); a level a target role names costs nothing. A
+  full target role needs the title's level at least the role's.
 - Field: the families of `FIELD_PACKS` (finance, IT, project, HR, procurement, sales, service,
   engineering, legal); the ad's family is the one the title (x3) and the musts trigger most
   (at least 3), a tie with a profile family is the same field; near pairs `NEAR_FIELDS`; in a
   far field every must counts half. Factor codes `level` (`level`, `gap`) and `field`
   (`field`, `distance`), cap code `level`.
 - Target role: the title meets a role (topic atoms without lead words, contract words such as
-  `Interim` met by the title or an interim contract, a lead role needs a lead title) =
-  `ROLE_FULL` 80; a junior title or a lead role without lead title = `ROLE_HALF` 40.
+  `Interim` met by the title or an interim contract, a lead role needs a lead title) = full;
+  a junior title or a lead role without lead title = half (the signal `role`, 2 or 1).
   Every name of a role group of `ROLE_GROUPS` (the one table of role names, which the search
   and the Profil's suggestions use too) reads as that group's first name.
 - Wishes: met `+w`, clearly missed `-w`, near or unknown 0; `w` = rate 30, remote 30, region 20;
@@ -438,15 +431,73 @@ Integer per-mille, parameters in `params.rs`.
   than `REMOTE_MARGIN` 30 below it. Region: the first place of the ad in a wished region = met,
   outside with at least `REGION_REMOTE_NEAR` 60 % remote = near, outside = missed, fully remote
   = met.
-- `S = clamp(P' + role + clamp(sum wishes, -100, 100), 0, 1000)`; while fewer than half of the
-  musts are met in full, a lift ends at `LIFT_CAP` 790 (score 79, below the high band 80); then
-  `round_half_even(S/10)`, the caps (target role and wishes never lift a capped score) and the
-  floor 10.
+- `S = clamp(learned(signals) + clamp(sum wishes, -100, 100), 0, 1000)`, a permanent role
+  `S * 0.9`; then `round_half_even(S/10)` and the lowest cap that fired (wishes never lift a
+  capped score); the rank keeps `S`.
+
+### Learned scorer (engine 24)
+
+The fit is learned from teacher labels in place of the hand formula of engines 22 and 23
+(`M`, `K`, the blend, the role and level points, the lift cap), which the learned scorer beat
+on all 300 pairs of a Claude-graded gold set (NDCG@10 0.634 vs 0.598, Spearman 0.672 vs 0.648).
+
+- Signals (`signals.rs`): 22 small integers of a job against a profile, each with its range
+  (`MAX`) and a direction (`SIGN`: +1 may only raise the score, -1 may only lower it, 0 any
+  shape): `core_cov`, `tool_cov`, `general_cov` (saturating coverage of the musts through the
+  competences, the tools and a more general entry), `rev_cov` (distinct competences hit),
+  `task_core` (competences and target role topics in the task lines), `open_core`,
+  `open_other` (open musts on the title's core and elsewhere), `n_musts`, `hygiene_share`,
+  `nice_cov`, `relevance`, `title_field`, `role` (none, half, full), `level_below`,
+  `level_above`, `field_class`, `carrier`, `build`, `run_seat` (the mandate), `evidence`,
+  `formal_open`, `lang_open_c1`. Computed inside `evaluate` beside the caps.
+- Points (`scorer.rs`): `learned = calib(clamp(INTERCEPT + sum(TABLES[j](s[j])), 0, 1000))`,
+  integer only; the tables in `scorer_tables.rs` are generated, never edited by hand.
+- Trainer (`tools/scorer/train.py`, numpy only, no data in the repo): cyclic boosting of an
+  additive model over at most 16 quantile bins per signal, a monotone (PAVA) projection per
+  signal with a direction, 5 folds grouped by ad for out-of-fold predictions. The target is
+  the score of the pair's note (0 -> 12, 1 -> 45, 2 -> 68, 3 -> 88; a teacher's exclusion
+  counts as 0); the calibration is the isotonic map of the out-of-fold predictions to those
+  targets at 21 quantile knots. A label may move its pair to another split (`split`) and count
+  more (`weight`). Its report replays the engine's points with the traced caps, as
+  `retrain.sh` orders them.
+- Labels (private, `core/tests/fixtures/private/bench`): the Qwen consensus of the train and
+  lockbox splits, and the 155 Claude-graded gold `tune` pairs in place of their Qwen rows,
+  moved into training and counted three times. The 145 `gold-locked` pairs are never
+  trained on.
+- Caps kept, decided by ablation on train out of fold: the owner's rules (formal 40, several
+  musts open with the core 40, junior 40, level 40) and off the field (25 and 30; without it
+  NDCG@10 falls 0.641 -> 0.632). The open must on the title's topic (60), the text without
+  requirements (60), the lift cap and the floor of 10 went: no loss without them. A target role
+  lifts no cap.
+- Measured and dropped: an embedding model and a repair of split requirement fragments.
+
+Measurements of the final tables (856 training pairs):
+
+| Measure | Tables before (Qwen only) | Engine 24 |
+|---|---|---|
+| Gold-locked NDCG@10 / Spearman (145 pairs) | 0.848 / 0.717 | 0.869 / 0.744 |
+| Gold-locked mean score of note 3 / 2 / 1 / 0 | 64 / 57 / 37 / 22 | 56 / 45 / 33 / 21 |
+| The 154 graded jobs: Spearman, NDCG@10 / @20 | | 0.674, 0.602 / 0.619 |
+| The 154: places of the grade-3 jobs, mean per grade 3 / 2 / 1 / 0 | | 3, 10, 14, 21, 52; 46 / 43 / 33 / 22 |
+
+Known limit: the calibration ends at 727, so without wishes no job reaches the high band
+(80); none of the 1296 bench pairs does.
+
+Retrain (private data; from the repo root):
+
+    CORE=<core of the clone or worktree> LABELS=<labels.jsonl> TRAIN_SPLITS=train,lockbox \
+      WORK=target/e24 bash core/tests/fixtures/private/bench/retrain.sh
+
+It dumps the signals, trains and writes `scorer_tables.rs`, scores every pair again, prints
+the 154 line and the test and locked splits. Measure on the gold set with
+`py -3.14 -X utf8 -I core/tests/fixtures/private/bench/gold/eval.py <gold.jsonl> <scores.jsonl>
+--part=gold-locked`, read once per change. Then re-pin `GOLDEN_DIGEST`, the held-out floors
+(only a loss within 0.03, with its reason) and the demo snapshot, and raise `ENGINE_VERSION`.
 
 ### Reasons, criteria and key facts
 
 Every input is a reason with code and params (no prose): the requirements with their profile
-entry and its JSON path as evidence, `targetRole {role, fit, points}`, `dayRateWish`,
+entry and its JSON path as evidence, `targetRole {role, fit}`, `dayRateWish`,
 `remoteWish`, `regionWish`, each with `state`, `points` and the passages. The
 requirement's params carry `max`, `general`, `have` (the years compared with), `yearsFit` and
 `entryYears`, so the reader's row "Erfahrung" and every tooltip say one thing.

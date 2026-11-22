@@ -367,7 +367,15 @@ a word that occurs nowhere stays out.
    lowered to let a change pass), then both reports:
    `cargo test -p jobalert-core --test matching_corpus -- --ignored report --nocapture` and
    `cargo test -p jobalert-core --test matching_heldout -- --ignored heldout_report --nocapture`.
-4. A change that moves a score raises `ENGINE_VERSION` (`core/src/matching/mod.rs`; the app
+4. Words change the signals, so retrain the learned scorer (private data): run
+   `core/tests/fixtures/private/bench/retrain.sh` with `CORE`, `LABELS` and `TRAIN_SPLITS`
+   (`docs/MATCHING.md` "Learned scorer (engine 24)"); it writes
+   `core/src/matching/scorer_tables.rs` (generated, never edited by hand) and prints the
+   numbers. Measure once on the gold set's `gold-locked` part with `bench/gold/eval.py`.
+   Then re-pin `GOLDEN_DIGEST` with its reason, regenerate the demo snapshot
+   (`cargo test -p jobalert-core --test ui_demo_snapshot`, commit what it writes) and follow a
+   held-out floor only for a loss within 0.03, with a one-line reason.
+5. A change that moves a score raises `ENGINE_VERSION` (`core/src/matching/mod.rs`; the app
    scores the stored jobs again) and updates the rules and measurements in `docs/MATCHING.md`;
    the numbers before and after go into the commit message.
 
