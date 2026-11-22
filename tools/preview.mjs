@@ -1,57 +1,43 @@
-// Serves the preview copy of the UI (.preview, built by `npm run preview:refresh` with the
-// harness stub's demo data: no engine, no mails). The copy changes only when it is refreshed,
-// so work in progress never breaks it. With --open it opens the browser once it is ready; if
-// the preview runs already (port taken), it only opens the browser.
-import { exec } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
-import { createServer } from 'node:http';
-import { extname, join, normalize } from 'node:path';
-import { fileURLToPath } from 'node:url';
+// The live preview: the UI with the harness stub's demo data (no engine, no mails), served by
+// Vite on one port, so every saved change shows at once. It serves the new UI from the UI
+// worktree (.claude/worktrees/ui-preview) while that exists, else this checkout's ui/, and
+// stays the same command after the two are connected. Started by tools/ui-preview.cmd (with
+// --open: it opens the browser once it is ready) and by the `ui-preview` entry of
+// .claude/launch.json. If the preview runs already (the port answers), it only opens the browser.
+import { exec, execSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const root = fileURLToPath(new URL('../.preview/', import.meta.url));
 const port = 5178;
-const url = `http://127.0.0.1:${port}/?platform=windows`;
+const page = '/?platform=windows';
+const url = `http://localhost:${port}${page}`;
+const open = process.argv.includes('--open');
+
+const repo = fileURLToPath(new URL('..', import.meta.url));
+const worktree = join(repo, '.claude', 'worktrees', 'ui-preview');
+const root = existsSync(join(worktree, 'ui', 'vite.config.ts')) ? worktree : repo;
+
 const openBrowser = () => {
-  if (process.argv.includes('--open')) exec(`start "" "${url}"`);
-};
-const types = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.svg': 'image/svg+xml',
-  '.png': 'image/png',
-  '.ico': 'image/x-icon',
-  '.json': 'application/json',
-  '.woff2': 'font/woff2',
-  '.woff': 'font/woff',
+  const command = { win32: 'start ""', darwin: 'open' }[process.platform] ?? 'xdg-open';
+  exec(`${command} "${url}"`);
 };
 
-const send = (res, type, body) => {
-  res.writeHead(200, { 'content-type': type, 'cache-control': 'no-store' });
-  res.end(body);
-};
+const running = await fetch(`http://localhost:${port}/`, { signal: AbortSignal.timeout(1000) })
+  .then(() => true)
+  .catch(() => false);
+if (running) {
+  console.log(`The preview runs already: ${url}`);
+  if (open) openBrowser();
+  process.exit(0);
+}
 
-const server = createServer(async (req, res) => {
-  const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-  const file = normalize(join(root, path === '/' ? 'index.html' : path));
-  if (!file.startsWith(root)) return res.writeHead(403).end();
-  try {
-    send(res, types[extname(file)] ?? 'application/octet-stream', await readFile(file));
-  } catch {
-    send(res, types['.html'], await readFile(join(root, 'index.html')));
-  }
-});
-server.on('error', (error) => {
-  if (error.code === 'EADDRINUSE') {
-    console.log(`The preview runs already: ${url}`);
-    openBrowser();
-    setTimeout(() => process.exit(0), 1500);
-    return;
-  }
-  throw error;
-});
-server.listen(port, '127.0.0.1', () => {
-  console.log(`The preview runs: ${url}`);
-  console.log('Keep this window open; closing it stops the preview.');
-  openBrowser();
-});
+const vite = join(root, 'node_modules', 'vite', 'bin', 'vite.js');
+if (!existsSync(vite)) execSync('npm ci', { cwd: root, stdio: 'inherit' });
+console.log(`The preview serves ${join(root, 'ui')} on ${url}`);
+console.log('Keep this window open; closing it stops the preview.');
+// Vite's own command line, run in this process: `vite ui --mode harness` in that checkout.
+process.chdir(root);
+process.argv = [process.argv[0], vite, 'ui', '--mode', 'harness', '--port', String(port)];
+process.argv.push('--strictPort', ...(open ? ['--open', page] : []));
+await import(pathToFileURL(vite).href);

@@ -75,9 +75,9 @@ The old app `CXecutives/projektscraper` is a read-only reference.
 - `npx tauri build` (release bundles) · `tools/portable.cmd` (`target/portable/CXact.exe`) · debug smoke: `target/debug/job-alert-monitor --dry-run --smoke --smoke-run`
 - Colours: after a change to `tokens.css`, `npm run regen` rewrites the window and icon colours
   (`docs/CHANGING.md` "Change the look").
-- The user reviews the UI themselves: keep `tools/ui-preview.cmd` working (the UI with the stub's demo data in the browser,
-  every screen and button clickable without mails). It serves the copy in `.preview/`: refresh it with
-  `npm run preview:refresh` only when a block is finished and green, then tell the user to reload it.
+- The user reviews the UI in the live preview; keep it working: `tools/ui-preview.cmd` (the user's shortcut) and
+  `ui-preview` in `.claude/launch.json` run `tools/preview.mjs` (Vite with the stub on 5178, from the UI worktree
+  while it exists, else from `ui/`).
 - Engine changes: `docs/CHANGING.md` "Add words to the engine" (both reports, `ENGINE_VERSION`,
   `docs/MATCHING.md`).
 
@@ -108,7 +108,7 @@ not from speed. So:
 - Only what pays off. Decide before building (product questions in one round, with a recommendation), so nothing
   is built twice. Deliver what the user can see first (preview early), background work after.
 - Small UI changes (text, colour, spacing, order, a fact, an icon): the main session edits directly, no subagent,
-  no worktree, only the affected specs in Chromium, rebuild the preview; minutes, not hours.
+  no worktree, only the affected specs in Chromium, seen in the live preview; minutes, not hours.
 - Subagents only for large, independent chunks with disjoint files and a precise brief. No review or audit agents
   except for data safety, security and backend removals; never confirmation audits.
 - Verify where it is uncertain: cheap gates always (`npm run check`, clippy, Rust tests); UI specs of the changed

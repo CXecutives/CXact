@@ -6,8 +6,8 @@ and current: replace what changes, drop what no longer holds.
 
 ## The user
 
-- The product owner. Judges the app by looking at it: the preview in the browser
-  (`tools/ui-preview.cmd`, http://localhost:5178) and the built app.
+- The product owner. Judges the app by looking at it: the live preview in the browser
+  (`tools/ui-preview.cmd`, his desktop shortcut, http://localhost:5178) and the built app.
 - Talk German with the user: short, plain, no jargon, no long lists of options. Everything in the repo stays
   English.
 - Starts every exe and installer themselves. Build them (`tools/portable.cmd`), never start or install them.
@@ -46,7 +46,8 @@ and current: replace what changes, drop what no longer holds.
 - After a fresh clone (`CLAUDE.md` "Commands"), `core/tests/fixtures/private/` comes from the old folder if
   needed. The tests that need it skip without it.
 - `.claude/launch.json` holds the two preview servers:
-  - `ui-preview`: the copy in `.preview/` on 5178.
+  - `ui-preview`: the live preview on 5178, the same as `tools/ui-preview.cmd` (`tools/preview.mjs`: Vite with
+    the stub, from the UI worktree while it exists, else from `ui/`). No copy to refresh: a saved change shows.
   - `ui-dev`: Vite with the stub on 5179, for drafts and checks.
 - The app's data (SQLite, settings, sessions) lives in the OS app data folder. The Gmail app password lives in
   the OS keychain. A new clone touches neither.
