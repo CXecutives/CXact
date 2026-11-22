@@ -3,6 +3,7 @@
 
 mod ai_prompt;
 mod colour;
+pub mod generated;
 pub mod palette;
 pub mod personal;
 

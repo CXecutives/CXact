@@ -49,8 +49,12 @@ generated files and the guardrails.
   `--check` fails when it is stale). Helpers use the `cxact-builder` agent (`.claude/agents/`), which knows the rules.
 - While working: `npm run affected` prints the checks the change needs; at the end of a block `npm run gate`
   (`--full` for everything) runs them at once with one line per step.
-- After a fresh clone: `git config core.hooksPath .githooks` (the pre-push gate), `npm ci`,
+- After a fresh clone: `git config core.hooksPath .githooks` (the pre-push gate),
+  `git config merge.regen.driver true` (a merge keeps this side's generated files), `npm ci`,
   `npx playwright install chromium webkit` (the harness); the Rust toolchain comes from `rust-toolchain.toml`.
+- Generated files (IPC types, command map, demo snapshot and vocabulary, golden prompt, corpus digest, colours):
+  `npm run gen` writes them all in one run (`tools/gen.mjs`); run it after a change of a code, a type or the engine
+  and after every merge, then commit what it wrote.
 - `cargo fmt --all --check` · `cargo clippy --workspace --all-targets -- -D warnings` · `cargo test --workspace`
 - `npm run check` (svelte-check, eslint, stylelint, prettier, tokens, `tools/architecture.mjs`) ·
   `npm run harness` · `npm run build`

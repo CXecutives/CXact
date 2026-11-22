@@ -537,17 +537,14 @@ mod tests {
     }
 
     /// The harness serves the same words (`tools/ui-harness/demo/vocabulary.json`): written
-    /// here, and a failure while the committed file differs (commit the result).
+    /// here, and a failure while the committed file differs (commit the result; `npm run gen`
+    /// writes and passes).
     #[test]
     fn the_harness_has_the_vocabulary() {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../tools/ui-harness/demo/vocabulary.json");
         let json = serde_json::to_string_pretty(vocabulary()).unwrap() + "\n";
-        let before = std::fs::read_to_string(&path).unwrap_or_default();
-        if before.replace("\r\n", "\n") != json {
-            std::fs::write(&path, &json).unwrap();
-            panic!("tools/ui-harness/demo/vocabulary.json was stale: rewritten, commit it");
-        }
+        crate::export::generated::write(&path, &json).unwrap_or_else(|e| panic!("{e}"));
     }
 
     /// Prints both lists for a review of their forms:

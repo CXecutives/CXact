@@ -7,3 +7,13 @@
 *.eml -text
 # The invented test CVs stay byte for byte as tools/cv-fixtures.py writes them
 core/tests/fixtures/cv/** -text
+
+# Generated files: a merge keeps this side's copy and `npm run gen` writes them again
+# (the driver: `git config merge.regen.driver true`, CLAUDE.md "Commands").
+ui/src/lib/ipc/types/** merge=regen
+tools/ui-harness/demo/snapshot.json merge=regen
+tools/ui-harness/demo/vocabulary.json merge=regen
+core/tests/fixtures/prompts/job.de.md merge=regen
+core/tests/fixtures/matching/golden_digest.txt merge=regen
+core/src/export/palette.rs merge=regen
+tools/palette.json merge=regen

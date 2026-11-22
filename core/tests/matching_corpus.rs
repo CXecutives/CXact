@@ -23,7 +23,8 @@ use jobalert_core::profile::{ProfileForm, WorkWish, parse};
 use serde_json::Value;
 use sha2::Digest as _;
 
-/// SHA-256 (16 hex) over every profile x job result of the corpus. Update it only together
+/// The file of the SHA-256 (16 hex) over every profile x job result of the corpus, in
+/// `tests/fixtures/matching` (`npm run gen` writes it). Update it only together
 /// with `ENGINE_VERSION` and the measurements in `docs/MATCHING.md`. Version 11 (the
 /// excluded permanent employment, a key no corpus profile sets) changed only the version
 /// line: with `engine 10` in front the rows still give the version-10 value
@@ -51,7 +52,7 @@ use sha2::Digest as _;
 /// causes of held-out sets 1 and 6: a nice cue after a comma makes only its clause nice, a
 /// field word is no industry, a must naming the title's field word stands on the core, general
 /// business work shows no field, a compound of another field fits a title in half.
-const GOLDEN_DIGEST: &str = "a10924f5ee84074a";
+const GOLDEN_DIGEST: &str = "golden_digest.txt";
 
 fn fixtures() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/matching")
@@ -454,7 +455,10 @@ fn golden_digest_of_all_corpus_results() {
         digest_line(&mut canonical, row);
     }
     let hex = hex16(&canonical);
-    assert_eq!(hex, GOLDEN_DIGEST, "corpus results changed:\n{canonical}");
+    let path = fixtures().join(GOLDEN_DIGEST);
+    if let Err(stale) = jobalert_core::export::generated::write(&path, &format!("{hex}\n")) {
+        panic!("corpus results changed: {stale}\n{canonical}");
+    }
 }
 
 /// The target role and the wishes never lift a job into the high band (80) while fewer

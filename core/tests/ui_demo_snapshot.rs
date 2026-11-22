@@ -9,8 +9,7 @@
 //! preview without mirroring it by hand.
 //!
 //! Like the generated TypeScript types: the test rewrites the snapshot and fails while the
-//! committed file differs (run it again, then commit the file):
-//! `cargo test -p jobalert-core --test ui_demo_snapshot`.
+//! committed file differs (commit the file; `npm run gen` writes and passes).
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -478,12 +477,5 @@ fn the_preview_s_demo_data_come_from_the_engine() {
     let path = demo_dir().join("snapshot.json");
     let mut json = serde_json::to_string_pretty(&snapshot()).unwrap();
     json.push('\n');
-    let committed = std::fs::read_to_string(&path).unwrap_or_default();
-    if committed.replace("\r\n", "\n") != json {
-        std::fs::write(&path, &json).unwrap();
-        panic!(
-            "regenerated {} - commit it (the preview's demo data follow the engine)",
-            path.display()
-        );
-    }
+    jobalert_core::export::generated::write(&path, &json).unwrap_or_else(|e| panic!("{e}"));
 }

@@ -150,7 +150,8 @@ fn command_names_agree_everywhere() {
 }
 
 /// The TypeScript command map is regenerated from the table; the test fails while the
-/// committed file differs (commit the result). Every type it names must exist.
+/// committed file differs (commit the result; `npm run gen` writes and passes). Every type it
+/// names must exist.
 #[test]
 fn the_typescript_command_map_is_generated_and_committed() {
     let table = command_table();
@@ -172,11 +173,7 @@ fn the_typescript_command_map_is_generated_and_committed() {
         }
     }
     let path = repo("ui/src/lib/ipc/types/commands.ts");
-    let current = std::fs::read_to_string(&path).unwrap_or_default();
-    if current != expected {
-        std::fs::write(&path, &expected).unwrap();
-        panic!("regenerated {} - commit it", path.display());
-    }
+    jobalert_core::export::generated::write(&path, &expected).unwrap_or_else(|e| panic!("{e}"));
 }
 
 /// Safety invariant of the session window, as far as it can be checked without a window: it
