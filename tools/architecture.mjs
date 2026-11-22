@@ -405,6 +405,32 @@ report(
   );
 }
 
+// The AI look (CLAUDE.md "UI", "No AI look"): what generated interfaces repeat, caught where it
+// is written. The fades and masks of tokens.css are the only gradients.
+const LOOK_STYLES = [
+  [/(linear|radial|conic)-gradient\(/, 'a gradient outside tokens.css'],
+  [/text-transform:\s*uppercase/, 'all-caps text'],
+  [/font-style:\s*italic/, 'italic text'],
+  [/monospace/, 'a monospace font'],
+];
+const look = [];
+for (const path of files.filter((p) => p.startsWith('ui/src/') && /\.(css|svelte)$/.test(p))) {
+  const text = readFileSync(join(repo, path), 'utf8');
+  for (const [pattern, what] of LOOK_STYLES) {
+    if (path === 'ui/src/styles/tokens.css' && what.startsWith('a gradient')) continue;
+    if (pattern.test(text)) look.push(`${path}: ${what}`);
+  }
+}
+const catalog = readFileSync(join(repo, 'ui/src/lib/i18n/de.ts'), 'utf8');
+if (/\p{Extended_Pictographic}/u.test(catalog))
+  look.push('ui/src/lib/i18n/de.ts: an emoji or a sparkle');
+if (/!['"`]/.test(catalog)) look.push('ui/src/lib/i18n/de.ts: an exclamation mark');
+report(
+  'Look: no gradient, all caps, italics, monospace, emoji or exclamation marks (the AI look)',
+  'group with space and a heading, give emphasis by weight and size, write the text plainly (CLAUDE.md "UI")',
+  look,
+);
+
 report(
   `Contract: the synced files are main's, as ${STAMP} says`,
   'run tools/sync-contract.cmd and commit what it wrote; never edit or regenerate them here',

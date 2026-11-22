@@ -59,8 +59,18 @@ The old app `CXecutives/projektscraper` is a read-only reference.
   `ui/src/lib/ipc/api.ts`; motion only via `ui/src/lib/motion/`. At most one primary button per view. Lint enforces it.
 - UI text (German only, `ui/src/lib/i18n/de.ts`): little text, only what is needed, plain and human. No AI-style writing: no dashes or
   em dashes as separators, no colons in labels or headings, no "X: Y" constructions, no filler, no exclamation
-  marks, no emoji. Buttons are one verb phrase, notes one short sentence. The UI must not look AI-generated
-  (no sparkles, no gradient text, no glow for decoration).
+  marks, no emoji. Buttons are one verb phrase, notes one short sentence.
+- No AI look. Generated interfaces repeat the same defaults; CXact makes every choice from its content.
+  `tools/architecture.mjs` ("Look") fails on the measurable ones:
+  - no gradient (the fades and masks of tokens.css excepted), no all caps, no italics, no monospace, no emoji
+    or sparkles, no exclamation marks; no glow, glass or blur for decoration;
+  - group with space and a heading, not with frames and lines: a card only for a thing of its own (a job in
+    the list, a dialog), a divider only where space cannot separate;
+  - one colour, one meaning: coral acts or is chosen, nothing else is coral or close to it;
+  - headings say what is here; no eyebrow, no tag or pill as decoration, no numbering of what is no sequence;
+  - the signature is the content: the explained score (the Passungsgrad and its parts), never an effect;
+  - motion only with a purpose, short, no overshoot, from its trigger; nothing deforms on press (Windows);
+  - before adding an element, ask what can go (the apple-design skill's last step).
 - The backend never sends prose: notices, errors and status are `{code, params}`; texts live in the UI catalog.
 - Scraping stays conservative: links from the user's alert mails, and the public search of the sources that
   allow it (`Way::Search`, the profile's Suchbegriffe), never more than their robots.txt allows (read at run time;
