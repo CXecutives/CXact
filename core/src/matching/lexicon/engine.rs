@@ -807,6 +807,7 @@ pub(crate) const SETTING_WORDS: &[&str] = &[
 /// leadership; 5, the lead of a function and above: budget, results and stakeholders too.
 // external contract - do not translate (matching lexicon)
 pub(crate) const ROLE_BRINGS: &[(u8, &[&str])] = &[
+    (3, &["incident", "interface", "release", "schnittstell"]),
     (
         4,
         &[
