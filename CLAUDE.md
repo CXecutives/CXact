@@ -45,6 +45,10 @@ The old app `CXecutives/projektscraper` is a read-only reference.
 generated files and the guardrails.
 
 ## Commands
+- Start here: `docs/CODEMAP.md` (every file with its purpose; `npm run map` after adding, moving or renaming one,
+  `--check` fails when it is stale). Helpers use the `cxact-builder` agent (`.claude/agents/`), which knows the rules.
+- While working: `npm run affected` prints the checks the change needs; at the end of a block `npm run gate`
+  (`--full` for everything) runs them at once with one line per step.
 - After a fresh clone: `git config core.hooksPath .githooks` (the pre-push gate), `npm ci`,
   `npx playwright install chromium webkit` (the harness); the Rust toolchain comes from `rust-toolchain.toml`.
 - `cargo fmt --all --check` · `cargo clippy --workspace --all-targets -- -D warnings` · `cargo test --workspace`

@@ -66,11 +66,11 @@ everything the app knows and does, without UI and without…
 - settings.rs 300 · Settings of the app - stored as JSON in the key/value… · Settings, PortalSwitches, default_workspace, KEY
 - sync.rs 28 · Short locks on shared state. · lock
 - time.rs 129 · Time: UTC timestamps inside; local time for display, file… · zone, set_zone, follow_system_zone, local +7
-- view.rs 3028 · IPC v3: what the interface receives and sends - defined… · MailProvider, TermField, Origin, WorkMode +63
+- view.rs 3027 · IPC v3: what the interface receives and sends - defined… · MailProvider, TermField, Origin, WorkMode +63
 - window.rs 500 · Placement of the app window across restarts, as plain… · Placement, Screen, Restore, restore +6
 
 ### core/src/export
-writes the AI prompts
+writes the AI prompts, the generated colours of the window…
 - ai_prompt.rs 944 · The prompt for any AI chat the user likes: a deep analysis… · PromptJob, PromptSource, ai_prompt, MAX_PROFILE_CHARS +1
 - colour.rs 43 · A colour of the app's tokens, as the generated… · Colour
 - mod.rs 158 · The AI prompts, the generated colours of the window and… · PromptJob, PromptSource, ai_prompt, write_atomic +5
@@ -82,7 +82,7 @@ writes the AI prompts
 - tests.rs 1309 · Tests of the AI prompts: every section of the prompt, the…
 
 ### core/src/fetch
-fetches pages through the policy
+fetches pages through the policy (queue, HTTP, health)
 - http.rs 838 · HTTP fetching of guest pages - no account, no window. · HttpFetcher, ROBOTS_MAX_BODY
 - mod.rs 1565 · Fetching job details: queue, safety rules, outcome matrix. · Cause, PageFields, PageOutcome, Parsed +29
 - policy.rs 823 · Safety rules for portal requests - pace, caps, pauses -… · Limits, limits, PauseKind, PauseReason +8
@@ -93,7 +93,7 @@ fetches pages through the policy
 - tests.rs 2377 · Outcome matrix, pace, caps and pauses - one test per row.
 
 ### core/src/mail
-reads the alert mails
+reads the alert mails (IMAP)
 - check.rs 587 · "Verbinden": the mailbox the user typed in, checked and… · CheckError, check_mailbox, count_alerts, store_account +1
 - classify.rs 678 · Which portal a mail belongs to - and whether it is a job… · portal_of, portal_in_body, is_alert_subject, vouches_for_links +2
 - extract.rs 1750 · Pull job entries out of an alert mail. · Found, extract, looks_like_job_title, has_gender_tag +2
@@ -170,7 +170,7 @@ is the pure integer engine
 - software.rs 217 · Software and cloud: software development and languages,… · DOMAIN
 
 ### core/src/pipeline
-runs scan or search, fetch and score
+runs mail and search, screen, fetch and score
 - dry_run.rs 365 · Dry run: a mailbox and portals to look at - without… · matcher, search_plan, DryRunBackends, DryRunMail +4
 - local.rs 796 · The matching engine behind `Matcher`: one compiled… · LocalMatcher, engine_facts, record, judgement +6
 - mod.rs 1133 · One click: the alert mails and the search -> new jobs ->… · LocalMatcher, Matcher, RunRequest, RunKind +23
@@ -179,7 +179,7 @@ runs scan or search, fetch and score
 - tests.rs 1646 · Runs with the dry-run dummies; simulated time.
 
 ### core/src/portal
-knows the portals (one registry)
+knows the portals (adapters, one registry)
 - amadeus_fire.rs 411 · Amadeus Fire: a staffing company for accounting,…
 - fratch.rs 292 · FRATCH: a platform for freelance and interim mandates.
 - freelance_de.rs 1218 · freelance.de. · signed_in, is_postlogin, is_portal_url, judge_page +2
@@ -194,6 +194,7 @@ knows the portals (one registry)
 - solcom.rs 508 · SOLCOM: IT, SAP and engineering projects for freelancers.
 
 ### core/src/profile
+the one profile
 - form.rs 1079 · The profile: one flat file with German keys, read into one… · ProfileForm, ProfileCompetence, ProfileLanguage, LanguageLevel +15
 - import.rs 243 · "Aus Lebenslauf ausfüllen": the CV worker's answer read by… · NoProfile, cv_form, merge, import +2
 - mod.rs 406 · The consultant profile: one file in `profil/` of the… · import_cv, deep_search_terms, ProfileInfo, profile_path +19
@@ -221,6 +222,7 @@ the SQLite database
 - schema.rs 219 · Table layout: one schema, no migration.
 
 ### core/src/text
+HTML to text, company and location
 - company_location.rs 596 · Company and location: short and in the right field. · page_location, short_company, short_location, looks_like_location +1
 - html_text.rs 221 · HTML to running text: block elements become lines, scripts… · html_to_text, SKIP
 - mod.rs 199 · Text building blocks with no network and no state: HTML to… · page_location, split_company_location, scored_text, tidy_title +5
@@ -484,19 +486,21 @@ the app's state
 
 ## tools
 
+beside the app.
+
 ### tools
-- affected.mjs 544 · The checks a change needs, from the files it touches: the… · plan, sameId, commands, rustPaths +12
+- affected.mjs 537 · The checks a change needs, from the files it touches: the… · plan, sameId, commands, rustPaths +12
 - affected.test.mjs 232 · Unit tests of the mapping in tools/affected.mjs, on a…
 - architecture.mjs 353 · The architecture of the UI as a gate, run by `npm run…
 - codemap.mjs 353 · Writes docs/CODEMAP.md, the map a helper reads first…
 - cv-fixtures.py 461 · Writes the invented test CVs of `core/tests/fixtures/cv/`.
-- gate.mjs 107 · The gate at the end of a block: `cargo fmt --all --check`…
+- gate.mjs 112 · The gate at the end of a block: `cargo fmt --all --check`…
 - icon.py 767 · App icon: coral plate, white glyph - a plain ring, a…
 - portable.cmd 16 · CXact as one exe, no setup: target\portable\CXact.exe.
-- preview.mjs 57 · Serves the preview copy of the UI.
+- preview.mjs 43 · The live preview: the UI with the harness stub's demo…
 - third-party.mjs 231 · Generates src-tauri/resources/THIRD-PARTY.txt: the license…
 - tokens.mjs 351 · Mirrors the colours of ui/src/styles/tokens.css into…
-- ui-preview.cmd 12 · The app's UI with demo data in the browser, to click…
+- ui-preview.cmd 10 · The live preview: the new UI with the stub's demo data in…
 
 ### tools/esco
 - build.py 544 · ESCO vocabulary of the matching engine:…
@@ -504,7 +508,7 @@ the app's state
 ### tools/ui-harness
 - playwright.config.ts 81 · UI harness: the harness build served by `vite preview`… · default
 - snapshot.ts 27 · The shape of demo/snapshot.json: what the engine computed… · Snapshot
-- stub.ts 2435 · Typed stand-in for @tauri-apps/api in the harness build. · Channel, listen, invoke
+- stub.ts 2433 · Typed stand-in for @tauri-apps/api in the harness build. · Channel, listen, invoke
 
 ### tools/ui-harness/specs
 - backend-rest.spec.ts 121 · The remaining backend pieces and their small UI ends: the…

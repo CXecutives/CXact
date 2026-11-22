@@ -21,6 +21,9 @@
     "check:architecture": "node tools/architecture.mjs",
     "regen": "node tools/tokens.mjs && python tools/icon.py",
     "harness": "playwright test -c tools/ui-harness/playwright.config.ts",
+    "map": "node tools/codemap.mjs",
+    "affected": "node tools/affected.mjs",
+    "gate": "node tools/gate.mjs",
     "format": "prettier --write ."
   },
   "dependencies": {
