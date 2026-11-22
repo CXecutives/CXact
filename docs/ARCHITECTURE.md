@@ -7,14 +7,22 @@ How CXact is built and which check keeps each rule. Where a change goes:
 
 Each layer uses only the ones below it.
 
-- **`core/`** (`jobalert-core`): everything the app knows and does, without UI and without
-  prose. `mail/` reads the alert mails, `portal/` knows the portals (one registry), `fetch/`
-  fetches pages through the policy, `matching/` is the pure integer engine, `store/` the
-  SQLite database (one schema, no migration or reset of older data), `pipeline/` runs scan or search, fetch and score,
-  `export/` writes the AI prompts, `view.rs` shapes what the UI sees.
-- **`src-tauri/`**: the shell. Thin commands in `src/commands/`, each one line in
-  `commands.txt`; they call core and return its view types. Per-OS code only in
-  `src/platform.rs` (`smoke.rs` is the debug-only probe).
+- **`core/`** (`jobalert-core`, `#![forbid(unsafe_code)]`): everything the app knows and does,
+  without UI and without prose. `mail/` reads the alert mails (IMAP), `portal/` knows the
+  portals (adapters, one registry), `fetch/` fetches pages through the policy (queue, HTTP,
+  health), `matching/` is the pure integer engine, `profile/` the one profile (Profil-JSON v19,
+  its typed form, one backup, CV reading and import, the search terms, country codes), `ai.rs`
+  the CV worker's client, `store/` the SQLite database (one schema, no migration or reset of
+  older data before the first release), `pipeline/` runs mail and search, screen, fetch and
+  score, `export/` writes the AI prompts, the generated colours of the window and the icon and
+  atomic files, `reset.rs` "reset everything", `text/` HTML to text, company and location,
+  `secrets.rs` the keychain, `settings.rs`, `view.rs` shapes what the UI sees (the IPC types,
+  ts-rs in `view/ts.rs`).
+- **`src-tauri/`**: the shell. `main.rs` starts it (the window keeps dropped files for the CV
+  import); thin commands in `src/commands/` (`cv.rs` "Aus Lebenslauf ausfüllen": its file
+  dialog, the drop, the time limit), each one line in `commands.txt`; they call core and return
+  its view types. `session.rs` the freelance.de webview. Per-OS code only in `src/platform.rs`
+  (`smoke.rs` is the debug-only probe).
 - **`ui/src/`** (Svelte 5), from the bottom:
   - `styles/tokens.css`: every value (colour, length, time, radius, shadow, layer), the one
     palette CXact. Nothing else writes a value.
@@ -29,6 +37,8 @@ Each layer uses only the ones below it.
     `lib/i18n/` the catalog (`de.ts`) and the text functions,
     `lib/platform.ts` the per-OS conventions, `lib/icons.ts` the icons by meaning.
   - `App.svelte`, `main.ts`: which view shows.
+- **`tools/`**: beside the app. `ui-harness/` (Playwright in Chromium and WebKit, the stub that
+  stands in for Tauri), `preview.mjs` (the live preview), `icon.py`, `third-party.mjs`.
 
 ## One source per decision
 

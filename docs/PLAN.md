@@ -134,8 +134,17 @@ pre-assessment to any AI chat for a deeper check.
 - **Erste Schritte** (until the setup is finished, `Settings::onboarded`, saved by `finish_onboarding`; a
   reset brings it back): 1 Profil, 2 Postfach (optional, only the alert mails need it), 3 Fertig.
 - **Shell:**
-  - The top bar, the sidebar and Zurück and Vor as `CLAUDE.md` says. The sidebar has Jobs, Profil and
-    Einstellungen. Zurück and Vor also walk the tabs of Profil and Einstellungen.
+  - One top bar like the Claude app's, drawn by the page on both OS (`features/shell/TitleBar.svelte`, its
+    height `--titlebar-height` and `--titlebar-height-macos` in `tokens.css`): no line under it, no icon, no
+    name. Its left part takes the sidebar's colour with a seam at the sidebar's edge, the rest the view's. At
+    the left the sidebar's button, Zurück and Vor (on macOS right of the traffic lights), at the right the job
+    view's button. No app shortcuts. Its empty parts move the window, a double click maximizes. The window's
+    controls per OS: "Platforms".
+  - The sidebar docks or folds away like Claude's: its button is a plain switch, nothing on hover; below
+    `FOLD_BELOW` (`lib/state/viewport.svelte.ts`) it folds by itself and its button floats it out; the
+    choice is kept per user (`lib/state/shell.svelte.ts`). It has Jobs, Profil and Einstellungen.
+  - Zurück and Vor walk the views, places and jobs shown and the tabs of Profil and Einstellungen
+    (`lib/state/history.svelte.ts`). Hiding the job view closes its job.
   - The app's own menus, toasts (at most three, bottom right) and tooltips.
   - A start whose data cannot load offers to restore a daily copy of the database.
 - **Dry run:** `--dry-run` changes nothing outside its own data.
@@ -149,6 +158,12 @@ pre-assessment to any AI chat for a deeper check.
   - Warnings and successes take the score rings' yellow and green for their signs and dots, their words
     stay ink.
   - Five ring colours from red to green by 20 points.
+  - No grey washes behind switch rows.
+- **Input** (`ui/src/lib/input/input.ts`, the keys per OS in `ui/src/lib/platform.ts`): text a user would
+  want to copy (ad text, job title, company, facts, profile values, paths) is marked `data-copy`. Fields take
+  every character the keyboard layout produces (AltGr, macOS Option), the OS editing keys (word and line
+  moves, delete word, Home and End, Shift selection, undo and redo, copy, paste, cut, select all), Tab, Enter
+  and Esc. Scroll areas also scroll with the middle mouse button, with autoscroll where the OS offers it.
 - **Icons:** Lucide only, by meaning (`ui/src/lib/icons.ts`, one glyph per meaning and one meaning per
   glyph). The stroke is 2 of 24 units, so it grows with the icon. Sizes: 15 px in the content and the top
   bar, 19 in the sidebar.
@@ -178,7 +193,16 @@ pre-assessment to any AI chat for a deeper check.
 
 Inside the window both OS show the same app. They differ by OS convention, decided in
 `ui/src/lib/platform.ts` and `src-tauri/src/platform.rs`:
-- **The top bar:** Windows draws its caption buttons, macOS keeps the native traffic lights (`CLAUDE.md`).
+- **The top bar** ("Screens", Shell):
+  - Windows: no native title bar (`decorations: false`; the shadow, rounded corners and resize borders
+    stay). The page draws Minimieren, Maximieren and Schließen (`components/WindowButtons.svelte`,
+    `--titlebar-button-width`, the design's washes, Schließen in the app's danger red). `caption` in
+    `platform.rs` answers `WM_NCHITTEST` for the bar like a native caption and leaves the buttons' zones to
+    the page (`TOOLS_START`, `TOOLS_END` in `core/src/window.rs` = `--titlebar-tools-*`); `HTMAXBUTTON`
+    opens the snap layouts, a right click and Alt+Space the system menu. The minimum window, 480 x 360
+    (`tauri.conf.json`), keeps room for the snap layouts.
+  - macOS: the native traffic lights, 16 px in and centred in the bar (Overlay, hidden title,
+    `trafficLightPosition` in `tauri.macos.conf.json`); no buttons drawn.
 - **Dialog buttons:** Windows puts the action first; macOS puts cancel left and the action right.
 - **Scrollbars:** Windows slim and styled, their room kept; macOS native overlay.
 - **Middle-button autoscroll:** Windows only.

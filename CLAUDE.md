@@ -1,93 +1,72 @@
 # CXact (formerly Job-Alert-Monitor)
 
 Desktop app (Tauri 2 + Rust, Windows and macOS) that finds interim and freelance jobs, by its own search of the
-sources that allow it or from the user's job alert mails in Gmail, fetches the job pages and **scores every job
-against a consultant profile**, only when the user presses the fetch.
+sources that allow it or from the user's job alert mails, fetches the job pages and **scores every job against a
+consultant profile**, only when the user presses the fetch.
 **What the app is and does, the decisions that hold and the next steps live in `docs/PLAN.md`: read it before any
-work and tick its boxes. How to work with the user is in `MEMORY.md` (imported at the end of this file).**
+work and tick its boxes. How to work with the user is in `MEMORY.md` (imported below).**
 The old app `CXecutives/projektscraper` is a read-only reference.
 
 ## Hard rules
-- Never modify `CXecutives/projektscraper`. Push only to `origin` = `CXecutives/CXact` (formerly `Project`), fast-forward only; never bypass
-  `.githooks/pre-push`; never force-push. The repo holds CXact only: no old code, branches or history.
-- Secrets: never ask for, read, log, print or commit passwords. The Gmail app password lives only in the OS keychain.
+- Never modify `CXecutives/projektscraper`. Push only to `origin` = `CXecutives/CXact` (formerly `Project`),
+  fast-forward only; never bypass `.githooks/pre-push`; never force-push. The repo holds CXact only: no old code,
+  branches or history.
+- Secrets: never ask for, read, log, print or commit passwords. The mailbox password lives only in the OS keychain.
   The repo is public: no real mails, profiles or labels outside `core/tests/fixtures/private/` (ignored).
 - Everything in the repo is English (code, comments, docs, logs, errors, tests, CI, commits). Exceptions are the
-  modules marked `external contract - do not translate` (folder names, profile JSON keys, German mail
-  patterns, matching lexicon, the German AI prompts) and the German UI catalog `ui/src/lib/i18n/de.ts`. `core/tests/language.rs` enforces it.
-- UI: one palette, CXact (cxpertise.de's cream, the coral #E67A5C of the icon and a richer cxpertise
-  navy), defined only in `ui/src/styles/tokens.css`. It must feel like a native app with one top bar
-  like the Claude app's: the page draws it on both OS (`features/shell/TitleBar.svelte`, 36 px on
-  Windows, 44 px on macOS, no line under it, no icon, no name; its left part in the sidebar's colour with a seam at
-  the sidebar's edge, the rest in the view's; at the left the sidebar's button, Zurück and Vor (macOS right of the
-  traffic lights), at the right the job view's button; no app shortcuts; its empty parts move the window, a double
-  click maximizes). The sidebar docks or folds away like Claude's (its button a plain switch, nothing on hover;
-  folds by itself below 1100 px, where its button floats it out; kept per user; `lib/state/shell.svelte.ts`); Zurück and Vor walk the views, places
-  and jobs shown (`lib/state/history.svelte.ts`); hiding the job view closes its job. Windows: no native title bar (`decorations: false`, the
-  shadow, rounded corners and resize borders stay); the page draws Minimieren, Maximieren and Schließen
-  (`components/WindowButtons.svelte`, 46 px, the design's washes, Schließen in the app's danger red) and `caption` in
-  `platform.rs` answers `WM_NCHITTEST` for the bar like a native caption and leaves the buttons' zones to the page
-  (`TOOLS_START`, `TOOLS_END` in `core/src/window.rs` = `--titlebar-tools-*`) (`HTMAXBUTTON` opens the snap layouts; right
-  click and Alt+Space the system menu). macOS: the native traffic lights 16 px in and centred in the bar (Overlay,
-  hidden title), no buttons drawn. Minimum window 480 x 360 for the snap layouts. Below the bar the
-  content inside the window is identical, and it differs between Windows and macOS only where the OS convention does
-  (listed in docs/PLAN.md "Platforms", decided in `ui/src/lib/platform.ts` and `src-tauri/src/platform.rs` only).
-  Buttons and controls react to the left click only; scroll areas also scroll with the middle mouse button
-  (autoscroll where the OS offers it); text a user would want to copy (ad text, job title, company, facts, profile
-  values, paths) is marked `data-copy`, selectable and copies with Ctrl/Cmd+C; everything else is not selectable.
-  Fields behave like native fields: every character the keyboard layout produces (AltGr, macOS Option), the OS
-  editing keys (word and line moves, delete word, Home/End, Shift selection, undo/redo, copy/paste/cut/select all),
-  Tab, Enter, Esc. No browser context menu, no zoom, no reload, no find/print. All input handling in
-  `ui/src/lib/input/input.ts`, per-OS key conventions in `ui/src/lib/platform.ts`. Motion is quick (<= 180 ms, ring
-  fill <= 400 ms), ease-out, no bounce; nothing deforms on press; no grey washes behind switch rows.
+  modules marked `external contract - do not translate` (folder names, profile JSON keys, German mail patterns,
+  matching lexicon, the German AI prompts) and the German UI catalog `ui/src/lib/i18n/de.ts`.
+  `core/tests/language.rs` enforces it.
+- UI: it must feel like a native app. One palette, CXact, defined only in `ui/src/styles/tokens.css`. The shell
+  (a top bar and a sidebar like the Claude app's, drawn by the page on both OS): PLAN "Screens".
+  Below the bar both OS show the same content; they differ only where the OS convention does (PLAN "Platforms",
+  decided in `ui/src/lib/platform.ts` and `src-tauri/src/platform.rs` only).
+- Input as in a native app (PLAN "Decisions that hold"), all of it in `ui/src/lib/input/input.ts`: controls react
+  to the left click only; copyable text is marked `data-copy` and copies with Ctrl/Cmd+C, nothing else is
+  selectable; fields behave like native fields. No browser context menu, zoom, reload, find or print.
 - Styling only via tokens in `ui/src/styles/tokens.css`; controls only from `ui/src/components/`; Tauri only via
-  `ui/src/lib/ipc/api.ts`; motion only via `ui/src/lib/motion/`. At most one primary button per view. Lint enforces it.
-- UI text (German only, `ui/src/lib/i18n/de.ts`): little text, only what is needed, plain and human. No AI-style writing: no dashes or
-  em dashes as separators, no colons in labels or headings, no "X: Y" constructions, no filler, no exclamation
-  marks, no emoji. Buttons are one verb phrase, notes one short sentence. The UI must not look AI-generated
-  (no sparkles, no gradient text, no glow for decoration).
+  `ui/src/lib/ipc/api.ts`; motion only via `ui/src/lib/motion/`. At most one primary button per view. Lint enforces
+  it. Motion is quick and ease-out (at most `--dur-slow`, the ring's fill `--dur-reveal`), no bounce; nothing
+  deforms on press.
+- UI text (German only, `ui/src/lib/i18n/de.ts`): little text, only what is needed, plain and human. No AI-style
+  writing: no dashes or em dashes as separators, no colons in labels or headings, no "X: Y" constructions, no
+  filler, no exclamation marks, no emoji. Buttons are one verb phrase, notes one short sentence. The UI must not
+  look AI-generated (no sparkles, no gradient text, no glow for decoration).
 - The backend never sends prose: notices, errors and status are `{code, params}`; texts live in the UI catalog.
-- Scraping stays conservative: links from the user's alert mails, and the public search of the sources that
-  allow it (`Way::Search`, the terms derived from the profile), never more than their robots.txt allows (read at run time;
-  every request of the searched sources). Every request through `admit` (policy.json), stop on
+- Scraping stays conservative: links from the user's alert mails, and the public search of the sources that allow
+  it (`Way::Search`, the terms derived from the profile), never more than their robots.txt allows (read at run
+  time; every request of the searched sources). Every request through `admit` (policy.json), stop on
   429/999/403/captcha/login wall, never bypass captchas or 2FA. Every source can be switched off.
 - Run events stay below 8 KB (Tauri channel messages above 8 KB bypass the ACL). async-imap logs LOGIN on trace:
   logger levels stay capped.
 
 ## Architecture
-- `docs/ARCHITECTURE.md`: layers, one source per decision, data flow, errors, state, generated files and the guardrails.
-- `core/` (`jobalert-core`, `#![forbid(unsafe_code)]`, no UI prose): `mail/` IMAP scan · `portal/` adapters + registry ·
-  `fetch/` queue, HTTP, policy, health · `matching/` pure integer scoring engine · `profile/` the one profile (Profil-JSON v19, its typed form), one backup, CV reading and import, the search terms, country codes · `ai.rs` the CV worker's client · `store/` SQLite (one schema, no migration or reset of older data before the first release) · `pipeline/` runs
-  (mail and search → screen → fetch → score) · `export/` AI prompts, the generated colours of the window and the icon,
-  atomic writes · `reset.rs` "reset everything" · `text/` HTML to text, company and location · `secrets.rs` keychain · `settings.rs` · `view.rs` IPC DTOs (ts-rs, `view/ts.rs`).
-- `src-tauri/`: `main.rs` start (the window keeps dropped files for the CV import), `platform.rs` (only place with per-OS code), `session.rs` (freelance.de webview),
-  `commands/` (IPC; `cv.rs` "Aus Lebenslauf ausfüllen": its file dialog, the drop, the time limit), `smoke.rs` (debug-only smoke probe). Commands are declared once in `src-tauri/commands.txt`
-  (build.rs writes the manifest and `capabilities/main.json`, contract.rs the TS map and checks `generate_handler!`).
-- `ui/`: Svelte 5 + Vite + TypeScript. `styles/`, `components/` (design system), `features/` (screens), `lib/`.
-- `tools/`: `ui-harness/` (Playwright, Chromium + WebKit), `icon.py`, `third-party.mjs`.
+`docs/ARCHITECTURE.md`: the layers and their modules, one source per decision, data flow, errors, state,
+generated files and the guardrails.
 
 ## Commands
 - After a fresh clone: `git config core.hooksPath .githooks` (the pre-push gate), `npm ci`,
   `npx playwright install chromium webkit` (the harness); the Rust toolchain comes from `rust-toolchain.toml`.
-  `core/tests/fixtures/private/` (real mails, ignored) is copied by hand.
 - `cargo fmt --all --check` · `cargo clippy --workspace --all-targets -- -D warnings` · `cargo test --workspace`
-- `npm ci` · `npm run check` (svelte-check, eslint, stylelint, prettier, tokens, `tools/architecture.mjs`) · `npm run harness` · `npm run build`
-- `npx tauri build` (release bundles) · `tools/portable.cmd` (`target/portable/CXact.exe`) · debug smoke: `target/debug/job-alert-monitor --dry-run --smoke --smoke-run`
+- `npm run check` (svelte-check, eslint, stylelint, prettier, tokens, `tools/architecture.mjs`) ·
+  `npm run harness` · `npm run build`
+- `npx tauri build` (release bundles) · `tools/portable.cmd` (`target/portable/CXact.exe`) · debug smoke:
+  `target/debug/job-alert-monitor --dry-run --smoke --smoke-run`
 - Colours: after a change to `tokens.css`, `npm run regen` rewrites the window and icon colours
   (`docs/CHANGING.md` "Change the look").
 - The user reviews the UI in the live preview; keep it working: `tools/ui-preview.cmd` (the user's shortcut) and
   `ui-preview` in `.claude/launch.json` run `tools/preview.mjs` (Vite with the stub on 5178, from the UI worktree
   while it exists, else from `ui/`).
-- Engine changes: `docs/CHANGING.md` "Add words to the engine" (both reports, `ENGINE_VERSION`,
-  `docs/MATCHING.md`).
+- Engine changes: `docs/CHANGING.md` "Add words to the engine".
 
 ## Workflow
 - Small English commits, each green on its own. Tick `docs/PLAN.md`. Parallel tracks work in their own worktree with
   disjoint files; shared files (`Cargo.toml`, `package.json`, `core/src/lib.rs`, `core/src/view.rs`,
-  `src-tauri/src/commands/**`, `src-tauri/commands.txt`, `build.rs`, `capabilities/main.json`, `tauri*.conf.json`) belong to the integrator.
+  `src-tauri/src/commands/**`, `src-tauri/commands.txt`, `build.rs`, `capabilities/main.json`, `tauri*.conf.json`)
+  belong to the integrator.
 - Remove worktrees right after merging and run `cargo clean` there (disk).
 - A flaky test is fixed or removed the same day, never retried (CI fails a test that passes only on its retry).
-- macOS is verified through the `macos-latest` CI runner (real app screenshots, dmg install probe) and WebKit locally.
+- macOS is verified through the `macos-latest` CI runner (`.github/workflows/ci.yml`) and WebKit locally.
 
 ## Change and connect (project rules)
 Two kinds of work, both fast; the structure keeps them fast ("a tree needs roots"):
