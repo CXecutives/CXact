@@ -456,21 +456,19 @@ fn job_facts<'a>(job: &JobInput<'a>) -> JobFacts<'a> {
 }
 
 /// Every cap of a job: the rubric's caps and a junior role for a senior profile
-/// (`JUNIOR_CAP`); no off-field cap where the title names the profile's field
-/// (`field_title`: it meets a target role).
+/// (`JUNIOR_CAP`). A title that meets a target role lifts no cap (the rubric: a target role
+/// never lifts a cap), the off-field cap included.
 fn all_caps(
     profile: &EngineProfile,
     items: &[Scored],
     title: &str,
     job: &JobInput<'_>,
     formal_cap: bool,
-    field_title: bool,
 ) -> Vec<Cap> {
     let vocab = &profile.skills.vocab;
     let title_fit = relevance::title_fit(&profile.query, title, vocab);
     cap(items, title, vocab, formal_cap, title_fit)
         .into_iter()
-        .filter(|c| !(field_title && c.1 == CapKind::OffField))
         .chain(
             junior_for_senior(profile, job.title, &page_levels(job), items)
                 .then_some((JUNIOR_CAP, CapKind::Junior)),
@@ -519,7 +517,7 @@ fn relevance_of(
     if no_items {
         return relevance::field_title_fit(&profile.title_query, title, vocab);
     }
-    // With requirements the target role counts once, as its points (not in the title fit).
+    // With requirements the target role is a signal of its own (not in the title fit).
     relevance::relevance(
         &profile.query,
         &profile.query,
@@ -681,7 +679,7 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
     } else {
         (role, wishes)
     };
-    let caps: Vec<Cap> = all_caps(profile, &items, &title, job, formal_cap, role.is_some())
+    let caps: Vec<Cap> = all_caps(profile, &items, &title, job, formal_cap)
         .into_iter()
         .chain(frame.cap(profile))
         .collect();
