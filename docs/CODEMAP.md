@@ -6,7 +6,7 @@ file: name, lines, purpose (the first sentence of its header comment), main publ
 (Rust `pub`, TS exports, Svelte props; `+n` more). The notes under the headings come from
 docs/ARCHITECTURE.md "Layers".
 
-473 files, 5 of them without a header comment ("(no header)").
+474 files, 5 of them without a header comment ("(no header)").
 
 ## Where a change goes
 
@@ -67,7 +67,7 @@ everything the app knows and does, without UI and without…
 - settings.rs 300 · Settings of the app - stored as JSON in the key/value… · Settings, PortalSwitches, default_workspace, KEY
 - sync.rs 28 · Short locks on shared state. · lock
 - time.rs 129 · Time: UTC timestamps inside; local time for display, file… · zone, set_zone, follow_system_zone, local +7
-- view.rs 3064 · IPC v3: what the interface receives and sends - defined… · MailProvider, TermField, Origin, WorkMode +64
+- view.rs 3072 · IPC v3: what the interface receives and sends - defined… · MailProvider, TermField, Origin, WorkMode +64
 - window.rs 500 · Placement of the app window across restarts, as plain… · Placement, Screen, Restore, restore +6
 
 ### core/src/export
@@ -102,7 +102,7 @@ reads the alert mails (IMAP)
 - mod.rs 169 · Alert mails: take them apart, pull out the jobs, assign… · MailProvider, RawMail, RawHead, MailKind +4
 - parse.rs 265 · Split a mail apart: header and all text parts - including… · ParsedMail, parse_mail
 - provider.rs 212 · The mailbox providers the app reads alert mails from, with… · MailProvider, IMAP_PORT
-- scan.rs 573 · Search the mailbox and take alert mails into the store. · Scope, ScanSummary, PortalScan, ScanError +2
+- scan.rs 573 · Search the mailbox and take alert mails into the store. · Scope, ScanSummary, PortalScan, ScanError +3
 - tests.rs 666 · Cases from the old program, with regressions for its bugs.
 
 ### core/src/mail/imap
@@ -197,7 +197,7 @@ knows the portals (adapters, one registry)
 
 ### core/src/profile
 the one profile
-- form.rs 1079 · The profile: one flat file with German keys, read into one… · ProfileForm, ProfileCompetence, ProfileLanguage, LanguageLevel +15
+- form.rs 1098 · The profile: one flat file with German keys, read into one… · ProfileForm, ProfileCompetence, ProfileLanguage, LanguageLevel +16
 - import.rs 243 · "Aus Lebenslauf ausfüllen": the CV worker's answer read by… · NoProfile, cv_form, merge, import +2
 - mod.rs 406 · The consultant profile: one file in `profil/` of the… · import_cv, deep_search_terms, ProfileInfo, profile_path +19
 - search_terms.rs 424 · The terms of the deep search, derived from the profile… · deep_search_terms, MAX_DEEP_TERMS, MAX_CANDIDATES
@@ -232,7 +232,7 @@ HTML to text, company and location
 - title.rs 477 · The title as the list and the Excel file show it: without… · tidy_title
 
 ### core/src/view
-- ts.rs 411 · TypeScript types of the IPC contract, generated from the… · types_dir
+- ts.rs 474 · TypeScript types of the IPC contract, generated from the… · types_dir
 
 ### core/tests
 - architecture.rs 69 · Architecture rules of the app shell.
@@ -444,7 +444,7 @@ the catalog (`de.ts`) and the text functions
 - api.ts 258 · The only importer of @tauri-apps/api. · CommandName, CommandArgs, CommandResult, IpcError +15
 
 ### ui/src/lib/ipc/types
-- 96 generated files, never edited by hand (by ts-rs 91, core/src/view/ts.rs 4, core/tests/contract.rs 1)
+- 97 generated files, never edited by hand (by ts-rs 91, core/src/view/ts.rs 5, core/tests/contract.rs 1)
 
 ### ui/src/lib/motion
 all motion

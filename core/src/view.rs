@@ -1118,6 +1118,17 @@ pub enum PortalLogin {
     Optional,
 }
 
+impl PortalLogin {
+    /// The sign-in a portal offers (its access).
+    pub fn of(portal: Portal) -> PortalLogin {
+        if portal.access().can_sign_in() {
+            PortalLogin::Optional
+        } else {
+            PortalLogin::None
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
@@ -1176,11 +1187,7 @@ pub fn portal_states(
             let switches = settings.portal(portal);
             let limits = limits(portal);
             let (used_hour, used_day) = policy.usage(portal, now);
-            let login = if portal.access().can_sign_in() {
-                PortalLogin::Optional
-            } else {
-                PortalLogin::None
-            };
+            let login = PortalLogin::of(portal);
             // Nothing remembered means "unknown": only a sign-in or a page that asks for one
             // turns it into a statement.
             let signed_in = match (login, state.login_needed, state.session_confirmed_at) {
@@ -1288,6 +1295,7 @@ pub struct ProfileInfo {
     /// The profile as the editor shows it (`null` while the file does not read).
     pub form: Option<ProfileForm>,
     /// The `ProfileForm` fields a usable profile still needs (core `missing_required`).
+    #[cfg_attr(test, ts(type = "Array<keyof ProfileForm>"))]
     pub missing: Vec<String>,
 }
 

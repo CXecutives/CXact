@@ -31,7 +31,7 @@ pub enum Scope {
 
 /// Without a previous scan: this far back (a month of alerts: freelance projects are often
 /// taken within a few weeks, older ones are still worth a look on the first day).
-const FIRST_SCAN_DAYS: i32 = 30;
+pub(crate) const FIRST_SCAN_DAYS: i32 = 30;
 
 /// Counters of a scan. Invariant: `postings_total = new + known_before + dup_in_run`.
 #[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize)]

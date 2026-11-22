@@ -45,3 +45,7 @@ export const EMPTY_FORM: ProfileForm = {
   "certificates": [],
   "exclusionWords": []
 };
+
+/** The fields a usable profile needs, in the form's order (`missing_required`). */
+export const REQUIRED = ["roles", "countries", "competences", "languages"] as const satisfies readonly (keyof ProfileForm)[];
+export type RequiredField = (typeof REQUIRED)[number];

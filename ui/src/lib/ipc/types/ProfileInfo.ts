@@ -27,4 +27,4 @@ form: ProfileForm | null,
 /**
  * The `ProfileForm` fields a usable profile still needs (core `missing_required`).
  */
-missing: Array<string>, };
+missing: Array<keyof ProfileForm>, };

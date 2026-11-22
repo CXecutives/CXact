@@ -323,22 +323,28 @@ impl ProfileForm {
     }
 }
 
-/// The fields a usable profile still needs, by their names in the form (`roles`, `countries`,
-/// `competences`, `languages`), in the form's order: the one source for the onboarding, the
-/// Profil's "Noch n Angaben offen" and whether a search can start. The contract types are
-/// never missing: a form without any is refused ([`validate`]).
+/// The fields a usable profile needs, by their names in the form, in the form's order, each
+/// with the test that it is still empty: the one source for the onboarding, the Profil's
+/// "Noch n Angaben offen", whether a search can start and the interface's `REQUIRED`. The
+/// contract types are never missing: a form without any is refused ([`validate`]).
+pub(crate) const REQUIRED: [(&str, IsEmpty); 4] = [
+    ("roles", |f| f.roles.is_empty()),
+    ("countries", |f| f.countries.is_empty()),
+    ("competences", |f| f.competences.is_empty()),
+    ("languages", |f| f.languages.is_empty()),
+];
+
+/// Whether a field of the form is still empty.
+type IsEmpty = fn(&ProfileForm) -> bool;
+
+/// The [`REQUIRED`] fields still empty, in the form's order.
 pub fn missing_required(form: &ProfileForm) -> Vec<&'static str> {
     let form = form.normalized();
-    [
-        ("roles", form.roles.is_empty()),
-        ("countries", form.countries.is_empty()),
-        ("competences", form.competences.is_empty()),
-        ("languages", form.languages.is_empty()),
-    ]
-    .into_iter()
-    .filter(|(_, missing)| *missing)
-    .map(|(field, _)| field)
-    .collect()
+    REQUIRED
+        .into_iter()
+        .filter(|(_, empty)| empty(&form))
+        .map(|(field, _)| field)
+        .collect()
 }
 
 fn same(a: &str, b: &str) -> bool {
@@ -779,6 +785,11 @@ pub(crate) fn write(form: &ProfileForm) -> String {
 #[cfg(test)]
 pub(crate) fn typescript() -> String {
     let empty = serde_json::to_string_pretty(&ProfileForm::default()).unwrap_or_default();
+    let required: Vec<String> = REQUIRED
+        .iter()
+        .map(|(field, _)| format!("\"{field}\""))
+        .collect();
+    let required = required.join(", ");
     format!(
         "import type {{ ProfileForm }} from \"./ProfileForm\";\n\n\
          /** The largest value of each number of the form (core's form limits). */\n\
@@ -794,7 +805,10 @@ pub(crate) fn typescript() -> String {
          export const MAX_TEXT = {MAX_TEXT};\n\n\
          /** The form of a new profile (`ProfileForm::default()`): projects and interim work only,\n \
          *  Deutschland, from now on, no wish of work mode, workload or duration. */\n\
-         export const EMPTY_FORM: ProfileForm = {empty};\n"
+         export const EMPTY_FORM: ProfileForm = {empty};\n\n\
+         /** The fields a usable profile needs, in the form's order (`missing_required`). */\n\
+         export const REQUIRED = [{required}] as const satisfies readonly (keyof ProfileForm)[];\n\
+         export type RequiredField = (typeof REQUIRED)[number];\n"
     )
 }
 
@@ -1021,6 +1035,11 @@ mod tests {
             ["roles", "countries", "competences", "languages"]
         );
         assert!(missing_required(&full()).is_empty());
+        // Every required field is a field of the form as the interface writes it.
+        let keys = serde_json::to_value(ProfileForm::default()).unwrap();
+        for (field, _) in REQUIRED {
+            assert!(keys.get(field).is_some(), "{field}");
+        }
     }
 
     fn names(items: &[&str]) -> Vec<String> {
