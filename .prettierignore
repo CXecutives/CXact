@@ -6,6 +6,7 @@
 !/tools/third-party.mjs
 !/tools/tokens.mjs
 !/tools/architecture.mjs
+!/tools/sync-contract.mjs
 !/tools/preview.mjs
 !/package.json
 !/eslint.config.js
