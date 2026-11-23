@@ -401,44 +401,12 @@ static TRAILING_ELLIPSIS: LazyLock<regex::Regex> = LazyLock::new(|| {
 
 /// The head of a closed compound (`management` of `programmmanagement`), the longest of
 /// `ELLIPSIS_HEADS` with a modifier of three letters or more before it.
-fn compound_head(word: &str) -> Option<&str> {
+pub(crate) fn compound_head(word: &str) -> Option<&str> {
     lex::ELLIPSIS_HEADS
         .iter()
         .filter(|h| word.len() >= h.len() + 3 && word.ends_with(**h))
         .max_by_key(|h| h.len())
         .map(|h| &word[word.len() - h.len()..])
-}
-
-/// The word a modifier of a leading ellipsis stands for: `part` ends in the modifier
-/// (`Erfahrung im Risiko-`), `rest` is the text after it (`und Qualitätsmanagement`); the
-/// part completed with the head of the first full word of `rest` (`Erfahrung im
-/// Risikomanagement`; `HW-` before `SW-Entwicklung` reads `HW-Entwicklung`), `None` when
-/// `part` is no modifier or the head is unknown.
-pub(crate) fn complete_ellipsis(part: &str, rest: &str) -> Option<String> {
-    let modifier = part.trim_end().strip_suffix('-')?;
-    if modifier.is_empty() || modifier.ends_with(char::is_whitespace) {
-        return None;
-    }
-    let word = rest
-        .split(|c: char| c.is_whitespace() || c == ',' || c == '/')
-        .map(|w| w.trim_matches(|c: char| !c.is_alphanumeric() && c != '-'))
-        .find(|w| {
-            !w.is_empty() && !w.ends_with('-') && !lex::ELLIPSIS_JOINERS.contains(&fold(w).as_str())
-        })?;
-    if let Some((_, last)) = word.rsplit_once('-') {
-        return (!last.is_empty()).then(|| format!("{modifier}-{last}"));
-    }
-    let folded = fold(word);
-    let head = compound_head(&folded)?;
-    let chars: Vec<char> = word.chars().collect();
-    let n = head.chars().count();
-    let written: String = chars[chars.len().saturating_sub(n)..].iter().collect();
-    let head = if fold(&written) == head {
-        written
-    } else {
-        head.to_owned()
-    };
-    Some(format!("{modifier}{head}"))
 }
 
 /// The folded text with its hyphen ellipses written out (`projekt- und programmmanagement`
@@ -486,25 +454,6 @@ fn expand_ellipses(folded: &str) -> std::borrow::Cow<'_, str> {
     std::borrow::Cow::Owned(trailing.into_owned())
 }
 
-/// A requirement without its leading pronoun and verbs (`you have spent several years in x`
-/// reads `several years in x`): the lead asks for nothing, its verbs would stay open.
-fn without_lead(mut raw: Vec<String>) -> Vec<String> {
-    if !raw
-        .first()
-        .is_some_and(|w| lex::PRONOUN_STARTS.contains(&w.as_str()))
-    {
-        return raw;
-    }
-    let verbs = raw[1..]
-        .iter()
-        .take_while(|w| lex::LEAD_VERBS.binary_search(&w.as_str()).is_ok())
-        .count();
-    if verbs > 0 {
-        raw.drain(..=verbs);
-    }
-    raw
-}
-
 /// [`atoms`], read.
 fn read_atoms(text: &str, vocab: &Vocab) -> Vec<String> {
     let folded = fold(text);
@@ -532,7 +481,7 @@ fn read_atoms(text: &str, vocab: &Vocab) -> Vec<String> {
             .map(|(_, t)| *t)
             .collect::<Vec<_>>(),
     );
-    let raw = without_lead(raw);
+    let raw = super::job::without_lead(raw);
     // Concepts across dropped words: the whole stream, stemmed.
     let full: Vec<String> = raw.iter().map(|t| stem(t)).collect();
     let mut pieces: Vec<(String, bool)> = Vec::with_capacity(raw.len());

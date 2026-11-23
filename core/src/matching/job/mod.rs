@@ -3,21 +3,21 @@
 //! items with AND parts, OR alternatives and examples (V6) and the kind of every item (V7).
 
 use super::atoms::{self, Vocab, fold};
-use super::facts::{self, rate_in};
+use super::facts::rate_in;
 use super::lexicon::engine::{
-    AND, AND_WORDS, EN_CUES, EXAMPLE_SEPARATORS, EXAMPLES, MUST_PREFIXES, NICE_CUES, NICE_LEADS,
-    NICE_PREFIXES, NUMBER_WORDS, OR, OTHER_PREFIXES, YEAR_UNITS,
+    AND, AND_OR, AND_WORDS, CueScope, EN_CUES, EXAMPLE_SEPARATORS, EXAMPLES, OR, YEAR_UNITS,
 };
 use super::lexicon::{HeadingKind, engine as lex};
-use super::normalize::{contains_word, sentences, splitlines, strip};
+use super::normalize::{contains_word, find_word, number_word, sentences, splitlines, strip};
 use super::requirements::extract_job_skills;
-use super::sections::{self, Inline, ReqKind};
+use super::sections::{self, Line, ReqKind};
 use regex::Regex;
 use std::ops::Range;
 use std::sync::LazyLock;
 
 mod classify;
 mod coordination;
+mod frame;
 mod lines;
 mod quantities;
 mod split;
@@ -25,15 +25,14 @@ mod split;
 mod tests;
 
 pub(crate) use self::classify::{known_skill, language_of, names_degree};
-#[cfg(test)]
-pub(crate) use self::lines::heading_kind;
+pub(crate) use self::frame::without_lead;
 pub(crate) use self::lines::is_heading_line;
 pub(crate) use self::quantities::level_in;
 #[allow(
     clippy::wildcard_imports,
     reason = "siblings of one reader share its helpers"
 )]
-use self::{classify::*, coordination::*, lines::*, quantities::*, split::*};
+use self::{classify::*, coordination::*, frame::*, lines::*, quantities::*, split::*};
 
 /// Where an item came from (V16).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -73,27 +72,36 @@ pub(crate) struct Item {
     pub stage: Stage,
 }
 
+/// A task of the role: a sentence under a task heading (`Aufgaben`, `Responsibilities`) or
+/// after an inline one. Evidence for the core of the role, never a requirement row.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Task {
+    /// Byte range of the task in the text.
+    pub span: Range<usize>,
+    /// The task's atoms under the reader's vocabulary (none for a task of fillers only).
+    pub atoms: Vec<String>,
+}
+
 /// The requirements of a job.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct JobDoc {
     pub items: Vec<Item>,
     /// Byte ranges of requirement lines (the "requirements" field of the relevance).
     pub requirement_lines: Vec<Range<usize>>,
-    /// Byte ranges of the lines under a task heading (`Aufgaben`). Tasks never become
-    /// requirement rows.
-    pub task_lines: Vec<Range<usize>>,
+    /// The tasks of the role, in the order of the text.
+    pub tasks: Vec<Task>,
 }
 
 /// Reads the requirements of a job text.
 pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
     let mut doc = JobDoc::default();
     let read = section_phrases(text);
-    doc.task_lines = read.tasks;
+    doc.tasks = tasks(text, &read.tasks, vocab);
     let mut phrases = read.phrases;
     if !phrases.iter().any(|(_, kind, _)| *kind == ReqKind::Must) {
         phrases.extend(cued_sentences(text, &read.in_nice));
     }
-    for (phrase, kind, stage) in phrases.into_iter().flat_map(cut_nice_lead) {
+    for (phrase, kind, stage) in phrases.into_iter().flat_map(|p| cue_clauses(p, vocab)) {
         if describes_role(phrase) {
             continue;
         }
@@ -101,7 +109,7 @@ pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
         doc.requirement_lines.push(start..start + phrase.len());
         let level = level_in(phrase);
         if soft_sentence(phrase) {
-            let nice = kind == ReqKind::Nice || nice_cue(phrase);
+            let nice = kind == ReqKind::Nice || !sections::nice_cues(phrase).is_empty();
             doc.items.push(Item {
                 span: Some(start..start + phrase.len()),
                 text: phrase.to_owned(),
@@ -116,25 +124,22 @@ pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
         }
         let parts = split(phrase);
         let tails = shared_objects(phrase, &parts);
-        // `X, idealerweise Y`: nice from the cue on; `X und Y von Vorteil`: a closing cue
-        // makes the whole line nice.
-        let closing = parts.last().is_some_and(|(r, _)| {
-            let folded = fold(&phrase[r.clone()]);
-            lex::NICE_CLOSING.iter().any(|c| folded.contains(c))
-        });
-        let mut nice = kind == ReqKind::Nice || closing;
-        // A modifier of a hyphen ellipsis reads as the word it stands for (`Risiko-` of
-        // `Risiko- und Qualitätsmanagement` as `Risikomanagement`).
+        let nice = nice_parts(phrase, &parts);
         let texts: Vec<String> = parts
             .iter()
             .map(|(r, _)| {
                 let part = &phrase[r.clone()];
-                atoms::complete_ellipsis(part, &phrase[r.end..]).unwrap_or_else(|| part.to_owned())
+                written_out(part, &phrase[..r.start], &phrase[r.end..])
+                    .unwrap_or_else(|| part.to_owned())
             })
             .collect();
         let classes = part_classes(&texts, level, vocab);
-        for ((((span, alternatives), class), tail), whole) in
-            parts.into_iter().zip(classes).zip(tails).zip(&texts)
+        for (((((span, alternatives), class), tail), whole), nice) in parts
+            .into_iter()
+            .zip(classes)
+            .zip(tails)
+            .zip(&texts)
+            .zip(nice)
         {
             let whole = whole.as_str();
             if atoms::atoms(whole, vocab).is_empty() || not_needed(whole) || noise_item(whole) {
@@ -144,7 +149,6 @@ pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
                 Some(t) => format!("{text} {}", &phrase[t.clone()]),
                 None => text.to_owned(),
             };
-            nice |= nice_cue(whole);
             let kind = if nice { ReqKind::Nice } else { kind };
             let years = years_in(whole);
             doc.items.push(Item {
@@ -179,6 +183,23 @@ pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
     doc
 }
 
+/// The tasks of the task lines, sentence by sentence, each with its atoms.
+fn tasks(text: &str, lines: &[Range<usize>], vocab: &Vocab) -> Vec<Task> {
+    lines
+        .iter()
+        .flat_map(|line| sentences(&text[line.clone()]))
+        .map(sections::clean_phrase)
+        .filter_map(|phrase| {
+            let atoms = atoms::atoms(phrase, vocab);
+            let start = offset(text, phrase);
+            (!atoms.is_empty()).then(|| Task {
+                span: start..start + phrase.len(),
+                atoms,
+            })
+        })
+        .collect()
+}
+
 /// An ad without a must section: every sentence with a requirement cue (German or English),
 /// outside headings, closing blocks and nice sections.
 fn cued_sentences<'a>(text: &'a str, in_nice: &[usize]) -> Vec<(&'a str, ReqKind, Stage)> {
@@ -186,8 +207,7 @@ fn cued_sentences<'a>(text: &'a str, in_nice: &[usize]) -> Vec<(&'a str, ReqKind
     for line in splitlines(text) {
         let (stripped, bullet) = line_of(line);
         if stripped.is_empty()
-            || heading_of(stripped, bullet).is_some()
-            || closing_start(stripped)
+            || sections::classify(stripped, bullet, None) != Line::Text
             || in_nice.contains(&offset(text, stripped))
         {
             continue;
@@ -195,15 +215,8 @@ fn cued_sentences<'a>(text: &'a str, in_nice: &[usize]) -> Vec<(&'a str, ReqKind
         for sentence in sentences(stripped) {
             let phrase = sections::clean_phrase(sentence);
             let folded = fold(phrase);
-            let english = EN_CUES.iter().any(|c| folded.contains(c));
-            let kind = sections::cue_kind(phrase).or(english.then_some(ReqKind::Must));
-            if let Some(kind) = kind {
-                let kind = if nice_cue(phrase) {
-                    ReqKind::Nice
-                } else {
-                    kind
-                };
-                phrases.push((phrase, kind, Stage::Sentence));
+            if sections::cued(phrase) || EN_CUES.iter().any(|c| folded.contains(c)) {
+                phrases.push((phrase, ReqKind::Must, Stage::Sentence));
             }
         }
     }

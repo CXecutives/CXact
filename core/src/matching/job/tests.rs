@@ -1,5 +1,13 @@
 use super::*;
 
+/// The section a line opens when it is a heading.
+fn heading_kind(line: &str) -> Option<HeadingKind> {
+    match sections::classify(line, false, None) {
+        Line::Heading(kind) => Some(kind),
+        _ => None,
+    }
+}
+
 #[test]
 fn task_lines_follow_a_task_heading() {
     let text = "Aufgaben:
@@ -9,17 +17,46 @@ fn task_lines_follow_a_task_heading() {
 Ihr Profil:
 - SAP FI
 ";
-    let doc = read(text, &Vocab::all());
-    let lines: Vec<&str> = doc.task_lines.iter().map(|r| &text[r.clone()]).collect();
+    let vocab = Vocab::all();
+    let doc = read(text, &vocab);
+    let tasks: Vec<(&str, &Vec<String>)> = doc
+        .tasks
+        .iter()
+        .map(|t| (&text[t.span.clone()], &t.atoms))
+        .collect();
     assert_eq!(
-        lines,
-        ["- Aufbau des Service Desk", "- Steuerung der Dienstleister"]
+        tasks,
+        [
+            (
+                "Aufbau des Service Desk",
+                &atoms::atoms("Aufbau des Service Desk", &vocab)
+            ),
+            (
+                "Steuerung der Dienstleister",
+                &atoms::atoms("Steuerung der Dienstleister", &vocab)
+            ),
+        ]
     );
+    assert!(tasks.iter().all(|(_, atoms)| !atoms.is_empty()));
     assert!(doc.items.iter().all(|i| !i.text.contains("Service Desk")));
+    // English and inline task headings, two sentences on one line.
     let key = "Key Responsibilities
-Lead the team
+Lead the team. Own the monthly close
+Ihre Aufgaben: Aufbau des Controllings
 ";
-    assert_eq!(read(key, &Vocab::all()).task_lines.len(), 1);
+    let tasks: Vec<String> = read(key, &vocab)
+        .tasks
+        .iter()
+        .map(|t| key[t.span.clone()].to_owned())
+        .collect();
+    assert_eq!(
+        tasks,
+        [
+            "Lead the team.",
+            "Own the monthly close",
+            "Aufbau des Controllings"
+        ]
+    );
 }
 
 #[test]
@@ -492,40 +529,26 @@ fn and_or_and_examples() {
     assert!(got[0].1.contains(&"Power BI".to_owned()), "{got:?}");
 }
 
-/// A lone adjective shares the next part's noun and is no item of its own.
+/// An adjective that ends a part shares the noun of the next one: one requirement (as in
+/// `Classic and agile project management` or `klassischen und agilen Methoden`).
 #[test]
-fn lone_adjectives_are_no_items() {
+fn adjectives_share_the_next_noun() {
     let texts =
         |phrase: &str| -> Vec<String> { items(phrase).into_iter().map(|(t, _)| t).collect() };
-    assert_eq!(
-        texts("Classic and agile project management"),
-        ["agile project management"]
-    );
-    assert_eq!(texts("Klassische und agile Methoden"), ["agile Methoden"]);
+    for one in [
+        "Classic and agile project management",
+        "Klassische und agile Methoden",
+        "Kenntnisse in klassischen und agilen Projektmanagement-Methoden",
+        "Sehr gute organisatorische und kommunikative Fähigkeiten",
+        "Durchführung qualitativer und quantitativer Nutzerforschung",
+    ] {
+        assert_eq!(texts(one), [one], "{one}");
+    }
     assert_eq!(
         texts("Controlling und Reporting"),
         ["Controlling", "Reporting"]
     );
     assert_eq!(texts("Excel und Power BI"), ["Excel", "Power BI"]);
-}
-
-/// A declined adjective that ends a part shares the noun of the next one, a head after
-/// `und -` the word before it, two activities the object of the second: one requirement
-/// each.
-#[test]
-fn shared_nouns_and_heads_keep_one_item() {
-    let texts =
-        |phrase: &str| -> Vec<String> { items(phrase).into_iter().map(|(t, _)| t).collect() };
-    for one in [
-        "Kenntnisse in klassischen und agilen Projektmanagement-Methoden",
-        "Sehr gute organisatorische und kommunikative Fähigkeiten",
-        "Durchführung qualitativer und quantitativer Nutzerforschung",
-        "Methodenkompetenz in Projektplanung und -controlling",
-        "Kenntnisse in der Erstellung und Anwendung von Personas",
-        "Sicherer Umgang mit der Analyse und Interpretation von Kundendaten",
-    ] {
-        assert_eq!(texts(one), [one], "{one}");
-    }
     assert_eq!(
         texts("Erfahrung im Controlling und Reporting"),
         ["Erfahrung im Controlling", "Reporting"]
@@ -536,6 +559,80 @@ fn shared_nouns_and_heads_keep_one_item() {
             "Erfahrung im Controlling",
             "Konzernrechnungslegung nach IFRS"
         ]
+    );
+}
+
+/// Every conjunct written out in full: a trailing ellipsis takes the modifier of the word
+/// before it, a bare activity the object of the next one; a skill term, a relative clause and
+/// the parts of `und/oder` or of a slash between words stay one requirement.
+#[test]
+fn conjuncts_are_written_out_in_full() {
+    let texts = |section: &str| -> Vec<String> {
+        read(
+            &format!(
+                "Ihr Profil
+- {section}
+"
+            ),
+            &Vocab::all(),
+        )
+        .items
+        .into_iter()
+        .map(|i| i.text)
+        .collect()
+    };
+    assert_eq!(
+        texts("Methodenkompetenz in Projektplanung und -controlling"),
+        ["Methodenkompetenz in Projektplanung", "Projektcontrolling"]
+    );
+    for one in [
+        "Kenntnisse in der Erstellung und Anwendung von Personas",
+        "Sicherer Umgang mit der Analyse und Interpretation von Kundendaten",
+    ] {
+        assert_eq!(texts(one), [one], "{one}");
+    }
+    // A part that ends in no activity shares no object.
+    assert_eq!(
+        texts("Erfahrung im Vertrieb und in der Führung von Teams"),
+        ["Erfahrung im Vertrieb", "in der Führung von Teams"]
+    );
+    assert_eq!(
+        texts("Erfahrung in Compensation & Benefits"),
+        ["Erfahrung in Compensation & Benefits"]
+    );
+    assert_eq!(
+        texts("Erfahrung mit Tools, die die Zusammenarbeit im Team fördern"),
+        ["Erfahrung mit Tools, die die Zusammenarbeit im Team fördern"]
+    );
+    assert_eq!(
+        texts("Erfahrung im Controlling, die Fähigkeit zur Analyse"),
+        ["Erfahrung im Controlling", "die Fähigkeit zur Analyse"]
+    );
+    let alternatives =
+        |phrase: &str| -> Vec<Vec<String>> { items(phrase).into_iter().map(|(_, a)| a).collect() };
+    assert_eq!(
+        alternatives("Excel und/oder Power BI"),
+        [["Excel", "Power BI"]]
+    );
+    assert_eq!(
+        alternatives("Sicherer Umgang mit Power BI/Tableau"),
+        [["Sicherer Umgang mit Power BI", "Tableau"]]
+    );
+    for one in [
+        "SAP S/4HANA",
+        "SAP FI/CO",
+        "Leiter/in Controlling",
+        "HGB/IFRS",
+    ] {
+        assert_eq!(alternatives(one), [[one]], "{one}");
+    }
+    assert_eq!(
+        alternatives("Erfahrung mit ERP-Systemen, bspw. SAP oder Oracle"),
+        [["Erfahrung mit ERP-Systemen", "SAP", "Oracle"]]
+    );
+    assert_eq!(
+        alternatives("Etwas Erfahrung mit SAP"),
+        [["Etwas Erfahrung mit SAP"]]
     );
 }
 
@@ -568,9 +665,9 @@ fn overlapping_separators_and_a_marker_after_brackets() {
 /// ends with a language, frame lines about workload and extension.
 #[test]
 fn messy_ads_keep_their_structure() {
-    assert_eq!(heading("Aufgaben / Tasks:"), Some(HeadingKind::Task));
-    assert_eq!(heading("Profil / Profile"), Some(HeadingKind::Must));
-    assert_eq!(heading("Controlling / Reporting"), None);
+    assert_eq!(heading_kind("Aufgaben / Tasks:"), Some(HeadingKind::Task));
+    assert_eq!(heading_kind("Profil / Profile"), Some(HeadingKind::Must));
+    assert_eq!(heading_kind("Controlling / Reporting"), None);
     let core = Vocab::core();
     assert_eq!(
         classify(
@@ -731,5 +828,184 @@ fn split_parts_keep_their_shared_object() {
             "Erfolgreiche Erfahrung im Aufbau von Vertriebsteams",
             "in der Führung von Vertriebsteams"
         ]
+    );
+}
+
+/// Real wording: a skill that starts like a heading stays a must; an English inline heading
+/// keeps its content, split into sentences; `Ihre Aufgaben` lists tasks.
+#[test]
+fn the_line_classifier_keeps_skills_inline_content_and_tasks() {
+    let doc = read(
+        "Ihre Aufgaben\n- Steuerung des Category Managements\n\nIhr Profil\nRequirements Engineering\n\
+         Kategoriemanagement\nBranchenkenntnisse im Handel\n\
+         Nice to have: Erfahrung mit Tableau. Kenntnisse in Python\n",
+        &Vocab::all(),
+    );
+    let items: Vec<(&str, ReqKind)> = doc
+        .items
+        .iter()
+        .map(|i| (i.text.as_str(), i.kind))
+        .collect();
+    assert_eq!(
+        items,
+        [
+            ("Requirements Engineering", ReqKind::Must),
+            ("Kategoriemanagement", ReqKind::Must),
+            ("Branchenkenntnisse im Handel", ReqKind::Must),
+            ("Erfahrung mit Tableau", ReqKind::Nice),
+            ("Kenntnisse in Python", ReqKind::Nice),
+        ]
+    );
+    assert_eq!(doc.tasks.len(), 1);
+}
+
+/// Each nice cue marks what its scope covers, in real wordings: a clause cue in brackets only
+/// the bracket, a closing cue its item, a line cue the line up to it; cues are whole words.
+#[test]
+fn nice_cues_mark_their_scope() {
+    assert_eq!(
+        musts("- SAP FI (idealerweise S/4HANA) und Excel"),
+        [
+            ("SAP FI".to_owned(), true),
+            ("idealerweise S/4HANA".to_owned(), false),
+            ("Excel".to_owned(), true)
+        ]
+    );
+    assert_eq!(
+        musts("- Erfahrung mit SAP, gerne auch S/4HANA"),
+        [
+            ("Erfahrung mit SAP".to_owned(), true),
+            ("gerne auch S/4HANA".to_owned(), false)
+        ]
+    );
+    // Held-out set 2, Y05 and Y08: the experience is a must, only the clause after `gerne` is
+    // nice.
+    assert_eq!(
+        musts(
+            "* Erfahrung im Rechnungswesen / Buchhaltung, gerne mit Bilanzbuchhalter-Qualifikation"
+        ),
+        [
+            ("Erfahrung im Rechnungswesen / Buchhaltung".to_owned(), true),
+            ("gerne mit Bilanzbuchhalter-Qualifikation".to_owned(), false)
+        ]
+    );
+    assert_eq!(
+        musts(
+            "Erfahrung in der Leitung von Projekten im Finanz-Bereich, gerne mit IFRS-Erstanwendung"
+        )[0],
+        (
+            "Erfahrung in der Leitung von Projekten im Finanz-Bereich".to_owned(),
+            true
+        )
+    );
+    // A clause cue after a word closes what stands before it.
+    assert_eq!(
+        musts("- SAP-Erfahrung bevorzugt, sicherer Umgang mit Excel"),
+        [
+            ("SAP-Erfahrung bevorzugt".to_owned(), false),
+            ("sicherer Umgang mit Excel".to_owned(), true)
+        ]
+    );
+    assert_eq!(
+        musts("- Erfahrung mit Bonussystemen"),
+        [("Erfahrung mit Bonussystemen".to_owned(), true)]
+    );
+    assert_eq!(
+        musts("- SAP-Kenntnisse erwünscht"),
+        [("SAP-Kenntnisse erwünscht".to_owned(), false)]
+    );
+    assert_eq!(
+        musts("- SAP FI, Power BI (optional)"),
+        [
+            ("SAP FI".to_owned(), true),
+            ("Power BI (optional)".to_owned(), false)
+        ]
+    );
+    assert_eq!(
+        musts("- Power BI von Vorteil, sicherer Umgang mit Excel"),
+        [
+            ("Power BI von Vorteil".to_owned(), false),
+            ("sicherer Umgang mit Excel".to_owned(), true)
+        ]
+    );
+    let picked =
+        musts("- Experience in one or more of the following areas:\n- SAP S/4HANA\n- Salesforce");
+    assert!(picked.iter().all(|(_, must)| !must), "{picked:?}");
+}
+
+/// The modifier of a hyphen ellipsis takes the head of the word it shares.
+#[test]
+fn ellipsis_modifiers_complete() {
+    assert_eq!(
+        leading_ellipsis("Erfahrung im Risiko-", " und Qualitätsmanagement").as_deref(),
+        Some("Erfahrung im Risikomanagement")
+    );
+    assert_eq!(
+        leading_ellipsis("Risiko-", ", Qualitäts- und Abhängigkeitsmanagement").as_deref(),
+        Some("Risikomanagement")
+    );
+    assert_eq!(
+        leading_ellipsis("HW-", " und SW-Entwicklung").as_deref(),
+        Some("HW-Entwicklung")
+    );
+    assert_eq!(leading_ellipsis("Risiko", " und Qualität"), None);
+    assert_eq!(leading_ellipsis("Ein-", " und Verkauf"), None);
+}
+
+/// The frame of a clause asks for nothing: a pronoun with its verbs and modals, and the verb
+/// that closes a German clause; a pronoun sentence that asks for knowledge is no soft
+/// sentence as a whole.
+#[test]
+fn the_frame_of_a_clause_asks_for_nothing() {
+    let vocab = Vocab::all();
+    let all = |text: &str| atoms::atoms(text, &vocab);
+    assert_eq!(
+        all("Sie sollten Erfahrung im Controlling mitbringen"),
+        all("Erfahrung im Controlling")
+    );
+    assert_eq!(
+        all("Du bringst Kenntnisse in SAP FI mit"),
+        all("Kenntnisse in SAP FI")
+    );
+    assert_eq!(
+        all("You should have experience with Power BI"),
+        all("experience with Power BI")
+    );
+    assert_eq!(
+        all("Sie besitzen fundierte Kenntnisse im Arbeitsrecht"),
+        all("fundierte Kenntnisse im Arbeitsrecht")
+    );
+    let doc = read(
+        "Ihr Profil\n- Sie haben Erfahrung mit Lieferantenverhandlungen\n\
+         - Sie kommunizieren klar und wertschätzend\n",
+        &vocab,
+    );
+    let classes: Vec<(&str, &Class)> = doc
+        .items
+        .iter()
+        .map(|i| (i.text.as_str(), &i.class))
+        .collect();
+    assert_eq!(
+        classes,
+        [
+            (
+                "Sie haben Erfahrung mit Lieferantenverhandlungen",
+                &Class::Skill
+            ),
+            ("Sie kommunizieren klar und wertschätzend", &Class::Soft)
+        ]
+    );
+}
+
+/// One table per meaning: the number words of years and days, the adjective endings of every
+/// coordination rule.
+#[test]
+fn one_word_table_per_meaning() {
+    assert_eq!(years_in("Mindestens ein Jahr Erfahrung"), Some((1, None)));
+    assert_eq!(years_in("four years of experience"), Some((4, None)));
+    assert_eq!(
+        items("Technical and functional requirements").len(),
+        1,
+        "an English adjective shares the next noun"
     );
 }

@@ -44,31 +44,6 @@ pub(crate) fn language_of(token: &str) -> Option<&'static str> {
         })
 }
 
-/// A sentence that describes the role or the search, no skill (`lex::DESCRIPTION_STARTS`).
-pub(super) fn describes_role(phrase: &str) -> bool {
-    let folded = fold(phrase);
-    lex::DESCRIPTION_STARTS
-        .iter()
-        .any(|w| folded.starts_with(w))
-}
-
-/// A sentence about the person, not a skill: it starts with `Sie`, `Du`, `You` or `Your`
-/// and names no known skill (`Sie kommunizieren klar, auch wenn es unbequem wird`).
-pub(super) fn soft_sentence(phrase: &str) -> bool {
-    let folded = fold(phrase);
-    let first = atoms::raw_tokens(&folded).next().unwrap_or("");
-    lex::PRONOUN_STARTS.contains(&first) && !known_skill(phrase)
-}
-
-/// A part that is one adjective (`Classic`, `klassische`, `strategic`).
-pub(super) fn lone_adjective(text: &str) -> bool {
-    let word = fold(text.trim());
-    !word.is_empty()
-        && !word.contains(char::is_whitespace)
-        && word.chars().all(char::is_alphabetic)
-        && lex::ADJECTIVE_ENDINGS.iter().any(|e| word.ends_with(e))
-}
-
 pub(super) fn starts_with_any(atom: &str, stems: &[&str]) -> bool {
     stems.iter().any(|s| atom.starts_with(s))
 }

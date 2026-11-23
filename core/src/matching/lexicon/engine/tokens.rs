@@ -279,6 +279,9 @@ pub(crate) const GENDER_LETTERS: &[&str] = &["d", "f", "i", "m", "w", "x", "div"
 
 /// Numbers written as words.
 pub(crate) const NUMBER_WORDS: &[(&str, u32)] = &[
+    ("ein", 1),
+    ("einen", 1),
+    ("one", 1),
     ("zwei", 2),
     ("drei", 3),
     ("vier", 4),
@@ -293,6 +296,7 @@ pub(crate) const NUMBER_WORDS: &[(&str, u32)] = &[
     ("zwanzig", 20),
     ("two", 2),
     ("three", 3),
+    ("four", 4),
     ("five", 5),
     ("ten", 10),
 ];
@@ -303,7 +307,8 @@ pub(crate) const QUERY_NOISE: &[&str] = &["davon", "elf", "interimmanagement", "
 
 /// Abbreviations that end with a dot but not a sentence.
 pub(crate) const ABBREVIATIONS: &[&str] = &[
-    "approx", "bzw", "ca", "dr", "evtl", "ggf", "inkl", "max", "min", "mind", "nr", "vgl", "zzgl",
+    "approx", "bspw", "bzw", "ca", "dr", "evtl", "ggf", "inkl", "max", "min", "mind", "nr", "vgl",
+    "zzgl",
 ];
 
 /// What a page shows in place of a hidden address (Cloudflare's email protection, as the

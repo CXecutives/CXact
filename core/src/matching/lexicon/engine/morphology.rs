@@ -15,21 +15,17 @@ pub(crate) const WORD_ENDINGS: &[&str] = &[
 /// Linking letters between the parts of a compound (`Gehalt-s-vorstellung`).
 pub(crate) const LINKERS: &[&str] = &["es", "keits", "n", "s", "ungs"];
 
-/// Endings of an adjective that can share the noun of the next item
-/// (`Classic and agile project management`, `klassische und agile Methoden`).
-pub(crate) const ADJECTIVE_ENDINGS: &[&str] = &[
-    "al", "ale", "alen", "aler", "ales", "ic", "ical", "isch", "ische", "ischen", "ischer",
-    "isches", "iv", "ive", "iven", "iver", "ives", "lich", "liche", "lichen", "licher", "liches",
-];
+/// Endings of a declined German adjective or participle (`erwünschte`, `großer`, `externen`,
+/// `neues`).
+pub(crate) const DECLENSION_ENDINGS: &[&str] = &["e", "em", "en", "er", "es"];
 
-/// Endings of a declined adjective (`großer`, `externen`, `neues`).
-pub(crate) const DECLINED_ENDINGS: &[&str] = &["er", "en", "es", "em"];
-
-/// Stems of a German adjective before its declension (`klassisch-en`, `qualitativ-er`,
-/// `eigenständig-e`, `strukturiert-e`): such a word that ends a part shares the noun of the
-/// next one (`klassischen und agilen Methoden`).
+/// Endings of an adjective before its declension (`klassisch-en`, `qualitativ-er`,
+/// `eigenständig-e`, `strukturiert-e`, `classic`, `technical`): such a word that ends a part
+/// shares the noun of the next one (`klassischen und agilen Methoden`, `Classic and agile
+/// project management`).
 pub(crate) const ADJECTIVE_STEMS: &[&str] = &[
-    "al", "ar", "bar", "ell", "end", "haft", "ig", "iert", "isch", "iv", "lich", "sam",
+    "al", "ar", "bar", "ell", "end", "haft", "ic", "ical", "ig", "iert", "isch", "iv", "lich",
+    "sam",
 ];
 
 /// Verbal particles: `Einführung`, `Durchführung`, `Ausbildung` are no compounds of
@@ -44,6 +40,8 @@ pub(crate) const PARTICLE_MODIFIERS: &[&str] = &[
 ];
 
 /// A compound that ends in a degree word is a degree too (`Ingenieurstudium`, `BWL-Studium`).
+/// Not `-ausbildung` as the terms' list has it: as a degree of the reader it cost the 154
+/// NDCG@10 0.026 (measured 2026-11-23).
 pub(crate) const DEGREE_ENDINGS: &[&str] = &["studium", "studiums"];
 
 /// Endings of a head of `WAGE_HEADS` or `PAY_SCALE_HEADS` (`Stundenlohns`, `Löhne`; not the

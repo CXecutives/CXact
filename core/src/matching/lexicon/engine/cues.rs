@@ -56,68 +56,74 @@ pub(crate) const MANDATORY_WORDS: &[&str] = &[
     "strictly required",
 ];
 
-/// A must line containing one of these is a nice-to-have.
-pub(crate) const NICE_CUES: &[&str] = &[
-    "von vorteil",
-    "wunschenswert",
-    "idealerweise",
-    "nice to have",
-    "nice-to-have",
-    "ideally",
-    "a plus",
-    "vorteilhaft",
-    "bonus",
-    "ein plus",
-    "strong plus",
-    "gerne mit",
-    "an advantage",
-    "advantageous",
-    "hilfreich",
-    "grosses plus",
-    "an asset",
-    "klarer vorteil",
-    "preferred",
-    "is a plus",
-    "vorzugsweise",
-    "bevorzugt",
-    "desirable",
-    "beneficial",
-    "helfen dabei",
-    "hilft dabei",
-    "helfen ihnen",
-    "hilft ihnen",
-    "would help",
-];
+/// Where a nice cue makes requirements nice-to-haves.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CueScope {
+    /// The item it stands in (`Power BI (optional)`).
+    Item,
+    /// The clause it opens, to the clause's end (`10+ years in finance, ideally in
+    /// controlling`, `SAP FI (idealerweise S/4HANA)`), else the item it closes (`SAP
+    /// bevorzugt`).
+    Clause,
+    /// The line up to it (`Kenntnisse in LucaNet und Power BI von Vorteil`), the whole line when
+    /// it opens it (`Von Vorteil sind ...`).
+    Line,
+    /// The items of the list it opens when the line refers to them: a choice, no duty (the
+    /// rubric's rule 1; `Kenntnisse in mindestens zwei der folgenden Bereiche:`).
+    List,
+}
 
-/// Nice cues that open a clause after a comma (`10+ years in finance, ideally in
-/// controlling`): the clause from the cue on is nice, what stands before it keeps its kind.
-pub(crate) const NICE_LEADS: &[&str] = &[
-    "bestenfalls",
-    "bevorzugt",
-    "idealerweise",
-    "ideally",
-    "optimalerweise",
-    "preferably",
-    "vorzugsweise",
-];
-
-/// A line that opens a pick list (`Kenntnisse in mindestens zwei der folgenden Bereiche:`): it
-/// names a count of the items below and refers to them. The items it opens are a choice, no
-/// duty (the rubric's rule 1): they count as nice-to-haves.
-pub(crate) const PICK_LIST_COUNTS: &[&str] = &[
-    "any of",
-    "at least one",
-    "at least two",
-    "eine der",
-    "einem der",
-    "einer der",
-    "mindestens eine",
-    "mindestens einem",
-    "mindestens einer",
-    "mindestens zwei",
-    "one of",
-    "two of",
-    "zwei der",
+/// Nice cues and their scope: whole words; the last word of a German cue may take a declined
+/// ending (`wünschenswerte`, `erwünschte`); a hyphen counts as a space (`nice-to-have`).
+pub(crate) const NICE_CUES: &[(&str, CueScope)] = &[
+    ("a plus", CueScope::Line),
+    ("advantageous", CueScope::Line),
+    ("an advantage", CueScope::Line),
+    ("an asset", CueScope::Line),
+    ("any of", CueScope::List),
+    ("at least one", CueScope::List),
+    ("at least two", CueScope::List),
+    ("beneficial", CueScope::Line),
+    ("bestenfalls", CueScope::Clause),
+    ("bevorzugt", CueScope::Clause),
+    ("bonus", CueScope::Line),
+    ("desirable", CueScope::Line),
+    ("ein plus", CueScope::Line),
+    ("eine der", CueScope::List),
+    ("einem der", CueScope::List),
+    ("einer der", CueScope::List),
+    ("erwunscht", CueScope::Line),
+    ("gern", CueScope::Clause),
+    ("gerne", CueScope::Clause),
+    ("grosses plus", CueScope::Line),
+    ("helfen dabei", CueScope::Line),
+    ("helfen ihnen", CueScope::Line),
+    ("hilfreich", CueScope::Line),
+    ("hilft dabei", CueScope::Line),
+    ("hilft ihnen", CueScope::Line),
+    ("idealerweise", CueScope::Clause),
+    ("ideally", CueScope::Clause),
+    ("is a plus", CueScope::Line),
+    ("klarer vorteil", CueScope::Line),
+    ("mindestens eine", CueScope::List),
+    ("mindestens einem", CueScope::List),
+    ("mindestens einer", CueScope::List),
+    ("mindestens zwei", CueScope::List),
+    ("nice to have", CueScope::Line),
+    ("one of", CueScope::List),
+    ("one or more of", CueScope::List),
+    ("optimalerweise", CueScope::Clause),
+    ("optional", CueScope::Item),
+    ("preferably", CueScope::Clause),
+    ("preferred", CueScope::Clause),
+    ("strong plus", CueScope::Line),
+    ("two of", CueScope::List),
+    ("von vorteil", CueScope::Line),
+    ("vorteilhaft", CueScope::Line),
+    ("vorzugsweise", CueScope::Clause),
+    ("would help", CueScope::Line),
+    ("wunschenswert", CueScope::Line),
+    ("zwei der", CueScope::List),
 ];
 
 /// The words of a pick list's line that refer to the items below it.
@@ -153,18 +159,23 @@ pub(crate) const EXAMPLES: &[&str] = &[
     "such as",
     "etwa",
     "beispielsweise",
+    "bspw.",
 ];
 
 /// Separators inside an example list.
 pub(crate) const EXAMPLE_SEPARATORS: &[&str] = &[", ", " und ", " oder ", " or ", " and "];
 
-/// Verbs that lead a requirement after its pronoun (`You have spent several years in X`,
-/// `Sie bringen Erfahrung in X mit`, `Du verfügst über X`): they ask for nothing themselves
-/// (sorted).
+/// Verbs and modals that lead a requirement after its pronoun (`You have spent several years
+/// in X`, `Sie sollten Erfahrung in X mitbringen`, `Du verfügst über X`) or close it: they ask
+/// for nothing themselves (sorted).
 pub(crate) const LEAD_VERBS: &[&str] = &[
     "acquired",
+    "besitzen",
+    "besitzt",
+    "bist",
     "bring",
     "bringen",
+    "brings",
     "bringst",
     "bringt",
     "gained",
@@ -174,14 +185,22 @@ pub(crate) const LEAD_VERBS: &[&str] = &[
     "has",
     "hast",
     "have",
+    "kannst",
     "led",
     "mitbringen",
     "mitbringst",
+    "musst",
     "possess",
+    "should",
+    "sollte",
+    "sollten",
+    "solltest",
     "spent",
     "verfugen",
     "verfugst",
     "verfugt",
+    "vorweisen",
+    "vorweist",
 ];
 
 /// The joining words between the modifiers of a leading ellipsis and its head
@@ -206,6 +225,24 @@ pub(crate) const AND_WORDS: &[&str] = &[" und ", " sowie ", " and ", " & "];
 
 /// OR separators: alternatives inside an item.
 pub(crate) const OR: &[&str] = &[" oder ", " bzw. ", " beziehungsweise ", " or ", " / "];
+
+/// OR separators between two neighbours only (`Excel und/oder Power BI`): they make no phrase
+/// a list of alternatives.
+pub(crate) const AND_OR: &[&str] = &[" und/oder ", " and/or "];
+
+/// Words that open a relative clause after a comma (`, welche ...`, `, in denen ...`, `, which
+/// ...`): the clause belongs to what stands before it, no requirement of its own. An article
+/// opens one before a word in lower case (`, die die Zusammenarbeit fördern`).
+pub(crate) const RELATIVE_WORDS: &[&str] = &[
+    "denen", "deren", "dessen", "welche", "welchem", "welchen", "welcher", "welches", "where",
+    "which", "who", "whom", "whose", "wo", "wobei", "wodurch", "womit",
+];
+
+/// Prepositions before a relative word (`, in denen`, `, mit der Sie`, `, in which`).
+pub(crate) const CLAUSE_PREPOSITIONS: &[&str] = &[
+    "an", "auf", "aus", "bei", "by", "durch", "for", "from", "fur", "in", "mit", "nach", "of",
+    "on", "uber", "unter", "von", "with", "zu",
+];
 
 /// Phrases that make an item soft (`Freude an Zahlen`, `Leadership style`, `build teams`).
 pub(crate) const SOFT_PHRASES: &[&str] = &[

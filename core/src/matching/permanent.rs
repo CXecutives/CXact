@@ -18,6 +18,7 @@ use super::ad_facts::currency_code;
 use super::contract::{Contract, ContractKind};
 use super::facts::{Finding, HardCriteria, Segment, hourly_pay_in};
 use super::lexicon::engine as lex;
+use super::normalize::{amount_at, amount_sides, ends_word};
 use super::params::HOURS_PER_YEAR;
 use super::types::{CriterionKey, ReasonCode};
 
@@ -87,23 +88,8 @@ fn amounts(folded: &str) -> Vec<(usize, u64)> {
             continue;
         }
         let start = i;
-        let mut value: u64 = 0;
-        while i < bytes.len() {
-            let c = bytes[i];
-            if c.is_ascii_digit() {
-                value = value.saturating_mul(10).saturating_add(u64::from(c - b'0'));
-                i += 1;
-            } else if (c == b'.' || c == b',')
-                && bytes
-                    .get(i + 1..i + 4)
-                    .is_some_and(|d| d.iter().all(u8::is_ascii_digit))
-                && bytes.get(i + 4).is_none_or(|d| !d.is_ascii_digit())
-            {
-                i += 1;
-            } else {
-                break;
-            }
-        }
+        let (value, end) = amount_at(bytes, i);
+        i = end;
         let rest = folded[i..].trim_start();
         if rest.starts_with('%') || !money_context(folded, start, i) {
             continue;
@@ -125,26 +111,10 @@ fn amounts(folded: &str) -> Vec<(usize, u64)> {
 /// currency or salary word before it (`Gehalt: 120.000`, `€ 95.000`)? A count in the same
 /// sentence (`rund 11.000 Beschäftigte`) is none.
 fn money_context(folded: &str, start: usize, end: usize) -> bool {
-    let number = |c: char| c.is_whitespace() || c.is_ascii_digit() || matches!(c, '.' | ',');
-    let after = folded[end..].trim_start_matches(|c: char| number(c) || matches!(c, '-' | '–'));
-    let after = lex::RATE_RANGE_WORDS
-        .iter()
-        .find_map(|w| after.strip_prefix(w))
-        .map_or(after, |rest| rest.trim_start_matches(number));
-    let before = folded[..start]
-        .trim_end_matches(|c: char| number(c) || matches!(c, ':' | '(' | '~' | '-' | '–'));
-    let before = lex::RATE_RANGE_WORDS
-        .iter()
-        .find_map(|w| before.strip_suffix(w))
-        .map_or(before, |rest| {
-            rest.trim_end_matches(|c: char| number(c) || matches!(c, ':' | '(' | '-' | '–'))
-        });
+    let (after, before) = amount_sides(folded, start, end);
     // A unit that ends in a letter is a word of its own (`11.000 Kunden` is no `k`).
     let unit_after = |u: &&str| {
-        after.strip_prefix(*u).is_some_and(|rest| {
-            !u.ends_with(|c: char| c.is_alphabetic())
-                || rest.chars().next().is_none_or(|c| !c.is_alphanumeric())
-        })
+        after.starts_with(*u) && (!u.ends_with(char::is_alphabetic) || ends_word(after, u.len()))
     };
     lex::SALARY_UNITS.iter().any(unit_after)
         || lex::SALARY_UNITS

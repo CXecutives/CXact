@@ -7,10 +7,6 @@ use super::job;
 use super::lexicon::{self, engine as lex};
 use super::normalize::{is_space, strip};
 
-/// A heading has at most this many words (a longer line is a sentence that starts with a
-/// heading's word).
-const HEADING_WORDS: usize = 6;
-
 /// Headings and bullets of a text (UTF-16 `(start, end)` of `text`).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct TextLayout {
@@ -43,14 +39,6 @@ fn bullet(line: &str) -> Option<usize> {
     (!body.is_empty() && (spaced || !plain_ascii)).then_some(line.len() - body.len())
 }
 
-/// A heading the reader shows as one: the engine reads it as a heading, it is short and it
-/// names no number (`Bewerbungsfrist 15.10.2026` opens no section, it states a date).
-fn heading(line: &str) -> bool {
-    line.split(is_space).filter(|w| !w.is_empty()).count() <= HEADING_WORDS
-        && !line.chars().any(|c| c.is_ascii_digit())
-        && job::is_heading_line(line)
-}
-
 /// The layout of a text, line by line.
 pub fn text_layout(text: &str) -> TextLayout {
     let mut out = TextLayout::default();
@@ -62,7 +50,7 @@ pub fn text_layout(text: &str) -> TextLayout {
             if let Some(length) = bullet(words) {
                 out.bullets
                     .push((utf16(text, from), utf16(text, from + length)));
-            } else if heading(words) {
+            } else if job::is_heading_line(words) {
                 out.headings
                     .push((utf16(text, from), utf16(text, from + words.len())));
             }

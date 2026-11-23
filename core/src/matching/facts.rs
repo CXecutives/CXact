@@ -20,7 +20,10 @@ use serde_json::{Value, json};
 use super::atoms::fold;
 use super::contract::{Contract, ContractKind};
 use super::lexicon::engine as lex;
-use super::normalize::{contains_word, sentences, splitlines};
+use super::normalize::{
+    amount_at, amount_sides, clauses, contains_word, contains_word_with, ends_word, find_word,
+    month_named, numeric_date, quarter, sentences, splitlines, starts_word, word_bounded,
+};
 use super::params::HOURS_PER_DAY;
 use super::types::{CriterionKey, ReasonCode, ReasonKind};
 use crate::portal::Portal;
@@ -195,33 +198,13 @@ pub(crate) fn own_text(text: &str) -> &str {
     let mut offset = 0;
     for line in text.split_inclusive('\n') {
         let folded = fold(line.trim());
-        let heading = folded.chars().count() <= 48 && is_listings_heading(&folded);
+        let heading = super::sections::is_listings_heading(&folded);
         if heading && offset > 0 {
             return &text[..offset];
         }
         offset += line.len();
     }
     text
-}
-
-/// A folded line that heads the other listings of a portal: a heading of
-/// `lexicon::OTHER_LISTINGS` as whole words, then nothing, a count (`(12)`), a colon or a
-/// known tail (`anzeigen`, `dieses Anbieters`). A line that goes on is a sentence of the ad
-/// (`Ähnliche Projekterfahrung von Vorteil`, `Weitere Projekte sind geplant.`).
-pub(crate) fn is_listings_heading(folded: &str) -> bool {
-    lex::OTHER_LISTINGS.iter().any(|heading| {
-        let Some(tail) = folded.strip_prefix(heading) else {
-            return false;
-        };
-        if tail.chars().next().is_some_and(char::is_alphanumeric) {
-            return false;
-        }
-        let tail = tail.trim().trim_end_matches(':').trim_end();
-        let count = tail.trim_start_matches('(').trim_end_matches(')');
-        tail.is_empty()
-            || (!count.is_empty() && count.chars().all(|c| c.is_ascii_digit()))
-            || lex::LISTING_TAILS.contains(&tail)
-    })
 }
 
 /// Sentences of the text (also split at ` // `, ` · `, ` | `, ` • `), as byte ranges with
@@ -438,7 +421,9 @@ fn anue_topic(folded: &str, named: &dyn Fn(&str) -> bool) -> bool {
     if lex::ANUE_BUSINESS.iter().any(|w| folded.contains(w)) && !placed(folded) {
         return true;
     }
-    let clauses: Vec<&str> = folded.split([',', ';']).filter(|c| mentions(c)).collect();
+    let clauses: Vec<&str> = clauses(folded, &[',', ';'])
+        .filter(|c| mentions(c))
+        .collect();
     if clauses.iter().any(|c| anue_governed(c)) {
         return true;
     }
@@ -459,23 +444,11 @@ fn topic_cue(word: &str) -> bool {
 /// before it with only linking words between (`Erfahrung im Einsatz von`), or a requirement
 /// right after it (`Arbeitnehmerüberlassung von Vorteil`)?
 fn anue_governed(clause: &str) -> bool {
-    let word_at = |w: &str| {
-        clause.match_indices(w).map(|(at, _)| at).find(|&at| {
-            clause[..at]
-                .chars()
-                .next_back()
-                .is_none_or(|c| !c.is_alphanumeric())
-                && clause[at + w.len()..]
-                    .chars()
-                    .next()
-                    .is_none_or(|c| !c.is_alphanumeric())
-        })
-    };
     let parts = lex::ANUE_PARTS.iter().filter_map(|p| clause.find(p));
     let words = lex::ANUE_WORDS
         .iter()
         .chain(lex::ANUE_HIDDEN)
-        .filter_map(|w| word_at(w));
+        .filter_map(|w| find_word(clause, w));
     let Some(at) = parts.chain(words).min() else {
         return false;
     };
@@ -543,10 +516,7 @@ fn countries_at(folded: &str) -> Vec<(usize, &'static str)> {
         let at = word.as_ptr() as usize - folded.as_ptr() as usize;
         let rest = &folded[at..];
         for &(name, code) in names {
-            let whole = rest
-                .strip_prefix(name)
-                .is_some_and(|after| after.chars().next().is_none_or(|c| !c.is_alphanumeric()));
-            if whole {
+            if rest.starts_with(name) && ends_word(rest, name.len()) {
                 found.push((at, code));
             }
         }
@@ -569,12 +539,7 @@ fn place_cues(folded: &str) -> Vec<(usize, bool)> {
         .chain(lex::TRAVEL_WORDS.iter().flat_map(|w| {
             folded
                 .match_indices(w)
-                .filter(|(at, _)| {
-                    let before = folded[..*at].chars().next_back();
-                    let after = folded[at + w.len()..].chars().next();
-                    before.is_none_or(|c| !c.is_alphanumeric())
-                        && after.is_none_or(|c| !c.is_alphanumeric())
-                })
+                .filter(|(at, _)| word_bounded(folded, *at, at + w.len()))
                 .map(|(at, _)| (at, false))
         }))
         .collect();
@@ -642,8 +607,9 @@ fn places_of_work(
         let home_on_site = here.iter().any(|c| allowed.iter().any(|a| a == c))
             || (!place
                 && home.iter().any(|word| {
-                    f.match_indices(word)
-                        .any(|(at, _)| word_at(f, at, word.len()) && cue_at(at) == Some(true))
+                    f.match_indices(word).any(|(at, _)| {
+                        word_bounded(f, at, at + word.len()) && cue_at(at) == Some(true)
+                    })
                 }));
         if home_on_site {
             here.retain(|c| {
@@ -663,13 +629,6 @@ fn places_of_work(
         travel.extend(away.into_iter().map(|c| (c, range.clone())));
     }
     (onsite, travel)
-}
-
-/// Is `folded[at..at + len]` a whole word?
-fn word_at(folded: &str, at: usize, len: usize) -> bool {
-    let before = folded[..at].chars().next_back();
-    let after = folded[at + len..].chars().next();
-    before.is_none_or(|c| !c.is_alphanumeric()) && after.is_none_or(|c| !c.is_alphanumeric())
 }
 
 fn country(
@@ -842,8 +801,7 @@ pub(crate) fn hourly_pay_in(folded: &str) -> Option<Rate> {
 /// The rates of the clauses of a sentence. A sentence that is employment pay as a whole
 /// (`18,50 € pro Stunde (brutto)`) makes every rate in it a wage.
 fn clause_rates(folded: &str) -> impl Iterator<Item = Rate> {
-    let rates: Vec<Rate> = folded
-        .split([';', '(', ')'])
+    let rates: Vec<Rate> = clauses(folded, &[';', '(', ')'])
         .flat_map(|part| part.split(" oder "))
         .flat_map(|part| part.split(" or "))
         .filter_map(parse_rate)
@@ -872,7 +830,7 @@ pub(crate) fn is_wage(folded: &str) -> bool {
     let scale = || {
         lex::PAY_SCALE_WORDS
             .iter()
-            .any(|w| contains_word_form(folded, w))
+            .any(|w| contains_word_with(folded, w, lex::PAY_SCALE_ENDINGS))
             || lex::PAY_SCALE_HEADS.iter().any(|w| ends_a_word(folded, w))
     };
     explicit || (scale() && !names_freelance_rate(folded))
@@ -881,31 +839,9 @@ pub(crate) fn is_wage(folded: &str) -> bool {
 /// A phrase with word boundaries; one that starts with a sign (`/h gross`) needs only the
 /// boundary after it (`€18/h gross`).
 fn contains_phrase(folded: &str, phrase: &str) -> bool {
-    if phrase.starts_with(char::is_alphanumeric) {
-        return contains_word(folded, phrase);
-    }
     folded.match_indices(phrase).any(|(at, _)| {
-        folded[at + phrase.len()..]
-            .chars()
-            .next()
-            .is_none_or(|c| !c.is_alphanumeric())
-    })
-}
-
-/// A word (or phrase) whose last word may take an ending of `PAY_SCALE_ENDINGS`
-/// (`tarifliche`, `nach Tarifvertrages`), never inside another word.
-fn contains_word_form(folded: &str, word: &str) -> bool {
-    folded.match_indices(word).any(|(start, _)| {
-        let end = start + word.len();
-        let before = folded[..start]
-            .chars()
-            .next_back()
-            .is_none_or(|c| !c.is_alphanumeric());
-        let rest = &folded[end..];
-        let tail = &rest[..rest
-            .find(|c: char| !c.is_alphanumeric())
-            .unwrap_or(rest.len())];
-        before && lex::PAY_SCALE_ENDINGS.contains(&tail)
+        (!phrase.starts_with(char::is_alphanumeric) || starts_word(folded, at))
+            && ends_word(folded, at + phrase.len())
     })
 }
 
@@ -962,23 +898,8 @@ pub(crate) fn parse_rate(folded: &str) -> Option<Rate> {
             continue;
         }
         let start = i;
-        let mut value: u64 = 0;
-        while i < bytes.len() {
-            let c = bytes[i];
-            if c.is_ascii_digit() {
-                value = value.saturating_mul(10).saturating_add(u64::from(c - b'0'));
-                i += 1;
-            } else if (c == b'.' || c == b',')
-                && bytes
-                    .get(i + 1..i + 4)
-                    .is_some_and(|d| d.iter().all(u8::is_ascii_digit))
-                && bytes.get(i + 4).is_none_or(|d| !d.is_ascii_digit())
-            {
-                i += 1; // thousands separator
-            } else {
-                break;
-            }
-        }
+        let (value, end) = amount_at(bytes, i);
+        i = end;
         let date = date_part(bytes, start, i);
         // Decimals (",50", ",-") and percentages are no separate amounts.
         if i < bytes.len() && (bytes[i] == b',' || bytes[i] == b'.') && !date {
@@ -1045,43 +966,12 @@ fn date_part(bytes: &[u8], start: usize, end: usize) -> bool {
 /// Does a currency or rate unit follow the amount (after a range such as `- 1.100`), or a
 /// currency or rate word precede it (`Tagessatz: bis`, `EUR`)?
 fn rate_context(folded: &str, start: usize, end: usize) -> bool {
-    let after = folded.get(end..).unwrap_or("");
-    let rest = after.trim_start_matches(|c: char| {
-        c.is_whitespace() || c.is_ascii_digit() || matches!(c, '.' | ',' | '-' | '–')
-    });
-    let rest = lex::RATE_RANGE_WORDS
-        .iter()
-        .find_map(|w| rest.strip_prefix(w))
-        .map_or(rest, |r| {
-            r.trim_start_matches(|c: char| {
-                c.is_whitespace() || c.is_ascii_digit() || matches!(c, '.' | ',' | '-')
-            })
-        });
-    if lex::RATE_UNITS.iter().any(|u| rest.starts_with(u)) {
-        return true;
-    }
-    // The upper end of a range looks past the lower one (`EUR 950–1,100`).
-    let before = folded
-        .get(..start)
-        .unwrap_or("")
-        .trim_end_matches(|c: char| {
-            c.is_whitespace()
-                || c.is_ascii_digit()
-                || matches!(c, ':' | '(' | '~' | '-' | '–' | '.' | ',')
-        });
-    let before = lex::RATE_RANGE_WORDS
-        .iter()
-        .find_map(|w| before.strip_suffix(w))
-        .map_or(before, |b| {
-            // `EUR 1,100 to 1,250`: past the lower end of the range to its unit.
-            b.trim_end_matches(|c: char| {
-                c.is_whitespace() || c.is_ascii_digit() || matches!(c, ':' | '(' | '.' | ',')
-            })
-        });
-    lex::RATE_UNITS
-        .iter()
-        .chain(lex::RATE_WORDS)
-        .any(|w| before.ends_with(w))
+    let (after, before) = amount_sides(folded, start, end);
+    lex::RATE_UNITS.iter().any(|u| after.starts_with(u))
+        || lex::RATE_UNITS
+            .iter()
+            .chain(lex::RATE_WORDS)
+            .any(|w| before.ends_with(w))
 }
 
 fn day_rate(
@@ -1155,45 +1045,20 @@ pub(crate) fn parse_start(text: &str) -> Option<Start> {
         .filter(|w| !w.is_empty())
         .collect();
     for (i, word) in words.iter().enumerate() {
-        let parts: Vec<&str> = word.split(['.', '/', '-']).collect();
-        let year_of = |s: &str| s.parse::<i16>().ok().filter(|_| s.len() == 4);
-        let small = |s: &str| s.parse::<i8>().ok().filter(|_| s.len() <= 2);
-        // A part that is no date (a phone number `0170.1234.5678`) is skipped, it does not
+        // A word that is no date (a phone number `0170.1234.5678`) is skipped, it does not
         // end the search.
-        let date = match parts.as_slice() {
-            // ISO: 2026-11-01.
-            [y, m, d] if word.contains('-') => year_of(y)
-                .zip(small(m))
-                .zip(small(d))
-                .and_then(|((y, m), d)| Date::new(y, m, d).ok()),
-            [d, m, y] => year_of(y)
-                .zip(small(m))
-                .zip(small(d))
-                .and_then(|((y, m), d)| Date::new(y, m, d).ok()),
-            [m, y] => year_of(y)
-                .zip(small(m))
-                .and_then(|(y, m)| Date::new(y, m, 1).ok()),
-            _ => None,
-        };
-        if let Some(date) = date {
+        if let Some((year, month, day)) = numeric_date(word)
+            && let Ok(date) = Date::new(year, month, day.unwrap_or(1))
+        {
             return Some(Start::Date(date));
         }
         let year = words
             .get(i + 1)
             .and_then(|w| w.parse::<i16>().ok())
             .filter(|y| *y > 2000);
-        if let Some(&(_, month)) = lex::MONTHS.iter().find(|(name, _)| name == word)
-            && let Some(year) = year
+        let month = month_named(word).or_else(|| quarter(word).map(|q| 3 * q - 2));
+        if let (Some(year), Some(month)) = (year, month)
             && let Ok(date) = Date::new(year, month, 1)
-        {
-            return Some(Start::Date(date));
-        }
-        if let Some(quarter) = word
-            .strip_prefix('q')
-            .and_then(|q| q.parse::<i8>().ok())
-            .filter(|q| (1..=4).contains(q))
-            && let Some(year) = year
-            && let Ok(date) = Date::new(year, 3 * quarter - 2, 1)
         {
             return Some(Start::Date(date));
         }

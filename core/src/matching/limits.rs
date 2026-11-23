@@ -15,7 +15,7 @@ use super::ad_facts::{AdFacts, Duration, Stated};
 use super::contract::ContractKind;
 use super::facts::{Finding, HardCriteria, JobFacts, Segment, fact};
 use super::lexicon::engine as lex;
-use super::normalize::contains_word;
+use super::normalize::{clauses, contains_word, number_word};
 use super::types::{CriterionKey, ReasonCode};
 
 /// Share of a week of one day.
@@ -60,7 +60,7 @@ pub(crate) fn read(job: &JobFacts<'_>, segments: &[Segment]) -> Option<Stated<Wo
             .iter()
             .filter(|(_, f)| workload_cue(f) == cued)
             .find_map(|(range, f)| {
-                clauses(f)
+                clauses(f, &[',', ';'])
                     .find_map(|c| numeric_workload(c, cued))
                     .map(|w| stated(w, Some(range.clone())))
             })
@@ -88,26 +88,6 @@ fn stated(value: Workload, span: Option<Range<usize>>) -> Stated<Workload> {
 /// `Teilzeit`)?
 fn workload_cue(folded: &str) -> bool {
     lex::WORKLOAD_CUES.iter().any(|w| folded.contains(w))
-}
-
-/// Clauses of a sentence at `;` and at a comma that is no decimal comma (`38,5 Stunden`); a
-/// parenthesis stays with its clause (`Teilzeit (50 %)`).
-fn clauses(folded: &str) -> impl Iterator<Item = &str> {
-    let bytes = folded.as_bytes();
-    let digit = |i: usize| bytes.get(i).is_some_and(u8::is_ascii_digit);
-    let mut cuts = vec![0];
-    for (i, b) in bytes.iter().enumerate() {
-        let decimal = *b == b',' && i > 0 && digit(i - 1) && digit(i + 1);
-        if (*b == b',' && !decimal) || *b == b';' {
-            cuts.push(i);
-            cuts.push(i + 1);
-        }
-    }
-    cuts.push(folded.len());
-    cuts.chunks(2)
-        .map(move |pair| &folded[pair[0]..pair[1]])
-        .collect::<Vec<_>>()
-        .into_iter()
 }
 
 /// Words, numbers and the signs `/`, `%`, `-` of a folded clause; a decimal part stays with
@@ -154,12 +134,7 @@ fn tokens(clause: &str) -> Vec<&str> {
 /// A number token (its whole part) or a small number word.
 fn number(token: &str) -> Option<u32> {
     let whole = token.split([',', '.']).next().unwrap_or(token);
-    whole.parse::<u32>().ok().or_else(|| {
-        lex::WORKLOAD_NUMBER_WORDS
-            .iter()
-            .find(|(word, _)| *word == token)
-            .map(|(_, n)| *n)
-    })
+    whole.parse::<u32>().ok().or_else(|| number_word(token))
 }
 
 /// A number at `i`, with the upper end of a range after it (`3-4`, `16 bis 20`); the index
@@ -395,7 +370,7 @@ mod tests {
 
     fn of(text: &str) -> Option<(Option<u8>, u8)> {
         let folded = fold(text);
-        clauses(&folded)
+        clauses(&folded, &[',', ';'])
             .find_map(|c| numeric_workload(c, workload_cue(&folded)))
             .or_else(|| word_workload(&folded))
             .map(|w| (w.from, w.to))

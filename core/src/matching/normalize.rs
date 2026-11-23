@@ -294,24 +294,194 @@ pub(crate) fn sentences(line: &str) -> Vec<&str> {
 
 /// Whole-word (or whole-phrase) containment in a folded text.
 pub(crate) fn contains_word(folded: &str, word: &str) -> bool {
-    let mut from = 0;
-    while let Some(at) = folded[from..].find(word) {
-        let start = from + at;
-        let end = start + word.len();
-        let before = folded[..start]
-            .chars()
-            .next_back()
-            .is_none_or(|c| !c.is_alphanumeric());
-        let after = folded[end..]
-            .chars()
-            .next()
-            .is_none_or(|c| !c.is_alphanumeric());
-        if before && after {
-            return true;
+    contains_word_with(folded, word, &[""])
+}
+
+/// Is `word` in a text where a word starts, its end followed by one of `endings` and the end
+/// of a word (`""`: right at the end; `tarifliche` for `tariflich` with `e`)?
+pub(crate) fn contains_word_with(text: &str, word: &str, endings: &[&str]) -> bool {
+    text.match_indices(word).any(|(at, _)| {
+        let rest = &text[at + word.len()..];
+        let tail = &rest[..rest
+            .find(|c: char| !c.is_alphanumeric())
+            .unwrap_or(rest.len())];
+        starts_word(text, at) && endings.contains(&tail)
+    })
+}
+
+/// The first whole-word (or whole-phrase) occurrence of `word` in a text: no letter or digit
+/// right before or after it.
+pub(crate) fn find_word(text: &str, word: &str) -> Option<usize> {
+    text.match_indices(word)
+        .map(|(at, _)| at)
+        .find(|&at| word_bounded(text, at, at + word.len()))
+}
+
+/// Is `text[start..end]` bounded as a word (no letter or digit right before or after it)?
+pub(crate) fn word_bounded(text: &str, start: usize, end: usize) -> bool {
+    starts_word(text, start) && ends_word(text, end)
+}
+
+/// Does no letter or digit stand right before byte `at`?
+pub(crate) fn starts_word(text: &str, at: usize) -> bool {
+    text[..at]
+        .chars()
+        .next_back()
+        .is_none_or(|c| !c.is_alphanumeric())
+}
+
+/// Does no letter or digit stand at byte `at`?
+pub(crate) fn ends_word(text: &str, at: usize) -> bool {
+    text[at..]
+        .chars()
+        .next()
+        .is_none_or(|c| !c.is_alphanumeric())
+}
+
+/// The words of a text with their byte offsets: runs of letters and digits, with `inner` signs
+/// inside a word (`Müller-Lüdenscheidt`).
+pub(crate) fn word_spans<'a>(text: &'a str, inner: &[char]) -> Vec<(usize, &'a str)> {
+    let mut out = Vec::new();
+    let mut start = None;
+    for (at, c) in text.char_indices() {
+        let inside = c.is_alphanumeric() || (start.is_some() && inner.contains(&c));
+        match (inside, start) {
+            (true, None) => start = Some(at),
+            (false, Some(from)) => {
+                out.push((from, &text[from..at]));
+                start = None;
+            }
+            _ => {}
         }
-        from = end;
     }
-    false
+    if let Some(from) = start {
+        out.push((from, &text[from..]));
+    }
+    out
+}
+
+/// Whether the words from `at` are `phrase` (words separated by single spaces), its last word
+/// perhaps with one of `endings`; the index after it.
+pub(crate) fn phrase_at<S: AsRef<str>>(
+    words: &[S],
+    at: usize,
+    phrase: &str,
+    endings: &[&str],
+) -> Option<usize> {
+    let parts: Vec<&str> = phrase.split(' ').collect();
+    for (i, part) in parts.iter().enumerate() {
+        let word = words.get(at + i)?.as_ref();
+        let ending = || {
+            i + 1 == parts.len()
+                && word
+                    .strip_prefix(part)
+                    .is_some_and(|rest| endings.contains(&rest))
+        };
+        if word != *part && !ending() {
+            return None;
+        }
+    }
+    Some(at + parts.len())
+}
+
+/// A date written as one word: a day (`31.03.2027`, `2027-03-31`) or a month (`03/2027`), as
+/// (year, month, the day if it names one). A year has four digits.
+pub(crate) fn numeric_date(word: &str) -> Option<(i16, i8, Option<i8>)> {
+    let year = |s: &str| s.parse::<i16>().ok().filter(|_| s.len() == 4);
+    let small = |s: &str| s.parse::<i8>().ok().filter(|_| s.len() <= 2);
+    match word.split(['.', '/', '-']).collect::<Vec<_>>().as_slice() {
+        [y, m, d] if word.contains('-') && y.len() == 4 => {
+            Some((year(y)?, small(m)?, Some(small(d)?)))
+        }
+        [d, m, y] => Some((year(y)?, small(m)?, Some(small(d)?))),
+        [m, y] => Some((year(y)?, small(m)?, None)),
+        _ => None,
+    }
+}
+
+/// The month a folded word names (`marz`, `march`, `mar`: `lex::MONTHS`).
+pub(crate) fn month_named(word: &str) -> Option<i8> {
+    lexicon::engine::MONTHS
+        .iter()
+        .find(|(name, _)| *name == word)
+        .map(|&(_, month)| month)
+}
+
+/// The quarter a folded word names (`q2`).
+pub(crate) fn quarter(word: &str) -> Option<i8> {
+    word.strip_prefix('q')
+        .and_then(|q| q.parse::<i8>().ok())
+        .filter(|q| (1..=4).contains(q))
+}
+
+/// The number a word names (`zwei`, `five`, `NUMBER_WORDS`).
+pub(crate) fn number_word(word: &str) -> Option<u32> {
+    lexicon::engine::NUMBER_WORDS
+        .iter()
+        .find(|(w, _)| *w == word)
+        .map(|&(_, n)| n)
+}
+
+/// The text after an amount (`start..end` of `text`) and the text before it, each past a range
+/// (`950 - 1.100`, `bis 1.200`, `1,100 to 1,250`): where its unit or the word for it stands.
+pub(crate) fn amount_sides(text: &str, start: usize, end: usize) -> (&str, &str) {
+    let ranges = lexicon::engine::RATE_RANGE_WORDS;
+    let number =
+        |c: char| c.is_whitespace() || c.is_ascii_digit() || matches!(c, '.' | ',' | '-' | '–');
+    let after = text[end..].trim_start_matches(number);
+    let after = ranges
+        .iter()
+        .find_map(|w| after.strip_prefix(w))
+        .map_or(after, |rest| rest.trim_start_matches(number));
+    let sign = |c: char| number(c) || matches!(c, ':' | '(' | '~');
+    let before = text[..start].trim_end_matches(sign);
+    let before = ranges
+        .iter()
+        .find_map(|w| before.strip_suffix(w))
+        .map_or(before, |rest| rest.trim_end_matches(sign));
+    (after, before)
+}
+
+/// The amount written from byte `start` of a digit run, thousands separators included
+/// (`1.200`, `95,000`): its value (saturating) and the byte after it.
+pub(crate) fn amount_at(bytes: &[u8], start: usize) -> (u64, usize) {
+    let mut value: u64 = 0;
+    let mut i = start;
+    while i < bytes.len() {
+        let c = bytes[i];
+        if c.is_ascii_digit() {
+            value = value.saturating_mul(10).saturating_add(u64::from(c - b'0'));
+            i += 1;
+        } else if (c == b'.' || c == b',')
+            && bytes
+                .get(i + 1..i + 4)
+                .is_some_and(|d| d.iter().all(u8::is_ascii_digit))
+            && bytes.get(i + 4).is_none_or(|d| !d.is_ascii_digit())
+        {
+            i += 1;
+        } else {
+            break;
+        }
+    }
+    (value, i)
+}
+
+/// Clauses of a sentence, cut at `breaks`, never at a decimal comma (`38,5 Stunden`); a cut
+/// sign belongs to no clause.
+pub(crate) fn clauses<'a>(text: &'a str, breaks: &'a [char]) -> impl Iterator<Item = &'a str> {
+    let bytes = text.as_bytes();
+    let digit = |i: usize| bytes.get(i).is_some_and(u8::is_ascii_digit);
+    let mut start = 0;
+    let mut cuts = Vec::new();
+    for (at, c) in text.char_indices() {
+        let decimal = c == ',' && at > 0 && digit(at - 1) && digit(at + 1);
+        if breaks.contains(&c) && !decimal {
+            cuts.push(&text[start..at]);
+            start = at + c.len_utf8();
+        }
+    }
+    cuts.push(&text[start..]);
+    cuts.into_iter()
 }
 
 #[cfg(test)]
@@ -366,5 +536,17 @@ mod tests {
             ["sap", "s/4hana", "ki", "power", "bi"]
         );
         assert_eq!(raw_canonical("Project Management"), ["projektmanagement"]);
+    }
+
+    #[test]
+    fn dates_written_as_one_word() {
+        assert_eq!(numeric_date("31.03.2027"), Some((2027, 3, Some(31))));
+        assert_eq!(numeric_date("2027-03-31"), Some((2027, 3, Some(31))));
+        assert_eq!(numeric_date("03/2027"), Some((2027, 3, None)));
+        assert_eq!(numeric_date("0170.1234.5678"), None);
+        assert_eq!(numeric_date("3-6"), None);
+        assert_eq!(month_named("marz"), Some(3));
+        assert_eq!(quarter("q2"), Some(2));
+        assert_eq!(quarter("q5"), None);
     }
 }
