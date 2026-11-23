@@ -12,7 +12,6 @@ use super::CompiledProfile;
 use super::atoms::{self, Fit, Vocab};
 use super::engine::{self, EngineProfile, Scored};
 use super::facts::Finding;
-use super::fit;
 use super::job::Class;
 use super::normalize;
 use super::params::{E_FULL, E_NONE};
@@ -38,8 +37,7 @@ pub enum Sig {
     Relevance,
     /// No skill must met at all (1): outside the field.
     OffField,
-    /// The ad's level against the target roles: 0 a wished level or none to judge, 1 one
-    /// above, 2 one below, 3 two or more above, 4 two or more below.
+    /// The ad's level against the target roles, the index into [`LEVEL_CODES`].
     Level,
     /// The musts on the core of the role (what the title or the ad's field names): met in
     /// full, in part, open.
@@ -72,6 +70,10 @@ pub enum Sig {
     /// 2 near, 3 the same family.
     Family,
 }
+
+/// The levels of an ad against the target roles, as the explanation names them: a wished
+/// level or none to judge, one above, one below, two or more above, two or more below.
+pub(crate) const LEVEL_CODES: [&str; 5] = ["at", "oneAbove", "oneBelow", "twoAbove", "twoBelow"];
 
 /// Most requirements of one kind a signal counts.
 const COUNT_MAX: u16 = 30;
@@ -306,15 +308,7 @@ pub fn trace(profile: &CompiledProfile, input: &JobInput<'_>) -> Trace {
     if profile.quality() == super::ProfileQuality::Empty {
         return Trace::default();
     }
-    fit::forget();
-    let masked = normalize::mask_placeholders(input.text);
-    let read = JobInput {
-        text: &masked,
-        ..*input
-    };
-    let e = engine::evaluate(&profile.engine, &read);
-    let title = title::clean(read.title);
-    let core = CoreTest::new(&profile.engine, &title, e.field.map(|(f, _)| f));
+    let (text, e) = engine::read(&profile.engine, input);
     Trace {
         signals: e.signals,
         total: e.percent.total,
@@ -325,11 +319,11 @@ pub fn trace(profile: &CompiledProfile, input: &JobInput<'_>) -> Trace {
             .iter()
             .map(|x| TraceItem {
                 line: x.item.span.as_ref().map_or_else(String::new, |span| {
-                    let start = read.text[..span.start].rfind('\n').map_or(0, |i| i + 1);
-                    let end = read.text[span.start..]
+                    let start = text[..span.start].rfind('\n').map_or(0, |i| i + 1);
+                    let end = text[span.start..]
                         .find('\n')
-                        .map_or(read.text.len(), |i| span.start + i);
-                    read.text[start..end].trim().to_owned()
+                        .map_or(text.len(), |i| span.start + i);
+                    text[start..end].trim().to_owned()
                 }),
                 text: x.item.text.clone(),
                 role: if engine::is_must(x) {
@@ -337,7 +331,7 @@ pub fn trace(profile: &CompiledProfile, input: &JobInput<'_>) -> Trace {
                 } else {
                     u8::from(engine::is_nice(x))
                 },
-                core: engine::is_must(x) && core.on_core(x),
+                core: x.core,
                 value: x.fit.value,
                 entry: x
                     .fit
@@ -349,7 +343,7 @@ pub fn trace(profile: &CompiledProfile, input: &JobInput<'_>) -> Trace {
     }
 }
 
-/// What the engine read of one job, handed over by `engine::evaluate`.
+/// What the engine read of one job, handed over by `engine::read`.
 pub(crate) struct Parts<'a> {
     /// The cleaned title.
     pub title: &'a str,
@@ -361,8 +355,8 @@ pub(crate) struct Parts<'a> {
     pub gap: u8,
     pub level_cap: bool,
     pub field: Option<(&'static str, Distance)>,
-    pub findings: &'a [Finding],
-    pub wishes: &'a [WishResult],
+    /// How each frame aspect stands ([`frame_aspects`]).
+    pub aspects: Aspects,
 }
 
 /// Does a requirement name an expectation every candidate meets (`tables::HYGIENE`; a
@@ -457,13 +451,12 @@ fn tally<'a>(items: impl Iterator<Item = &'a Scored>) -> [u64; 3] {
 pub(crate) fn compute(profile: &EngineProfile, parts: &Parts<'_>) -> Signals {
     let mut s = Signals::default();
     role_and_field(&mut s, profile, parts);
-    let core = CoreTest::new(profile, parts.title, parts.field.map(|(f, _)| f));
     let musts: Vec<&Scored> = parts.items.iter().filter(|x| engine::is_must(x)).collect();
-    let [met, partial, open] = tally(musts.iter().copied().filter(|m| core.on_core(m)));
+    let [met, partial, open] = tally(musts.iter().copied().filter(|m| m.core));
     s.set(Sig::CoreMet, met);
     s.set(Sig::CorePartial, partial);
     s.set(Sig::CoreOpen, open);
-    let [met, partial, open] = tally(musts.iter().copied().filter(|m| !core.on_core(m)));
+    let [met, partial, open] = tally(musts.iter().copied().filter(|m| !m.core));
     s.set(Sig::OtherMet, met);
     s.set(Sig::OtherPartial, partial);
     s.set(Sig::OtherOpen, open);
@@ -486,9 +479,12 @@ pub(crate) fn compute(profile: &EngineProfile, parts: &Parts<'_>) -> Signals {
     s.set(Sig::NiceMet, met);
     s.set(Sig::NicePartial, partial);
     s.set(Sig::NiceOpen, open);
-    let (near, missed) = frame(parts.findings, parts.wishes);
-    s.set(Sig::FrameNear, near);
-    s.set(Sig::FrameMissed, missed);
+    for (sig, state) in [(Sig::FrameNear, 1), (Sig::FrameMissed, 2)] {
+        s.set(
+            sig,
+            parts.aspects.iter().map(|&a| u64::from(a == state)).sum(),
+        );
+    }
     s
 }
 
@@ -539,14 +535,15 @@ fn role_and_field(s: &mut Signals, profile: &EngineProfile, parts: &Parts<'_>) {
 pub(crate) const FRAME_CODES: [&str; FRAME_ASPECTS as usize] =
     ["rate", "place", "start", "duration", "workload"];
 
+/// How each frame aspect stands, in the order of [`FRAME_CODES`]: 0 fits or is not stated, 1
+/// met in part, 2 missed.
+pub(crate) type Aspects = [u8; FRAME_ASPECTS as usize];
+
 /// How each frame aspect stands (day rate, work mode and place, start, duration, workload):
 /// 0 fits or is not stated, 1 met in part, 2 missed (the worst of what speaks to it; a hard
 /// criterion clearly broken excludes and is no frame aspect).
-pub(crate) fn frame_aspects(
-    findings: &[Finding],
-    wishes: &[WishResult],
-) -> [u8; FRAME_ASPECTS as usize] {
-    let mut aspects = [0u8; FRAME_ASPECTS as usize];
+pub(crate) fn frame_aspects(findings: &[Finding], wishes: &[WishResult]) -> Aspects {
+    let mut aspects = Aspects::default();
     for wish in wishes {
         let index = match wish.code {
             ReasonCode::DayRateWish => 0,
@@ -571,15 +568,6 @@ pub(crate) fn frame_aspects(
         aspects[index] = aspects[index].max(state);
     }
     aspects
-}
-
-/// The frame aspects met in part and clearly missed.
-fn frame(findings: &[Finding], wishes: &[WishResult]) -> (u64, u64) {
-    frame_aspects(findings, wishes)
-        .iter()
-        .fold((0u64, 0u64), |(n, m), a| {
-            (n + u64::from(*a == 1), m + u64::from(*a == 2))
-        })
 }
 
 #[cfg(test)]
@@ -662,7 +650,7 @@ mod tests {
     /// An ad that states nothing of the frame fits it in full: no frame step.
     #[test]
     fn an_unstated_frame_fits() {
-        assert_eq!(frame(&[], &[]), (0, 0));
+        assert_eq!(frame_aspects(&[], &[]), Aspects::default());
         assert_eq!(scorer::percent(&Signals::default()).steps, 0);
     }
 }

@@ -19,6 +19,7 @@ fn must(value: u16) -> Scored {
             via: Via::Exact,
         },
         weight: W_MUST,
+        core: false,
     }
 }
 

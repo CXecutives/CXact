@@ -157,6 +157,8 @@ pub(crate) struct Percent {
     pub shares: [u16; 3],
     /// The points of each content part, at most its weight.
     pub points: [u8; 3],
+    /// The musts the core and the other musts count: those named, at least their saturation.
+    pub counted: [u16; 2],
     /// The nice-to-have bonus (points, at most `NICE_MAX`, never above 100 with the parts).
     pub nice: u8,
     /// The content: the parts plus the bonus.
@@ -256,10 +258,25 @@ fn percent_with(s: &Signals, p: ScoreParams) -> Percent {
     } else {
         0
     };
+    let counted = |kinds: [Sig; 3], units: u64| {
+        let named = kinds.iter().map(|&k| u64::from(s.get(k))).sum::<u64>();
+        u16::try_from(named.max(units)).unwrap_or(u16::MAX)
+    };
+    let counted = [
+        counted(
+            [Sig::CoreMet, Sig::CorePartial, Sig::CoreOpen],
+            CORE_SATURATION,
+        ),
+        counted(
+            [Sig::OtherMet, Sig::OtherPartial, Sig::OtherOpen],
+            MUST_SATURATION,
+        ),
+    ];
     Percent {
         class: Some(class),
         shares: shares.map(|v| u16::try_from(v.min(1000)).unwrap_or(1000)),
         points,
+        counted,
         nice,
         content,
         frame,

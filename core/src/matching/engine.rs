@@ -19,7 +19,7 @@ use super::fit::{self, ItemFit, Skills};
 use super::job::{self, Class, Item, Stage};
 use super::lexicon::engine as lex;
 use super::limits;
-use super::normalize::{char_len, strip};
+use super::normalize::{self, char_len, strip};
 use super::params::{
     E_FULL, E_HALF, E_NONE, LANGUAGE_MUST_LEVEL, LOW_EVIDENCE_ITEMS, MIN_TEXT_CHARS,
     OFF_FIELD_TITLE_FIT, SENIOR_YEARS, THIN_MUSTS, THIN_TEXT_CHARS, W_MUST, W_SOFT, W_TERM,
@@ -31,7 +31,7 @@ use super::roles::{self, Role, RoleFit};
 use super::scorer::{self, Percent};
 use super::sections::ReqKind;
 use super::seniority;
-use super::signals::{self, Sig, Signals};
+use super::signals::{self, Aspects, Sig, Signals};
 use super::title::{self, Distance, ProfileLevel};
 use super::types::{CapCode, EvidenceLevel, JobInput, ReasonCode, TextKind, Verdict, Via};
 use super::wishes::{self, WishResult, Wishes};
@@ -100,6 +100,8 @@ pub(crate) struct Scored {
     pub item: Item,
     pub fit: ItemFit,
     pub weight: u64,
+    /// A must on the core of the role (`signals::CoreTest`).
+    pub core: bool,
 }
 
 /// Everything the engine found for one job.
@@ -132,6 +134,8 @@ pub(crate) struct Evaluation {
     pub field: Option<(&'static str, Distance)>,
     /// What the engine read, as the inputs of the Passungsgrad.
     pub signals: Signals,
+    /// How each frame aspect stands (`signals::frame_aspects`).
+    pub aspects: Aspects,
     /// Every cap that fired, with the highest score it allows (the lowest one holds).
     pub caps: Vec<Cap>,
 }
@@ -459,6 +463,7 @@ fn scored(profile: &EngineProfile, items: Vec<Item>, title: &str, far: bool) -> 
                 },
                 fit,
                 item,
+                core: false,
             }
         })
         .collect()
@@ -644,7 +649,7 @@ impl Frame {
 }
 
 /// Assesses one job.
-pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluation {
+fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluation {
     let text = job.text;
     let vocab = &profile.skills.vocab;
     let facts = job_facts(job);
@@ -659,7 +664,6 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
     let title = title::clean(job.title);
     // A short text still has its title: it is judged from the title and the field, without a
     // penalty for little text (the rubric's rule 8).
-    let title_only = short;
     let doc = if short {
         job::JobDoc::default()
     } else {
@@ -672,33 +676,29 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
     let requirement_lines = doc.requirement_lines;
     let frame = Frame::of(profile, &title, own, &doc.items, contract);
     let far = matches!(frame.field, Some((_, Distance::Far)));
-    let items = scored(profile, doc.items, &title, far);
+    let mut items = scored(profile, doc.items, &title, far);
+    let core = signals::CoreTest::new(profile, &title, frame.field.map(|(f, _)| f));
+    for x in &mut items {
+        x.core = is_must(x) && core.on_core(x);
+    }
     let relevance = relevance_of(profile, job, &title, &requirement_lines, items.is_empty());
     let evidence = evidence_level(job.kind, &items, must_weight(&items), char_len(strip(text)));
     let (formal, formal_cap) = formal(profile, &items);
     findings.extend(formal);
     let decided = findings.iter().any(|f| f.decided);
 
-    let readable = !short || title_only;
-    let (role, wishes) = if readable {
-        let ad = wishes::Ad {
-            job: &facts,
-            segments: &segments,
-            folded: &folded,
-            contract,
-            vocab,
-        };
-        preferences(profile, &ad, &title, frame.level)
-    } else {
-        (None, Vec::new())
+    let ad = wishes::Ad {
+        job: &facts,
+        segments: &segments,
+        folded: &folded,
+        contract,
+        vocab,
     };
+    let (role, wishes) = preferences(profile, &ad, &title, frame.level);
     // A short text whose title names neither the field nor a target role stays unscorable.
-    let unscorable = !readable || (short && relevance == 0 && role.is_none());
-    let (role, wishes) = if unscorable {
-        (None, Vec::new())
-    } else {
-        (role, wishes)
-    };
+    let unscorable = short && relevance == 0 && role.is_none();
+    let wishes = if unscorable { Vec::new() } else { wishes };
+    let aspects = signals::frame_aspects(&findings, &wishes);
     let title_fit = relevance::title_fit(&profile.query, &title, vocab);
     let mut signals = signals::compute(
         profile,
@@ -711,8 +711,7 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
             gap: frame.gap,
             level_cap: frame.caps(profile),
             field: frame.field,
-            findings: &findings,
-            wishes: &wishes,
+            aspects,
         },
     );
     for (sig, set) in [
@@ -746,8 +745,26 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
         level: frame.below(),
         field: frame.field,
         signals,
+        aspects,
         caps,
     }
+}
+
+/// Reads one job as the app does and returns the text it read: a new job (the texts the last
+/// one read are not read again), a page's placeholders masked (no word of the ad; the masked
+/// text keeps every byte offset, so the passages are counted in the text as the reader shows
+/// it).
+pub(crate) fn read(profile: &EngineProfile, job: &JobInput<'_>) -> (String, Evaluation) {
+    fit::forget();
+    let masked = normalize::mask_placeholders(job.text).into_owned();
+    let evaluation = evaluate(
+        profile,
+        &JobInput {
+            text: &masked,
+            ..*job
+        },
+    );
+    (masked, evaluation)
 }
 
 #[cfg(test)]

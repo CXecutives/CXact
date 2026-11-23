@@ -15,11 +15,10 @@ use super::job::{Class, Stage};
 use super::limits;
 use super::normalize::{char_len, strip};
 use super::params::{
-    CORE_SATURATION, E_FULL, E_NONE, FRAME_STEP, MUST_SATURATION, NICE_MAX, PERMANENT_FACTOR,
-    W_CORE, W_MUSTS, W_ROLE,
+    E_FULL, E_NONE, FRAME_STEP, NICE_MAX, PERMANENT_FACTOR, W_CORE, W_MUSTS, W_ROLE,
 };
 use super::permanent;
-use super::signals::{self, FRAME_CODES, Sig};
+use super::signals::{FRAME_CODES, LEVEL_CODES, Sig};
 use super::types::{
     Assessment, CapCode, CapLine, CriterionKey, CriterionState, CriterionStatus, Evidence,
     EvidenceLevel, Highlight, Part, PartCode, Reason, ReasonCode, ReasonKind, Summary, Verdict,
@@ -117,15 +116,6 @@ pub(crate) fn assessment(
         reasons: Vec::new(),
         highlights: Vec::new(),
     };
-    let mut summary = Summary {
-        must_met: 0,
-        must_partial: 0,
-        must_open: 0,
-        must_total: 0,
-        nice_met: 0,
-        nice_total: 0,
-        evidence: evaluation.evidence,
-    };
     for scored in &evaluation.items {
         let item = &scored.item;
         let kind = match scored.fit.value {
@@ -141,16 +131,6 @@ pub(crate) fn assessment(
         } else {
             Weight::Info
         };
-        match (weight, kind) {
-            (Weight::Must, ReasonKind::Met) => summary.must_met += 1,
-            (Weight::Must, ReasonKind::Partial) => summary.must_partial += 1,
-            (Weight::Must, _) => summary.must_open += 1,
-            (Weight::Nice, ReasonKind::Met) => summary.nice_met += 1,
-            _ => {}
-        }
-        if weight == Weight::Nice {
-            summary.nice_total += 1;
-        }
         let code = if item.stage == Stage::Vocabulary {
             ReasonCode::Term
         } else {
@@ -173,7 +153,6 @@ pub(crate) fn assessment(
             b.highlight(span);
         }
     }
-    summary.must_total = summary.must_met + summary.must_partial + summary.must_open;
 
     let criteria = criterion_states(profile, &mut b, evaluation);
     preferences(profile, &mut b, evaluation);
@@ -186,7 +165,7 @@ pub(crate) fn assessment(
     Assessment {
         verdict: evaluation.verdict,
         score: evaluation.score,
-        summary,
+        summary: summary(evaluation),
         reasons: b.reasons,
         highlights: b.highlights,
         criteria,
@@ -194,6 +173,24 @@ pub(crate) fn assessment(
         rank: evaluation.rank,
         parts,
         caps,
+    }
+}
+
+/// The musts and nice-to-haves as the signals count them: met in full, in part, open.
+fn summary(evaluation: &Evaluation) -> Summary {
+    let s = &evaluation.signals;
+    let sum = |kinds: &[Sig]| kinds.iter().map(|&k| s.get(k)).sum::<u16>();
+    let must_met = sum(&[Sig::CoreMet, Sig::OtherMet]);
+    let must_partial = sum(&[Sig::CorePartial, Sig::OtherPartial]);
+    let must_open = sum(&[Sig::CoreOpen, Sig::OtherOpen]);
+    Summary {
+        must_met,
+        must_partial,
+        must_open,
+        must_total: must_met + must_partial + must_open,
+        nice_met: s.get(Sig::NiceMet),
+        nice_total: sum(&[Sig::NiceMet, Sig::NicePartial, Sig::NiceOpen]),
+        evidence: evaluation.evidence,
     }
 }
 
@@ -210,7 +207,7 @@ fn role_params(profile: &EngineProfile, evaluation: &Evaluation) -> Value {
         ),
         None => (None, "none"),
     };
-    let level = ["at", "oneAbove", "oneBelow", "twoAbove", "twoBelow"]
+    let level = LEVEL_CODES
         .get(usize::from(evaluation.signals.get(Sig::Level)))
         .copied()
         .unwrap_or("at");
@@ -264,7 +261,7 @@ fn passung(profile: &EngineProfile, evaluation: &Evaluation) -> (Vec<Part>, Vec<
                 "met": core_met,
                 "partial": core_partial,
                 "total": core_total,
-                "counted": u64::from(core_total).max(CORE_SATURATION),
+                "counted": p.counted[0],
             }),
         ),
         line(
@@ -275,7 +272,7 @@ fn passung(profile: &EngineProfile, evaluation: &Evaluation) -> (Vec<Part>, Vec<
                 "met": musts_met,
                 "partial": musts_partial,
                 "total": musts_total,
-                "counted": u64::from(musts_total).max(MUST_SATURATION),
+                "counted": p.counted[1],
             }),
         ),
     ];
@@ -287,7 +284,8 @@ fn passung(profile: &EngineProfile, evaluation: &Evaluation) -> (Vec<Part>, Vec<
             json!({ "met": nice_met, "partial": nice_partial, "total": nice_total }),
         ));
     }
-    let worse = signals::frame_aspects(&evaluation.findings, &evaluation.wishes)
+    let worse = evaluation
+        .aspects
         .into_iter()
         .zip(FRAME_CODES)
         .filter(|(state, _)| *state > 0);
