@@ -24,7 +24,7 @@ use regex::Regex;
 use super::atoms::{fold, raw_tokens};
 use super::lexicon::domains::DOMAINS;
 use super::lexicon::engine as lex;
-use super::normalize::{any_word, contains_word};
+use super::normalize::{any_word, contains_word, holds_any};
 use super::relevance;
 
 /// The title without its noise: HTML entities decoded, a leading ID (`1083881 Power
@@ -55,21 +55,15 @@ pub(crate) fn clean(title: &str) -> String {
     relevance::clean_title(&text)
 }
 
-static TITLE_HEADS: LazyLock<HashMap<&'static str, (&'static str, u8)>> = LazyLock::new(|| {
+/// The head word a token is or ends with (the longest) and its level.
+fn head_level(token: &str) -> Option<(&'static str, u8)> {
     lex::TITLE_HEADS
         .iter()
-        .map(|&(head, level)| (head, (head, level)))
-        .collect()
-});
-
-/// The head word a token is or ends with (the longest, after three bytes or more) and its
-/// level.
-fn head_level(token: &str) -> Option<(&'static str, u8)> {
-    token
-        .char_indices()
-        .map(|(at, _)| at)
-        .filter(|&at| at == 0 || at >= 3)
-        .find_map(|at| TITLE_HEADS.get(&token[at..]).copied())
+        .filter(|(head, _)| {
+            token == *head || (token.len() >= head.len() + 3 && token.ends_with(head))
+        })
+        .max_by_key(|(head, _)| head.len())
+        .copied()
 }
 
 /// The level of a title's head noun (none when it names no head: `Customer Service`) and
@@ -128,19 +122,18 @@ pub(crate) fn engagement(title: &str) -> bool {
 }
 
 /// The level of an ad: its title's, moved by what the ad says of staff, or operative work
-/// where the title names no head and the ad asks for a vocational training (`own`: the ad
-/// without the other listings under it).
-pub(crate) fn ad_level(title: &str, own: &str) -> Option<u8> {
+/// where the title names no head and the ad asks for a vocational training (`folded`: the
+/// folded ad without the other listings under it).
+pub(crate) fn ad_level(title: &str, folded: &str) -> Option<u8> {
     let level = level_of(title);
-    let folded = fold(own);
-    if lex::NO_LEAD_CUES.iter().any(|c| folded.contains(c)) {
+    if holds_any(folded, lex::NO_LEAD_CUES) {
         return level.map(|l| l.min(3));
     }
-    if lex::LEAD_CUES.iter().any(|c| folded.contains(c)) {
+    if holds_any(folded, lex::LEAD_CUES) {
         return Some(level.map_or(4, |l| l.max(4)));
     }
     // A title without a head noun whose ad asks for a vocational training is operative work.
-    if level.is_none() && lex::OPERATIVE_CUES.iter().any(|c| folded.contains(c)) {
+    if level.is_none() && holds_any(folded, lex::OPERATIVE_CUES) {
         return Some(1);
     }
     level
@@ -368,21 +361,21 @@ mod tests {
         assert_eq!(
             ad_level(
                 "Referent Controlling",
-                "Sie übernehmen die disziplinarische Führung von 4 Mitarbeitenden."
+                &fold("Sie übernehmen die disziplinarische Führung von 4 Mitarbeitenden.")
             ),
             Some(4)
         );
         assert_eq!(
             ad_level(
                 "Head of Reporting",
-                "Die Rolle ist ohne Personalverantwortung."
+                &fold("Die Rolle ist ohne Personalverantwortung.")
             ),
             Some(3)
         );
         assert_eq!(
             ad_level(
                 "Customer Service",
-                "Abgeschlossene kaufmännische Ausbildung"
+                &fold("Abgeschlossene kaufmännische Ausbildung")
             ),
             Some(1)
         );

@@ -9,7 +9,7 @@ use super::lexicon::engine::{
 };
 use super::lexicon::{HeadingKind, engine as lex};
 use super::normalize::{
-    any_word, contains_word, find_word, holds_any, number_word, sentences, splitlines, strip,
+    any_word, contains_word, find_word, holds_any, sentences, splitlines, strip, years_named,
 };
 use super::requirements::extract_job_skills;
 use super::sections::{self, Line, ReqKind};

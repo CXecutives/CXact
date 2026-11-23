@@ -23,7 +23,7 @@ use super::contract::{Contract, ContractKind};
 use super::lexicon::engine as lex;
 use super::normalize::{
     amount_at, amount_sides, any_word, clauses, contains_word, contains_word_with, ends_word,
-    find_word, month_named, numeric_date, quarter, sentences, splitlines, starts_word,
+    find_word, holds_any, month_named, numeric_date, quarter, sentences, splitlines, starts_word,
     word_bounded,
 };
 use super::params::HOURS_PER_DAY;
@@ -202,11 +202,7 @@ fn line_parts(line: &str) -> Vec<&str> {
 pub(crate) fn own_text(text: &str) -> &str {
     let mut offset = 0;
     for line in text.split_inclusive('\n') {
-        let trimmed = line.trim();
-        let heading = offset > 0
-            && sections::listings_length(trimmed)
-            && sections::is_listings_heading(&fold(trimmed));
-        if heading {
+        if offset > 0 && sections::heads_listings(line.trim()) {
             return &text[..offset];
         }
         offset += line.len();
@@ -511,6 +507,10 @@ static PLACES_BY_FIRST_WORD: LazyLock<HashMap<&'static str, Vec<Place>>> = LazyL
     index
 });
 
+/// A text names a place only with the first word of one in it.
+static PLACE_WORD: LazyLock<Regex> =
+    LazyLock::new(|| any_word(PLACES_BY_FIRST_WORD.keys().copied()));
+
 /// Every country or city a text names, with the byte offset of the name; a place after a
 /// word of nearness (`nähe Venlo`) is a landmark, no place of the job.
 fn countries_at(folded: &str) -> Vec<(usize, &'static str)> {
@@ -595,7 +595,7 @@ fn places_of_work(
 ) -> (Vec<Named>, Vec<Named>) {
     let mut onsite: Vec<Named> = Vec::new();
     let mut travel: Vec<Named> = Vec::new();
-    for (range, f) in segments {
+    for (range, f) in segments.iter().filter(|(_, f)| PLACE_WORD.is_match(f)) {
         let named = countries_at(f);
         if named.is_empty() {
             continue;
@@ -734,16 +734,17 @@ fn country(
 /// Does a folded text state full remote work, in a clause that does not deny it (`We are
 /// unable to consider fully remote arrangements` states none)?
 fn states_full_remote(folded: &str) -> bool {
-    lex::FULL_REMOTE.iter().any(|phrase| {
-        folded.match_indices(phrase).any(|(at, _)| {
-            let clause = folded[..at]
-                .rfind(['.', '!', '?', ';', '\n'])
-                .map_or(0, |i| i + 1);
-            !folded[clause..at]
-                .split(|c: char| !c.is_alphanumeric())
-                .any(|w| lex::DENIALS.contains(&w))
+    holds_any(folded, lex::FULL_REMOTE)
+        && lex::FULL_REMOTE.iter().any(|phrase| {
+            folded.match_indices(phrase).any(|(at, _)| {
+                let clause = folded[..at]
+                    .rfind(['.', '!', '?', ';', '\n'])
+                    .map_or(0, |i| i + 1);
+                !folded[clause..at]
+                    .split(|c: char| !c.is_alphanumeric())
+                    .any(|w| lex::DENIALS.contains(&w))
+            })
         })
-    })
 }
 
 /// A rate statement: highest amount, hourly or daily, EUR or not, freelance rate or wage.

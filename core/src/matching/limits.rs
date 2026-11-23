@@ -7,11 +7,9 @@
 //! number up to 80 (no lower bound). A number of days or a percentage next to a place word
 //! (`3 Tage/Woche vor Ort`, `80 % remote`) is the place of work, not the workload.
 
-use std::ops::Range;
-
 use serde_json::{Map, Value, json};
 
-use super::ad_facts::{AdFacts, Duration, Stated};
+use super::ad_facts::{AdFacts, Duration, Stated, stated};
 use super::contract::ContractKind;
 use super::facts::{Finding, HardCriteria, JobFacts, Segment, fact};
 use super::lexicon::engine as lex;
@@ -82,10 +80,6 @@ pub(crate) fn read(job: &JobFacts<'_>, segments: &[Segment]) -> Option<Stated<Wo
                 .and_then(|value| word_workload(&super::atoms::fold(value)))
                 .map(|w| stated(w, None))
         })
-}
-
-fn stated(value: Workload, span: Option<Range<usize>>) -> Stated<Workload> {
-    Stated { value, span }
 }
 
 /// Does a sentence or clause hold a workload word (`Auslastung`, `Arbeitszeit`, `Vollzeit`,

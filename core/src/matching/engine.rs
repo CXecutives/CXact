@@ -55,6 +55,8 @@ pub(crate) struct EngineProfile {
     pub fields: Vec<&'static str>,
     /// What a title says beside its core (`roles::shape`).
     pub shape: Vec<String>,
+    /// The exclusion words with their forms.
+    pub exclusions: Vec<exclusion::Word>,
 }
 
 impl EngineProfile {
@@ -70,6 +72,7 @@ impl EngineProfile {
         let fields = title::profile_fields(skills.vocab.packs());
         Self {
             shape: roles::shape(&skills.vocab),
+            exclusions: exclusion::compile(&criteria.exclusion_words),
             core,
             skills,
             criteria,
@@ -319,7 +322,7 @@ fn limit_findings(
     findings.extend(limits::workload(criteria, ad));
     findings.extend(limits::duration(criteria, ad));
     findings.extend(exclusion::check(
-        criteria,
+        &profile.exclusions,
         job.title,
         &levels,
         segments,
@@ -570,11 +573,11 @@ impl Frame {
     fn of(
         profile: &EngineProfile,
         title: &str,
-        own: &str,
+        folded: &str,
         items: &[Item],
         contract: ContractKind,
     ) -> Self {
-        let level = title::ad_level(title, own);
+        let level = title::ad_level(title, folded);
         let employment = matches!(contract, ContractKind::Permanent | ContractKind::Anue);
         let engagement = !employment || title::engagement(title);
         let musts = items
@@ -611,7 +614,8 @@ fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluation {
     let (mut findings, stated_contract, ad_facts) =
         criteria_findings(profile, &facts, &segments, &folded);
     let contract = stated_contract.kind;
-    let short = char_len(strip(text)) < MIN_TEXT_CHARS;
+    let chars = char_len(strip(text));
+    let short = chars < MIN_TEXT_CHARS;
     // The title without gender markers and marketing tails (what the role is).
     let title = title::clean(job.title);
     // A short text still has its title: it is judged from the title and the field, without a
@@ -624,7 +628,7 @@ fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluation {
     let (limits, junior) = limit_findings(profile, job, own, &segments, &ad_facts, &doc);
     findings.extend(limits);
     let requirement_lines = doc.requirement_lines;
-    let frame = Frame::of(profile, &title, own, &doc.items, contract);
+    let frame = Frame::of(profile, &title, &folded, &doc.items, contract);
     let far = matches!(frame.field, Some((_, Distance::Far)));
     let mut items = scored(profile, doc.items, &title, far);
     let core = signals::CoreTest::new(profile, &title, frame.field.map(|(f, _)| f));
@@ -632,7 +636,7 @@ fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluation {
         x.core = is_must(x) && core.on_core(x);
     }
     let relevance = relevance_of(profile, job, &title, &requirement_lines, items.is_empty());
-    let evidence = evidence_level(job.kind, &items, must_weight(&items), char_len(strip(text)));
+    let evidence = evidence_level(job.kind, &items, must_weight(&items), chars);
     let (formal, formal_cap) = formal(profile, &items);
     findings.extend(formal);
     let decided = findings.iter().any(|f| f.decided);

@@ -34,7 +34,9 @@ use super::atoms::fold;
 use super::contract::ContractKind;
 use super::facts::{self, JobFacts, Segment, fact};
 use super::lexicon::{engine as core_lex, wishes as lex};
-use super::normalize::{contains_word, holds_any};
+use super::normalize::{
+    contains_word, find_word, holds_any, starts_word, word_bounded, word_spans,
+};
 use super::params::{
     HYBRID_SHARE, ONSITE_MAX, REGION_REMOTE_NEAR, REMOTE_FULL, REMOTE_MARGIN, REMOTE_NAMED_SHARE,
     REMOTE_PARTLY, WISH_RATE_NEAR, WORKDAYS,
@@ -153,64 +155,25 @@ impl Places {
     /// The place a folded text names first as a whole word (`München, Bayern` names
     /// München), the longest of those that start there.
     fn first_named(&self, folded: &str) -> Option<&str> {
-        let indexed = words_at(folded).find_map(|(start, word)| {
-            let places = self.by_word.get(word)?;
-            let place = places.iter().find(|p| whole_at(folded, start, p))?;
-            Some((start, place.as_str()))
-        });
+        let indexed = word_spans(folded, &[])
+            .into_iter()
+            .find_map(|(start, word)| {
+                let places = self.by_word.get(word)?;
+                let place = places.iter().find(|p| whole_at(folded, start, p))?;
+                Some((start, place.as_str()))
+            });
         self.others
             .iter()
-            .filter_map(|place| first_whole(folded, place).map(|start| (start, place.as_str())))
+            .filter_map(|place| find_word(folded, place).map(|start| (start, place.as_str())))
             .chain(indexed)
             .min_by_key(|(start, place)| (*start, std::cmp::Reverse(place.len())))
             .map(|(_, place)| place)
     }
 }
 
-/// The words of a folded text (letters and digits) with their byte offsets.
-fn words_at(folded: &str) -> impl Iterator<Item = (usize, &str)> {
-    let mut start = None;
-    folded
-        .char_indices()
-        .chain(std::iter::once((folded.len(), ' ')))
-        .filter_map(move |(at, c)| match (c.is_alphanumeric(), start) {
-            (true, None) => {
-                start = Some(at);
-                None
-            }
-            (false, Some(from)) => {
-                start = None;
-                Some((from, &folded[from..at]))
-            }
-            _ => None,
-        })
-}
-
 /// Does `place` stand in the folded text at `start` as a whole word?
 fn whole_at(folded: &str, start: usize, place: &str) -> bool {
-    let end = start + place.len();
-    folded[start..].starts_with(place)
-        && folded[..start]
-            .chars()
-            .next_back()
-            .is_none_or(|c| !c.is_alphanumeric())
-        && folded[end..]
-            .chars()
-            .next()
-            .is_none_or(|c| !c.is_alphanumeric())
-}
-
-/// Where a folded text first names `place` as a whole word.
-fn first_whole(folded: &str, place: &str) -> Option<usize> {
-    let mut from = 0;
-    while let Some(at) = folded[from..].find(place) {
-        let start = from + at;
-        if whole_at(folded, start, place) {
-            return Some(start);
-        }
-        from = start + place.len();
-    }
-    None
+    folded[start..].starts_with(place) && word_bounded(folded, start, start + place.len())
 }
 
 /// German places (cities and states) for a region `Deutschland`.
@@ -556,23 +519,11 @@ fn stated_shares(folded: &str) -> Vec<u64> {
 
 /// Byte position of the first word of `list` in a folded text (`usize::MAX` if none).
 fn first_at(folded: &str, list: &[&str]) -> usize {
-    let mut best = usize::MAX;
-    for entry in list {
-        let mut from = 0;
-        while let Some(at) = folded[from..].find(entry) {
-            let start = from + at;
-            let before = folded[..start]
-                .chars()
-                .next_back()
-                .is_none_or(|c| !c.is_alphanumeric());
-            if before {
-                best = best.min(start);
-                break;
-            }
-            from = start + entry.len();
-        }
-    }
-    best
+    let first = |entry: &&str| {
+        let mut starts = folded.match_indices(*entry).map(|(at, _)| at);
+        starts.find(|&at| starts_word(folded, at))
+    };
+    list.iter().filter_map(first).min().unwrap_or(usize::MAX)
 }
 
 /// The ad's remote share in percent (from, to), as far as it can be read.

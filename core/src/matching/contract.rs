@@ -16,7 +16,7 @@ use serde_json::Value;
 use super::atoms::fold;
 use super::facts::{Finding, JobFacts, Segment, fact, parse_rate, rate_in, wage_in};
 use super::lexicon::engine as lex;
-use super::normalize::{any_word, holds_any as any};
+use super::normalize::{any_longest_word, holds_any as any};
 
 /// Inferred contract type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,8 +67,7 @@ static CUE_WORD: LazyLock<Regex> = LazyLock::new(|| {
         lex::PERMANENT_HINTS,
         lex::AGENCY_CUES,
     ];
-    let words = cues.into_iter().flatten();
-    any_word(words.filter_map(|cue| cue.split(' ').max_by_key(|word| word.len())))
+    any_longest_word(cues.into_iter().flatten().copied())
 });
 
 /// A student or trainee role (`Werkstudent`, `Praktikum` in the title): employment, inferred

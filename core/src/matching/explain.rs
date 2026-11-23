@@ -566,8 +566,25 @@ fn evidence_states(profile: &EngineProfile, ad: &AdFacts, text: &str) -> Vec<Cri
     } else {
         json!({ "location": ad.location })
     };
-    let anue_ok = ad.contract_stated
-        && matches!(ad.contract, ContractKind::Interim | ContractKind::Permanent);
+    // A contract type the profile leaves out: met only where the ad states one of `kinds`.
+    let left_out = |key, excluded: bool, kinds: &[ContractKind]| {
+        if !excluded {
+            return unset(key);
+        }
+        let ok = ad.contract_stated && kinds.contains(&ad.contract);
+        let params = if ok {
+            json!({ "contract": ad.contract_code })
+        } else {
+            json!({})
+        };
+        let span = ad.contract_span.as_ref().filter(|_| ok);
+        criterion(key, told(ok), &params, span, text)
+    };
+    let (interim, permanent_role, anue) = (
+        ContractKind::Interim,
+        ContractKind::Permanent,
+        ContractKind::Anue,
+    );
     vec![
         match c.min_rate {
             Some(min) if !employment => rate_state(min, ad, text),
@@ -580,44 +597,17 @@ fn evidence_states(profile: &EngineProfile, ad: &AdFacts, text: &str) -> Vec<Cri
             }
             None => unset(CriterionKey::Countries),
         },
-        if c.anue_excluded {
-            let params = if anue_ok {
-                json!({ "contract": ad.contract_code })
-            } else {
-                json!({})
-            };
-            let span = ad.contract_span.as_ref().filter(|_| anue_ok);
-            criterion(CriterionKey::NoAnue, told(anue_ok), &params, span, text)
-        } else {
-            unset(CriterionKey::NoAnue)
-        },
-        if c.permanent_excluded {
-            // Met only where the ad states an interim role.
-            let ok = ad.contract_stated && ad.contract == ContractKind::Interim;
-            let params = if ok {
-                json!({ "contract": ad.contract_code })
-            } else {
-                json!({})
-            };
-            let span = ad.contract_span.as_ref().filter(|_| ok);
-            criterion(CriterionKey::NoPermanent, told(ok), &params, span, text)
-        } else {
-            unset(CriterionKey::NoPermanent)
-        },
-        if c.project_excluded {
-            // Met only where the ad states a permanent role or temporary agency work.
-            let ok = ad.contract_stated
-                && matches!(ad.contract, ContractKind::Permanent | ContractKind::Anue);
-            let params = if ok {
-                json!({ "contract": ad.contract_code })
-            } else {
-                json!({})
-            };
-            let span = ad.contract_span.as_ref().filter(|_| ok);
-            criterion(CriterionKey::NoProject, told(ok), &params, span, text)
-        } else {
-            unset(CriterionKey::NoProject)
-        },
+        left_out(
+            CriterionKey::NoAnue,
+            c.anue_excluded,
+            &[interim, permanent_role],
+        ),
+        left_out(CriterionKey::NoPermanent, c.permanent_excluded, &[interim]),
+        left_out(
+            CriterionKey::NoProject,
+            c.project_excluded,
+            &[permanent_role, anue],
+        ),
         start_state(ad, text),
         match c.min_salary {
             Some(min) if employment => salary_state(min, ad, text),

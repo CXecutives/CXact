@@ -29,13 +29,7 @@ pub(crate) fn years_in(text: &str) -> Option<(u32, Option<u32>)> {
         .split(|c: char| !c.is_alphanumeric() && c != '+')
         .filter(|w| !w.is_empty())
         .collect();
-    let number = |w: &str| {
-        let w = w.trim_end_matches('+');
-        w.parse::<u32>()
-            .ok()
-            .or_else(|| number_word(w))
-            .filter(|n| (1..=40).contains(n))
-    };
+    let number = years_named;
     (1..words.len()).find_map(|i| {
         if !YEAR_UNITS.iter().any(|u| words[i].starts_with(u)) {
             return None;

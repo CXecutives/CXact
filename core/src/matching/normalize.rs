@@ -357,7 +357,7 @@ pub(crate) fn word_spans<'a>(text: &'a str, inner: &[char]) -> Vec<(usize, &'a s
 
 /// Whether the words from `at` are `phrase` (words separated by single spaces), its last word
 /// perhaps with one of `endings`; the index after it.
-fn phrase_at<S: AsRef<str>>(
+pub(crate) fn phrase_at<S: AsRef<str>>(
     words: &[S],
     at: usize,
     phrase: &str,
@@ -380,75 +380,18 @@ fn phrase_at<S: AsRef<str>>(
     Some(next)
 }
 
-/// A table of phrases (words separated by single spaces, the last word perhaps with one of
-/// `endings`), kept by their first word: the phrases that stand at a word of a text are
-/// looked up, not searched for one by one.
-pub(crate) struct Phrases<T> {
-    /// By the first word: the phrase's place in the table, its words after the first (empty
-    /// for one word) and its value.
-    by_first: HashMap<&'static str, Vec<(usize, &'static str, T)>>,
-    endings: &'static [&'static str],
-}
-
-impl<T: Copy> Phrases<T> {
-    pub(crate) fn new(
-        table: impl IntoIterator<Item = (&'static str, T)>,
-        endings: &'static [&'static str],
-    ) -> Self {
-        let mut by_first: HashMap<&'static str, Vec<(usize, &'static str, T)>> = HashMap::new();
-        for (place, (phrase, value)) in table.into_iter().enumerate() {
-            let (first, rest) = phrase.split_once(' ').unwrap_or((phrase, ""));
-            by_first
-                .entry(first)
-                .or_default()
-                .push((place, rest, value));
-        }
-        Self { by_first, endings }
-    }
-
-    /// The phrases that stand at `words[at]`: their place in the table, the index after them
-    /// and their value.
-    pub(crate) fn at<'a, S: AsRef<str>>(
-        &'a self,
-        words: &'a [S],
-        at: usize,
-    ) -> impl Iterator<Item = (usize, usize, T)> + 'a {
-        let word = words[at].as_ref();
-        let written = self.by_first.get(word).into_iter().flatten();
-        let whole = written.filter_map(move |&(place, rest, value)| {
-            let end = if rest.is_empty() {
-                at + 1
-            } else {
-                phrase_at(words, at + 1, rest, self.endings)?
-            };
-            Some((place, end, value))
-        });
-        // One word with an ending.
-        let stems = self
-            .endings
-            .iter()
-            .filter_map(move |e| word.strip_suffix(e));
-        let ended = stems
-            .filter_map(|stem| self.by_first.get(stem))
-            .flatten()
-            .filter(|(_, rest, _)| rest.is_empty())
-            .map(move |&(place, _, value)| (place, at + 1, value));
-        whole.chain(ended)
-    }
-
-    /// Where the first phrase of the table that stands at `words[at]` ends.
-    pub(crate) fn first_at<S: AsRef<str>>(&self, words: &[S], at: usize) -> Option<usize> {
-        self.at(words, at)
-            .min_by_key(|&(place, ..)| place)
-            .map(|(_, end, _)| end)
-    }
-}
-
 /// One pattern for a list of words: whether (and where) a text holds any of them, in one pass
 /// over the text instead of one per word.
 pub(crate) fn any_word<'a>(words: impl IntoIterator<Item = &'a str>) -> Regex {
     let pattern: Vec<String> = words.into_iter().map(regex::escape).collect();
     Regex::new(&pattern.join("|")).expect("a list of literal words")
+}
+
+/// One pattern for the longest word of every phrase (words separated by single spaces): a text
+/// holds one of the phrases, word by word, only with that word in it.
+pub(crate) fn any_longest_word<'a>(phrases: impl IntoIterator<Item = &'a str>) -> Regex {
+    let longest = |phrase: &'a str| phrase.split(' ').max_by_key(|word| word.len());
+    any_word(phrases.into_iter().filter_map(longest))
 }
 
 /// Does a text hold any word of a list (anywhere, also inside a word)? The list's pattern
@@ -531,6 +474,13 @@ pub(crate) fn number_word(word: &str) -> Option<u32> {
         .iter()
         .find(|(w, _)| *w == word)
         .map(|&(_, n)| n)
+}
+
+/// The years a word names (`10`, `10+`, `zehn`), from 1 to 40.
+pub(crate) fn years_named(word: &str) -> Option<u32> {
+    let word = word.trim_end_matches('+');
+    let years = word.parse::<u32>().ok().or_else(|| number_word(word));
+    years.filter(|n| (1..=40).contains(n))
 }
 
 /// The text after an amount (`start..end` of `text`) and the text before it, each past a range

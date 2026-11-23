@@ -15,7 +15,9 @@ use std::borrow::Cow;
 
 use super::atoms::fold;
 use super::lexicon::engine as lex;
-use super::normalize::{Phrases, any_word, folded_word, lines_with, month_named, word_spans};
+use super::normalize::{
+    any_longest_word, folded_word, lines_with, month_named, phrase_at, word_spans,
+};
 
 /// Longest contact value kept, in characters.
 const MAX_CONTACT_CHARS: usize = 80;
@@ -37,23 +39,13 @@ pub(crate) struct Contact {
     pub phone: Option<String>,
 }
 
-fn phrases(table: &[&'static str]) -> Phrases<()> {
-    Phrases::new(table.iter().map(|phrase| (*phrase, ())), &[])
-}
-
-/// The first word of a phrase.
-fn first_word(phrase: &&'static str) -> &'static str {
-    phrase.split(' ').next().unwrap_or(phrase)
-}
-
-static DEADLINE_MARKERS: LazyLock<Phrases<()>> = LazyLock::new(|| phrases(lex::DEADLINE_MARKERS));
 /// A line names a deadline only with one of these words in it.
 static DEADLINE_WORD: LazyLock<Regex> = LazyLock::new(|| {
-    any_word(
+    any_longest_word(
         lex::DEADLINE_MARKERS
             .iter()
-            .map(first_word)
-            .chain(lex::APPLY_WORDS.iter().copied()),
+            .chain(lex::APPLY_WORDS)
+            .copied(),
     )
 });
 
@@ -87,7 +79,10 @@ fn past(words: &[&str], mut at: usize, fillers: &[&str]) -> usize {
 
 fn line_deadline(words: &[&str], posted: Option<Date>) -> Option<Date> {
     (0..words.len()).find_map(|at| {
-        let from = match DEADLINE_MARKERS.first_at(words, at) {
+        let named = lex::DEADLINE_MARKERS
+            .iter()
+            .find_map(|marker| phrase_at(words, at, marker, &[]));
+        let from = match named {
             Some(end) => end,
             None if lex::APPLY_WORDS.contains(&words[at]) => {
                 let until = past(words, at + 1, lex::APPLY_FILLERS);
@@ -233,13 +228,14 @@ fn folded<'a>(words: &[(usize, &'a str)]) -> Vec<Cow<'a, str>> {
     words.iter().map(|(_, w)| folded_word(w)).collect()
 }
 
-static CONTACT_PERSON_WORDS: LazyLock<Phrases<()>> =
-    LazyLock::new(|| phrases(lex::CONTACT_PERSON_WORDS));
-static CONTACT_LABELS: LazyLock<Phrases<()>> = LazyLock::new(|| phrases(lex::CONTACT_LABELS));
 /// A line names a person only with one of these words in it.
 static CONTACT_WORD: LazyLock<Regex> = LazyLock::new(|| {
-    let markers = lex::CONTACT_PERSON_WORDS.iter().chain(lex::CONTACT_LABELS);
-    any_word(markers.map(first_word))
+    any_longest_word(
+        lex::CONTACT_PERSON_WORDS
+            .iter()
+            .chain(lex::CONTACT_LABELS)
+            .copied(),
+    )
 });
 
 /// The person a line names after a contact word (a label only at the line's start).
@@ -247,11 +243,9 @@ fn person(line: &str) -> Option<String> {
     let words = spans(line);
     let folds = folded(&words);
     (0..words.len()).find_map(|at| {
-        let after = CONTACT_PERSON_WORDS.first_at(&folds, at).or_else(|| {
-            (at == 0)
-                .then(|| CONTACT_LABELS.first_at(&folds, at))
-                .flatten()
-        })?;
+        let marked = |markers: &[&str]| markers.iter().find_map(|m| phrase_at(&folds, at, m, &[]));
+        let after = marked(lex::CONTACT_PERSON_WORDS)
+            .or_else(|| marked(lex::CONTACT_LABELS).filter(|_| at == 0))?;
         name_from(line, &words, &folds, after)
     })
 }

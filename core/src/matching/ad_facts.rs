@@ -35,7 +35,7 @@ pub(crate) struct Stated<T> {
     pub span: Option<Range<usize>>,
 }
 
-fn stated<T>(value: T, span: Option<Range<usize>>) -> Stated<T> {
+pub(crate) fn stated<T>(value: T, span: Option<Range<usize>>) -> Stated<T> {
     Stated { value, span }
 }
 
@@ -211,6 +211,8 @@ fn months(
     let pass = |term: bool| {
         segments
             .iter()
+            // An amount of time and the year of an end date are written in digits.
+            .filter(|(_, f)| f.bytes().any(|b| b.is_ascii_digit()))
             .filter(|(_, f)| !term || duration_term(f))
             .find_map(|(range, f)| {
                 duration_in(f, term, reference).map(|m| stated(m, Some(range.clone())))

@@ -166,16 +166,12 @@ fn parse_amounts(folded: &str) -> Option<Salary> {
     let upper = found.iter().map(|(_, v)| *v).max()?;
     let lower = found.iter().map(|(_, v)| *v).min().unwrap_or(upper);
     let lower_only = found.len() == 1 && {
+        // The 24 characters before the amount.
         let before = &folded[..found[0].0];
-        let tail: String = before
-            .chars()
-            .rev()
-            .take(24)
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev()
-            .collect();
-        lex::LOWER_BOUND_WORDS.iter().any(|w| tail.contains(w))
+        let tail = before.char_indices().rev().nth(23).map_or(0, |(at, _)| at);
+        lex::LOWER_BOUND_WORDS
+            .iter()
+            .any(|w| before[tail..].contains(w))
     };
     let currency = lex::OTHER_CURRENCIES
         .iter()

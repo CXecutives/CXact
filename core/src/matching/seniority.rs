@@ -18,7 +18,7 @@ use super::atoms::fold;
 use super::facts::Finding;
 use super::job::{Item, JobDoc};
 use super::lexicon::engine as lex;
-use super::normalize::{contains_word, holds_any};
+use super::normalize::{contains_word, holds_any, years_named};
 use super::params::JUNIOR_ROLE_YEARS;
 use super::sections::ReqKind;
 use super::types::{ReasonCode, ReasonKind};
@@ -47,18 +47,7 @@ pub(crate) fn experience_years(folded: &str) -> Option<(u32, Option<u32>)> {
                 || (words[k] == "which" && k > 0 && words[k - 1] == "of")
         })
     };
-    let number = |w: &str| -> Option<u32> {
-        let w = w.trim_end_matches('+');
-        w.parse::<u32>()
-            .ok()
-            .or_else(|| {
-                lex::NUMBER_WORDS
-                    .iter()
-                    .find(|(word, _)| *word == w)
-                    .map(|&(_, n)| n)
-            })
-            .filter(|n| (1..=40).contains(n))
-    };
+    let number = years_named;
     let unit = |i: usize| {
         words
             .get(i)
