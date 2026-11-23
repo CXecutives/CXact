@@ -14,7 +14,9 @@ use super::contract::{Contract, ContractKind};
 use super::facts::{self, JobFacts, Rate, Segment, Start, fact, parse_start, stated_rate};
 use super::lexicon::engine as lex;
 use super::limits::{self, Workload};
-use super::normalize::{clauses, contains_word, month_named, numeric_date, quarter};
+use super::normalize::{
+    clauses, contains_word, contains_word_with, month_named, numeric_date, quarter,
+};
 use super::permanent::{bonus_percent, parse_salary};
 use super::types::KeyFacts;
 use super::wishes::remote_share;
@@ -219,12 +221,9 @@ fn months(
 
 /// Does a sentence hold a word of `lexicon::DURATION_TERMS` (with a plural ending)?
 fn duration_term(folded: &str) -> bool {
-    folded.split(|c: char| !c.is_alphanumeric()).any(|w| {
-        lex::DURATION_TERMS.iter().any(|t| {
-            w.strip_prefix(t)
-                .is_some_and(|rest| ["", "en", "s", "e"].contains(&rest))
-        })
-    })
+    lex::DURATION_TERMS
+        .iter()
+        .any(|t| contains_word_with(folded, t, &["", "en", "s", "e"]))
 }
 
 /// The duration a sentence states (`term`: a sentence with a duration word, where every

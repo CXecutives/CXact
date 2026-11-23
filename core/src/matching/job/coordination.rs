@@ -234,14 +234,7 @@ pub(super) fn shared_objects(
 ) -> Vec<Option<Range<usize>>> {
     let preposition = |w: &str| lex::ACTIVITY_PREPOSITIONS.contains(&w.to_lowercase().as_str());
     let words = |r: &Range<usize>| phrase[r.clone()].split_whitespace().collect::<Vec<&str>>();
-    let bare_activity = |r: &Range<usize>| {
-        let w = words(r);
-        w.len() >= 2
-            && w.last().is_some_and(|l| activity(l))
-            && w[w.len().saturating_sub(3)..w.len() - 1]
-                .iter()
-                .any(|p| preposition(p))
-    };
+    let bare_activity = |r: &Range<usize>| bare_activity(&words(r), 2);
     let opens = |r: &Range<usize>| words(r).first().is_some_and(|w| preposition(w));
     let object = |r: &Range<usize>| -> Option<Range<usize>> {
         if !opens(r) {
@@ -272,20 +265,26 @@ pub(super) fn shared_objects(
 /// personas in `Kenntnisse in der Erstellung und Anwendung von Personas`): `before` ends in an
 /// activity after a preposition, `after` is an activity with its object.
 fn activity_pair(before: &[&str], after: &str) -> bool {
-    let Some((last, rest)) = before.split_last() else {
-        return false;
-    };
-    let bare = activity(last)
-        && rest.iter().rev().take(3).any(|w| {
-            let w = w.to_lowercase();
-            lex::ACTIVITY_PREPOSITIONS.contains(&w.as_str()) || w == "mit"
-        });
+    let bare = bare_activity(before, 3);
     let words: Vec<&str> = after
         .split_whitespace()
         .skip_while(|w| lex::ARTICLES.contains(&w.to_lowercase().as_str()))
         .collect();
     bare && words.first().is_some_and(|w| activity(w))
         && words[1..].iter().any(|w| lex::OBJECT_OPENERS.contains(w))
+}
+
+/// Do the words end in an activity after a preposition among the `reach` words before it
+/// (`im Aufbau`, `in der Erstellung`; with a reach of three also `mit`)?
+fn bare_activity(words: &[&str], reach: usize) -> bool {
+    let Some((last, rest)) = words.split_last() else {
+        return false;
+    };
+    activity(last)
+        && rest.iter().rev().take(reach).any(|w| {
+            let w = w.to_lowercase();
+            lex::ACTIVITY_PREPOSITIONS.contains(&w.as_str()) || (reach > 2 && w == "mit")
+        })
 }
 
 /// A noun of an activity (`-ung`, `-ion`, `Aufbau`, `Analyse`), written as a noun.

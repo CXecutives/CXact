@@ -111,22 +111,22 @@ reads the alert mails (IMAP)
 
 ### core/src/matching
 is the pure integer engine
-- ad_facts.rs 630 · The key facts of an ad, each with the passage that states… · Stated, Duration, AdFacts, read +4
-- application.rs 463 · How to apply to an ad: the application deadline it names… · Contact, deadline, contact
+- ad_facts.rs 614 · The key facts of an ad, each with the passage that states… · Stated, Duration, AdFacts, read +4
+- application.rs 456 · How to apply to an ad: the application deadline it names… · Contact, deadline, contact
 - atoms.rs 881 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +10
 - contract.rs 399 · Contract type of an ad: interim, permanent, temporary… · ContractKind, Contract, student_role, infer
 - engine.rs 752 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
 - exclusion.rs 614 · Exclusion words of the profile: a word excludes the ad… · check
 - explain.rs 713 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
-- facts.rs 1224 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +19
+- facts.rs 1139 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +19
 - fit.rs 931 · The profile the engine matches against, and the match… · Entry, Broad, forget, Skills +11
 - gaps.rs 193 · The gap finder's view of a job: the words of its… · Gap, JobGaps, vocabulary_gaps
 - layout.rs 104 · The layout of an ad's text for the reader: the lines that… · TextLayout, text_layout
 - limits.rs 548 · The limits of an engagement the profile sets, checked and… · Workload, read, workload, workload_fits +4
 - mod.rs 467 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +19
-- normalize.rs 464 · Text primitives with Python semantics: case folding,… · is_space, is_word, decimal, digit_class_body +17
+- normalize.rs 552 · Text primitives with Python semantics: case folding,… · is_space, is_word, decimal, digit_class_body +24
 - params.rs 142 · Frozen parameters of the engine. · E_FULL, E_HALF, E_NONE, W_MUST +57
-- permanent.rs 482 · The rule for permanent roles: the minimum annual salary. · Salary, with_bonus, parse_salary, salary +3
+- permanent.rs 466 · The rule for permanent roles: the minimum annual salary. · Salary, with_bonus, parse_salary, salary +3
 - profile.rs 54 · The profile entries the engine matches against, with their… · CoreText, core_texts
 - pyre.rs 78 · Python `re` semantics on top of the `regex` crate. · compile, view
 - relevance.rs 344 · Relevance of a job for the profile, independent of… · query, title_fit, field_title_fit, title_query +2
@@ -163,7 +163,7 @@ is the pure integer engine
 
 ### core/src/matching/job
 - classify.rs 246 · The kind of every item: skill, language, degree, soft,… · known_skill, language_of, frame_word, names_degree
-- coordination.rs 298 · Coordinated items: where an `und`, `and`, `&` or a comma…
+- coordination.rs 297 · Coordinated items: where an `und`, `and`, `&` or a comma…
 - frame.rs 63 · The frame of a requirement clause: `[pronoun] [verbs]… · without_lead
 - lines.rs 259 · Lines of a job text: headings, bullets, closing blocks and… · is_heading_line
 - mod.rs 240 · A job text as the engine reads it: sections with inline… · Stage, Class, Item, Task +2
