@@ -118,14 +118,13 @@ is the pure integer engine
 - engine.rs 843 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
 - exclusion.rs 859 · Exclusion words of the profile: a word excludes the ad… · check
 - explain.rs 947 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
-- facts.rs 1825 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +20
-- fit.rs 1137 · The profile the engine matches against, and the match… · Entry, Broad, forget, Skills +11
+- facts.rs 1824 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +20
+- fit.rs 1138 · The profile the engine matches against, and the match… · Entry, Broad, forget, Skills +11
 - gaps.rs 193 · The gap finder's view of a job: the words of its… · Gap, JobGaps, vocabulary_gaps
-- job.rs 1969 · A job text as the engine reads it: sections with inline… · Stage, Class, Item, JobDoc +12
 - layout.rs 116 · The layout of an ad's text for the reader: the lines that… · TextLayout, text_layout
 - limits.rs 573 · The limits of an engagement the profile sets, checked and… · Workload, read, workload, workload_fits +4
 - mod.rs 467 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +19
-- normalize.rs 303 · Text primitives with Python semantics: case folding,… · is_space, is_word, decimal, digit_class_body +8
+- normalize.rs 370 · Text primitives with Python semantics: case folding,… · is_space, is_word, decimal, digit_class_body +10
 - params.rs 142 · Frozen parameters of the engine. · E_FULL, E_HALF, E_NONE, W_MUST +57
 - permanent.rs 496 · The rule for permanent roles: the minimum annual salary. · Salary, with_bonus, parse_salary, salary +3
 - profile.rs 54 · The profile entries the engine matches against, with their… · CoreText, core_texts
@@ -136,7 +135,7 @@ is the pure integer engine
 - score.rs 27 · Integer rounding of the scores. · div_round_half_even
 - scorer.rs 527 · The Passungsgrad: `score = content x frame factor`, then… · FieldClass, class, Percent, percent +3
 - sections.rs 223 · Lines, headings and requirement cues of a job text. · ReqKind, is_bullet, norm_heading, section_kind +4
-- seniority.rs 245 · The level of an ad against the profile's own years of… · experience_years, junior_title, entry_level_must, page_junior_level +1
+- seniority.rs 246 · The level of an ad against the profile's own years of… · experience_years, junior_title, entry_level_must, page_junior_level +1
 - signals.rs 580 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +14
 - terms.rs 993 · The term of a requirement and the profile field it belongs… · is_term, TermField, CoreTerm, term_key +3
 - title.rs 443 · The frame of a job title: the title without its noise, the… · clean, level_of, engagement, ad_level +5
@@ -145,12 +144,13 @@ is the pure integer engine
 - wishes.rs 780 · Wishes of the profile: day rate, work mode and regions. · RemoteWish, Wishes, State, WishResult +3
 
 ### core/src/matching/job
-- classify.rs 267 · The kind of every item: skill, language, degree, soft,… · known_skill, language_of, frame_word, names_degree
-- coordination.rs 127 · Coordinated items: parts that share an object or an…
-- lines.rs 284 · Lines of a job text: headings, bullets, closing blocks and… · is_heading_line, heading_kind
-- quantities.rs 54 · Numbers in an item: language level and required years. · level_in, years_in
-- split.rs 231 · Cutting a requirement phrase into items, AND parts, OR… · split
-- tests.rs 742 · (no header)
+- classify.rs 271 · The kind of every item: skill, language, degree, soft,… · known_skill, language_of, frame_word, names_degree
+- coordination.rs 131 · Coordinated items: parts that share an object or an…
+- lines.rs 288 · Lines of a job text: headings, bullets, closing blocks and… · is_heading_line, heading_kind
+- mod.rs 227 · A job text as the engine reads it: sections with inline… · Stage, Class, Item, JobDoc +1
+- quantities.rs 58 · Numbers in an item: language level and required years. · level_in, years_in
+- split.rs 239 · Cutting a requirement phrase into items, AND parts, OR… · split
+- tests.rs 735 · (no header)
 
 ### core/src/matching/lexicon
 - esco.rs 859 · ESCO, the European Commission's classification of skills,… · Kind, Concept, Lang, Hit +6

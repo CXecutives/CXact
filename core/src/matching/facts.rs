@@ -19,9 +19,8 @@ use serde_json::{Value, json};
 
 use super::atoms::fold;
 use super::contract::{Contract, ContractKind};
-use super::job::{contains_word, sentences};
 use super::lexicon::engine as lex;
-use super::normalize::splitlines;
+use super::normalize::{contains_word, sentences, splitlines};
 use super::params::HOURS_PER_DAY;
 use super::types::{CriterionKey, ReasonCode, ReasonKind};
 use crate::portal::Portal;

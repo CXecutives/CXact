@@ -13,7 +13,7 @@ use super::atoms::{self, Fit, Vocab};
 use super::engine::{self, EngineProfile, Scored};
 use super::facts::Finding;
 use super::fit;
-use super::job::{self, Class};
+use super::job::Class;
 use super::normalize;
 use super::params::{E_FULL, E_NONE};
 use super::roles::{self, RoleFit};
@@ -284,7 +284,7 @@ pub(crate) fn is_hygiene(text: &str) -> bool {
     let folded = atoms::fold(text).replace('-', " ");
     crate::matching::lexicon::HYGIENE
         .iter()
-        .any(|w| job::contains_word(&folded, w))
+        .any(|w| normalize::contains_word(&folded, w))
 }
 
 fn related(a: &str, b: &str) -> bool {

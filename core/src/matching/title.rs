@@ -19,9 +19,9 @@
 use std::sync::LazyLock;
 
 use super::atoms::{fold, raw_tokens};
-use super::job::contains_word;
 use super::lexicon::domains::DOMAINS;
 use super::lexicon::engine as lex;
+use super::normalize::contains_word;
 use super::relevance;
 
 /// The title without its noise: HTML entities decoded, a leading ID (`1083881 Power

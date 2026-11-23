@@ -30,8 +30,8 @@ use serde_json::{Value, json};
 use super::atoms::{Vocab, fold};
 use super::contract::ContractKind;
 use super::facts::{self, JobFacts, Segment, fact};
-use super::job::contains_word;
 use super::lexicon::{engine as core_lex, wishes as lex};
+use super::normalize::contains_word;
 use super::params::{
     HYBRID_SHARE, ONSITE_MAX, REGION_REMOTE_NEAR, REMOTE_FULL, REMOTE_MARGIN, REMOTE_NAMED_SHARE,
     REMOTE_PARTLY, WISH_RATE_NEAR, WORKDAYS,

@@ -23,9 +23,9 @@ use std::sync::LazyLock;
 use super::atoms::{self, Fit, Vocab, fold, raw_tokens};
 use super::contract::ContractKind;
 use super::fit::Broad;
-use super::job::contains_word;
 use super::lexicon::esco::Kind;
 use super::lexicon::{self, wishes as lex};
+use super::normalize::contains_word;
 use super::seniority::junior_title;
 use crate::profile::{ProfileForm, key};
 

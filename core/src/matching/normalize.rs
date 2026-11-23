@@ -247,6 +247,73 @@ pub(crate) fn canonical_stream(tokens: Vec<String>) -> Vec<String> {
     result
 }
 
+/// Sentences of a line: split after `.!?;` and whitespace before an uppercase letter or a
+/// digit, but not after abbreviations (`z. B.`, `u. a.`, `inkl.`).
+pub(crate) fn sentences(line: &str) -> Vec<&str> {
+    let text = strip(line);
+    let mut parts = Vec::new();
+    let mut start = 0;
+    let chars: Vec<(usize, char)> = text.char_indices().collect();
+    for (i, &(at, c)) in chars.iter().enumerate() {
+        if !matches!(c, '.' | '!' | '?' | ';') {
+            continue;
+        }
+        let Some(&(_, next)) = chars.get(i + 1) else {
+            continue;
+        };
+        if !next.is_whitespace() {
+            continue;
+        }
+        let Some(&(word_at, first)) = chars[i + 1..].iter().find(|(_, c)| !c.is_whitespace())
+        else {
+            continue;
+        };
+        if !(first.is_uppercase() || first.is_ascii_digit()) {
+            continue;
+        }
+        let word = text[..at]
+            .rsplit(|c: char| !c.is_alphanumeric())
+            .next()
+            .unwrap_or("");
+        if c == '.'
+            && (word.chars().count() <= 2
+                || lexicon::engine::ABBREVIATIONS.contains(&word.to_lowercase().as_str()))
+        {
+            continue;
+        }
+        parts.push(&text[start..=at]);
+        start = word_at;
+    }
+    parts.push(&text[start..]);
+    parts
+        .into_iter()
+        .map(strip)
+        .filter(|p| !p.is_empty())
+        .collect()
+}
+
+/// Whole-word (or whole-phrase) containment in a folded text.
+pub(crate) fn contains_word(folded: &str, word: &str) -> bool {
+    let mut from = 0;
+    while let Some(at) = folded[from..].find(word) {
+        let start = from + at;
+        let end = start + word.len();
+        let before = folded[..start]
+            .chars()
+            .next_back()
+            .is_none_or(|c| !c.is_alphanumeric());
+        let after = folded[end..]
+            .chars()
+            .next()
+            .is_none_or(|c| !c.is_alphanumeric());
+        if before && after {
+            return true;
+        }
+        from = end;
+    }
+    false
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

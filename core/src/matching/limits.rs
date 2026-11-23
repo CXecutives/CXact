@@ -14,8 +14,8 @@ use serde_json::{Map, Value, json};
 use super::ad_facts::{AdFacts, Duration, Stated};
 use super::contract::ContractKind;
 use super::facts::{Finding, HardCriteria, JobFacts, Segment, fact};
-use super::job::contains_word;
 use super::lexicon::engine as lex;
+use super::normalize::contains_word;
 use super::types::{CriterionKey, ReasonCode};
 
 /// Share of a week of one day.

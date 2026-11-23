@@ -4,10 +4,11 @@
 //! levels (V9), years (V8), degrees (field, relatedness, level) and licences.
 
 use super::atoms::{self, Fit, Vocab, fold};
-use super::job::{Class, Item, Stage, contains_word, language_of, names_degree};
+use super::job::{Class, Item, Stage, language_of, names_degree};
 use super::lexicon::domains::DOMAINS;
 use super::lexicon::engine as lex;
 use super::lexicon::esco::{self, Kind};
+use super::normalize::contains_word;
 use super::params::{E_FULL, E_HALF, E_NONE, SENTENCE_ATOMS};
 use super::profile::CoreText;
 use super::types::Via;

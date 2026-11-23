@@ -16,8 +16,9 @@ use serde_json::json;
 
 use super::atoms::fold;
 use super::facts::Finding;
-use super::job::{Item, JobDoc, contains_word};
+use super::job::{Item, JobDoc};
 use super::lexicon::engine as lex;
+use super::normalize::contains_word;
 use super::params::JUNIOR_ROLE_YEARS;
 use super::sections::ReqKind;
 use super::types::{ReasonCode, ReasonKind};
