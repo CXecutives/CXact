@@ -68,7 +68,7 @@ pub(crate) const W_ROLE: u64 = 40;
 pub(crate) const W_CORE: u64 = 40;
 pub(crate) const W_MUSTS: u64 = 20;
 /// What a requirement met in part counts (per-mille; fitted).
-pub(crate) const PARTIAL: u64 = 900;
+pub(crate) const PARTIAL: u64 = 950;
 /// The other musts a short list does not name count this share of role and field
 /// (per-mille). Set by the owner's rule 8, a short ad is not punished (it is judged from
 /// its title and field), not fitted on a check set: the teacher fit gave 300, which costs

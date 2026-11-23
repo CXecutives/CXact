@@ -196,7 +196,7 @@ Rahmen. Der Inhalt setzt sich aus drei Teilen zusammen, jeder mit seinem festen 
 - Weitere Muss-Punkte (20): der Anteil der übrigen erfüllten Muss-Punkte, gezählt als mindestens
   sieben. Was eine kurze Liste nicht nennt, zählt zu 70 % wie Rolle und Fach.
 
-Ein teilweise erfüllter Punkt zählt fast voll (CXact rechnet 90 %). Was unklar ist, zählt nicht mit.
+Ein teilweise erfüllter Punkt zählt fast voll (CXact rechnet 95 %). Was unklar ist, zählt nicht mit.
 Erfüllte Kann-Punkte bringen bis zu 5 Punkte dazu, offene kosten nichts.
 
 Dann der Rahmen: Tagessatz, Arbeitsmodell und Ort, Start, Dauer und Auslastung gegen die Wünsche. Was
