@@ -165,10 +165,10 @@ is the pure integer engine
 - classify.rs 262 · The kind of every item: skill, language, degree, soft,… · known_skill, language_of, frame_word, names_degree
 - coordination.rs 292 · Coordinated items: where an `und`, `and`, `&` or a comma…
 - lines.rs 267 · Lines of a job text: headings, bullets, closing blocks and… · is_heading_line
-- mod.rs 213 · A job text as the engine reads it: sections with inline… · Stage, Class, Item, JobDoc +1
+- mod.rs 239 · A job text as the engine reads it: sections with inline… · Stage, Class, Item, Task +2
 - quantities.rs 58 · Numbers in an item: language level and required years. · level_in, years_in
 - split.rs 200 · Cutting a requirement phrase into items, AND parts, OR… · split
-- tests.rs 924 · (no header)
+- tests.rs 953 · (no header)
 
 ### core/src/matching/lexicon
 - esco.rs 859 · ESCO, the European Commission's classification of skills,… · Kind, Concept, Lang, Hit +6

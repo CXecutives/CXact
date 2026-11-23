@@ -71,22 +71,31 @@ pub(crate) struct Item {
     pub stage: Stage,
 }
 
+/// A task of the role: a sentence under a task heading (`Aufgaben`, `Responsibilities`) or
+/// after an inline one. Evidence for the core of the role, never a requirement row.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Task {
+    /// Byte range of the task in the text.
+    pub span: Range<usize>,
+    /// The task's atoms under the reader's vocabulary (none for a task of fillers only).
+    pub atoms: Vec<String>,
+}
+
 /// The requirements of a job.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct JobDoc {
     pub items: Vec<Item>,
     /// Byte ranges of requirement lines (the "requirements" field of the relevance).
     pub requirement_lines: Vec<Range<usize>>,
-    /// Byte ranges of the lines under a task heading (`Aufgaben`). Tasks never become
-    /// requirement rows.
-    pub task_lines: Vec<Range<usize>>,
+    /// The tasks of the role, in the order of the text.
+    pub tasks: Vec<Task>,
 }
 
 /// Reads the requirements of a job text.
 pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
     let mut doc = JobDoc::default();
     let read = section_phrases(text);
-    doc.task_lines = read.tasks;
+    doc.tasks = tasks(text, &read.tasks, vocab);
     let mut phrases = read.phrases;
     if !phrases.iter().any(|(_, kind, _)| *kind == ReqKind::Must) {
         phrases.extend(cued_sentences(text, &read.in_nice));
@@ -171,6 +180,23 @@ pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
         }
     }
     doc
+}
+
+/// The tasks of the task lines, sentence by sentence, each with its atoms.
+fn tasks(text: &str, lines: &[Range<usize>], vocab: &Vocab) -> Vec<Task> {
+    lines
+        .iter()
+        .flat_map(|line| sentences(&text[line.clone()]))
+        .map(sections::clean_phrase)
+        .filter_map(|phrase| {
+            let atoms = atoms::atoms(phrase, vocab);
+            let start = offset(text, phrase);
+            (!atoms.is_empty()).then(|| Task {
+                span: start..start + phrase.len(),
+                atoms,
+            })
+        })
+        .collect()
 }
 
 /// An ad without a must section: every sentence with a requirement cue (German or English),

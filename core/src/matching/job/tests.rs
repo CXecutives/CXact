@@ -17,17 +17,46 @@ fn task_lines_follow_a_task_heading() {
 Ihr Profil:
 - SAP FI
 ";
-    let doc = read(text, &Vocab::all());
-    let lines: Vec<&str> = doc.task_lines.iter().map(|r| &text[r.clone()]).collect();
+    let vocab = Vocab::all();
+    let doc = read(text, &vocab);
+    let tasks: Vec<(&str, &Vec<String>)> = doc
+        .tasks
+        .iter()
+        .map(|t| (&text[t.span.clone()], &t.atoms))
+        .collect();
     assert_eq!(
-        lines,
-        ["- Aufbau des Service Desk", "- Steuerung der Dienstleister"]
+        tasks,
+        [
+            (
+                "Aufbau des Service Desk",
+                &atoms::atoms("Aufbau des Service Desk", &vocab)
+            ),
+            (
+                "Steuerung der Dienstleister",
+                &atoms::atoms("Steuerung der Dienstleister", &vocab)
+            ),
+        ]
     );
+    assert!(tasks.iter().all(|(_, atoms)| !atoms.is_empty()));
     assert!(doc.items.iter().all(|i| !i.text.contains("Service Desk")));
+    // English and inline task headings, two sentences on one line.
     let key = "Key Responsibilities
-Lead the team
+Lead the team. Own the monthly close
+Ihre Aufgaben: Aufbau des Controllings
 ";
-    assert_eq!(read(key, &Vocab::all()).task_lines.len(), 1);
+    let tasks: Vec<String> = read(key, &vocab)
+        .tasks
+        .iter()
+        .map(|t| key[t.span.clone()].to_owned())
+        .collect();
+    assert_eq!(
+        tasks,
+        [
+            "Lead the team.",
+            "Own the monthly close",
+            "Aufbau des Controllings"
+        ]
+    );
 }
 
 #[test]
@@ -827,7 +856,7 @@ fn the_line_classifier_keeps_skills_inline_content_and_tasks() {
             ("Kenntnisse in Python", ReqKind::Nice),
         ]
     );
-    assert_eq!(doc.task_lines.len(), 1);
+    assert_eq!(doc.tasks.len(), 1);
 }
 
 /// Each nice cue marks what its scope covers, in real wordings: a clause cue in brackets only
