@@ -452,7 +452,7 @@ this section names the constants.
 | Kern der Rolle | `W_CORE` | the musts on the core of the role (a skill that names what the title names, or the ad's field family), counted as at least `CORE_SATURATION`; the ones the ad does not name count as role and field and the share of the other musts on average (without other musts as role and field) |
 | Weitere Muss-Punkte | `W_MUSTS` | the other musts, counted as at least `MUST_SATURATION`; the ones a short list does not name count `UNNAMED` (the rubric's rule 8: a short ad is not punished) of role and field |
 | Kann-Punkte | up to `NICE_MAX` | the share of the nice-to-haves met, only a plus, inside the content (never above 100) |
-| Rahmen | x `FRAME_STEP` each | one step per stated condition worse than wished that breaks no hard criterion: day rate between minimum and wish, work mode or place against the wish, a later start, a shorter duration, the workload; what the ad does not state fits (factor 1) |
+| Rahmen | x `FRAME_STEP` each | one step per stated condition worse than wished that breaks no hard criterion: day rate between minimum and wish, work mode or place against the wish, a later start, a shorter duration, the workload; one met in part (near) takes half a step (`FRAME_NEAR`); what the ad does not state fits (factor 1) |
 | Festanstellung | x `PERMANENT_FACTOR` | a permanent role, after the frame |
 
 - A requirement met in part counts `PARTIAL`; what is unclear or missing never counts
@@ -465,7 +465,7 @@ this section names the constants.
   levels below the target roles `LEVEL_CAP`.
 - The explanation (`Assessment::parts`): the three content parts with points of their weight,
   the nice-to-have bonus, one `frame` line per worse condition (`aspect` rate, place, start,
-  duration, workload; `state` near or missed; it keeps `percent`), the `permanent` line and the
+  duration, workload; `state` near or missed; it keeps `permille`), the `permanent` line and the
   `cap` line; the points add up to the score exactly (`explain.rs` test). Example (at the values
   of engine 25): role and field 40/40, core 31/40, other musts 11/20, nice 4/5, place -4 (95 %):
   86 - 4 = 82. The reader gets the parts and the caps on `MatchDetail` (`view/reader.rs`), the

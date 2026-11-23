@@ -101,8 +101,10 @@ pub(crate) const RELEVANCE_FAR: u64 = 350;
 pub(crate) const NICE_MAX: u64 = 5;
 /// The frame factor: each stated condition worse than wished that breaks no hard criterion
 /// (day rate, work mode and place, start, duration, workload) keeps this share of the score
-/// (per-mille); what the ad does not state fits.
+/// (per-mille); one met in part (near) takes half a step, `FRAME_NEAR`; what the ad does not
+/// state fits.
 pub(crate) const FRAME_STEP: u64 = 950;
+pub(crate) const FRAME_NEAR: u64 = u64::midpoint(1000, FRAME_STEP);
 
 // --- ENGINE_VERSION 4: target roles and wishes (all off without their key) ---
 

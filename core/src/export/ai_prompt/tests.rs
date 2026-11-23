@@ -349,7 +349,7 @@ fn assessment() -> Assessment {
                 PartCode::Frame,
                 -2,
                 0,
-                json!({ "aspect": "rate", "state": "near", "percent": 95 }),
+                json!({ "aspect": "rate", "state": "near", "permille": 975 }),
             ),
         ],
         caps: Vec::new(),

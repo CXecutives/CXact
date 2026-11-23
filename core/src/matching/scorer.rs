@@ -16,7 +16,8 @@
 //! A requirement met in part counts `PARTIAL`; what is unclear or missing never counts
 //! against. The nice-to-haves add up to `NICE_MAX` inside the content. The frame factor
 //! keeps `FRAME_STEP` for each stated condition worse than wished (day rate, work mode and
-//! place, start, duration, workload; what the ad does not state fits), a permanent role keeps
+//! place, start, duration, workload; what the ad does not state fits), `FRAME_NEAR` (half a
+//! step) for one met in part, a permanent role keeps
 //! `PERMANENT_FACTOR`; then the lowest cap holds, each with its reason. Integer arithmetic
 //! only; every line is whole points, so the lines add up to the score.
 //!
@@ -26,10 +27,10 @@
 
 use super::engine::Cap;
 use super::params::{
-    CORE_OPEN_CAP, CORE_SATURATION, E_FULL, FIELD_VALUES, FORMAL_CAP, FRAME_STEP, HIT_RELEVANCE,
-    HITS_MAX, JUNIOR_CAP, LEVEL_CAP, LEVEL_ONE, LEVEL_TWO_ABOVE, MUST_SATURATION, NICE_MAX,
-    OFF_FIELD_CAP, PARTIAL, PERMANENT_FACTOR, RELEVANCE_FAR, RELEVANCE_NEAR, RELEVANCE_SAME,
-    TITLE_NEAR, TITLE_SAME, UNNAMED, W_CORE, W_MUSTS, W_ROLE,
+    CORE_OPEN_CAP, CORE_SATURATION, E_FULL, FIELD_VALUES, FORMAL_CAP, FRAME_NEAR, FRAME_STEP,
+    HIT_RELEVANCE, HITS_MAX, JUNIOR_CAP, LEVEL_CAP, LEVEL_ONE, LEVEL_TWO_ABOVE, MUST_SATURATION,
+    NICE_MAX, OFF_FIELD_CAP, PARTIAL, PERMANENT_FACTOR, RELEVANCE_FAR, RELEVANCE_NEAR,
+    RELEVANCE_SAME, TITLE_NEAR, TITLE_SAME, UNNAMED, W_CORE, W_MUSTS, W_ROLE,
 };
 use super::score::div_round_half_even;
 use super::signals::{FRAME_ASPECTS, Sig, Signals};
@@ -163,10 +164,11 @@ pub(crate) struct Percent {
     pub nice: u8,
     /// The content: the parts plus the bonus.
     pub content: u8,
-    /// The points each frame step takes, in the order of the frame aspects worse than wished
-    /// (the first `steps` count).
+    /// The points each frame step takes: the `near` steps of the aspects met in part first,
+    /// then the missed ones (the first `steps` count).
     pub frame: [u8; STEPS_MAX],
     pub steps: u8,
+    pub near: u8,
     /// The points a permanent role takes after the frame.
     pub permanent: u8,
     /// The score before the caps: the content minus the frame steps and the permanent line.
@@ -245,12 +247,19 @@ fn percent_with(s: &Signals, p: ScoreParams) -> Percent {
         / 100)
         .min(1000);
     let mut total = content;
-    let steps = (s.get(Sig::FrameNear) + s.get(Sig::FrameMissed)).min(FRAME_ASPECTS);
+    let missed = s.get(Sig::FrameMissed).min(FRAME_ASPECTS);
+    let near = s.get(Sig::FrameNear).min(FRAME_ASPECTS - missed);
+    let steps = near + missed;
     let mut frame = [0u8; STEPS_MAX];
-    for step in frame.iter_mut().take(usize::from(steps)) {
-        *step = taken(total, FRAME_STEP);
+    for (i, step) in frame.iter_mut().take(usize::from(steps)).enumerate() {
+        let keep = if i < usize::from(near) {
+            FRAME_NEAR
+        } else {
+            FRAME_STEP
+        };
+        *step = taken(total, keep);
         total -= *step;
-        fine = fine * FRAME_STEP / 1000;
+        fine = fine * keep / 1000;
     }
     let permanent = if s.get(Sig::Permanent) == 1 {
         fine = fine * PERMANENT_FACTOR / 1000;
@@ -281,6 +290,7 @@ fn percent_with(s: &Signals, p: ScoreParams) -> Percent {
         content,
         frame,
         steps: u8::try_from(steps).unwrap_or(0),
+        near: u8::try_from(near).unwrap_or(0),
         permanent,
         total: total - permanent,
         fine: u16::try_from(fine).unwrap_or(1000),
@@ -583,7 +593,8 @@ mod tests {
     }
 
     /// The frame is a factor: what the ad does not state fits (factor 1), each condition worse
-    /// than wished keeps `FRAME_STEP`, a permanent role then keeps `PERMANENT_FACTOR`.
+    /// than wished keeps `FRAME_STEP`, one met in part half a step (`FRAME_NEAR`), a permanent
+    /// role then keeps `PERMANENT_FACTOR`.
     #[test]
     fn the_frame_is_a_factor() {
         let full = [(Sig::Role, 2), (Sig::CoreMet, 3), (Sig::OtherMet, 7)];
@@ -594,9 +605,12 @@ mod tests {
         };
         let fits = at(&[]);
         assert_eq!((fits.content, fits.total, fits.steps), (100, 100, 0));
-        let one = at(&[(Sig::FrameNear, 1)]);
+        let one = at(&[(Sig::FrameMissed, 1)]);
         assert_eq!((one.frame[0], one.total), (5, 95));
-        let two = at(&[(Sig::FrameNear, 1), (Sig::FrameMissed, 1)]);
+        let near = at(&[(Sig::FrameNear, 1)]);
+        assert_eq!(near.frame[0], taken(100, FRAME_NEAR));
+        assert!(near.frame[0] < one.frame[0] && near.total > one.total);
+        let two = at(&[(Sig::FrameMissed, 2)]);
         assert_eq!((two.frame[..2].to_vec(), two.total), (vec![5, 5], 90));
         let permanent = at(&[(Sig::FrameMissed, 1), (Sig::Permanent, 1)]);
         assert_eq!((permanent.permanent, permanent.total), (10, 85));

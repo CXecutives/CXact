@@ -1,3 +1,4 @@
+use crate::matching::params::FRAME_STEP;
 use crate::matching::{
     Assessment, CapCode, JobInput, PartCode, ReasonKind, TextKind, Weight, assess, compile_profile,
 };
@@ -219,7 +220,8 @@ fn the_frame_is_a_factor_with_a_line_per_condition() {
     let lines = frames(&onsite);
     assert_eq!(lines.len(), 1, "{:?}", onsite.parts);
     assert_eq!(lines[0]["aspect"], "place");
-    assert_eq!(lines[0]["percent"], 95);
+    assert_eq!(lines[0]["state"], "missed");
+    assert_eq!(lines[0]["permille"], FRAME_STEP);
     let content: i16 =
         onsite.parts[..3].iter().map(|p| p.points).sum::<i16>() + points(&onsite, PartCode::Nice);
     assert_eq!(

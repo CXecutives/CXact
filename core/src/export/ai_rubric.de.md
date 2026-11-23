@@ -34,8 +34,9 @@ Erfüllte Kann-Punkte bringen bis zu {NICE_MAX} Punkte dazu, offene kosten nicht
 
 Dann der Rahmen: Tagessatz, Arbeitsmodell und Ort, Start, Dauer und Auslastung gegen die Wünsche. Was
 die Anzeige nicht nennt, passt. Jede genannte Bedingung, die schlechter ist als gewünscht, aber kein
-hartes Kriterium verletzt, kostet {FRAME_STEP_COST} der Zahl. Eine Festanstellung kostet danach {PERMANENT_COST}, solange das
-Profil sie nicht ausschließt. Zuletzt gilt die niedrigste Grenze (siehe unten).
+hartes Kriterium verletzt, kostet {FRAME_STEP_COST} der Zahl, eine nur knapp verfehlte die Hälfte.
+Eine Festanstellung kostet danach {PERMANENT_COST}, solange das Profil sie nicht ausschließt. Zuletzt
+gilt die niedrigste Grenze (siehe unten).
 
 So liest sich die Zahl:
 

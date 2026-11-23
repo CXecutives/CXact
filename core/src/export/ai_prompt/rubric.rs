@@ -76,7 +76,7 @@ mod tests {
 
     use super::super::de::German;
     use super::*;
-    use crate::matching::params::LEVEL_TWO_ABOVE;
+    use crate::matching::params::{FRAME_NEAR, LEVEL_TWO_ABOVE};
 
     fn raw() -> &'static str {
         German.words().rubric
@@ -152,6 +152,10 @@ mod tests {
             (
                 "eine Festanstellung ein Zehntel weniger",
                 PERMANENT_FACTOR == 900,
+            ),
+            (
+                "eine nur knapp verfehlte die Hälfte",
+                2 * (1000 - FRAME_NEAR) == 1000 - FRAME_STEP,
             ),
         ] {
             assert!(text.contains(phrase), "{phrase}");

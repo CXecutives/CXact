@@ -15,7 +15,7 @@ use super::job::{Class, Stage};
 use super::limits;
 use super::normalize::{char_len, strip};
 use super::params::{
-    E_FULL, E_NONE, FRAME_STEP, NICE_MAX, PERMANENT_FACTOR, W_CORE, W_MUSTS, W_ROLE,
+    E_FULL, E_NONE, FRAME_NEAR, FRAME_STEP, NICE_MAX, PERMANENT_FACTOR, W_CORE, W_MUSTS, W_ROLE,
 };
 use super::permanent;
 use super::signals::{FRAME_CODES, LEVEL_CODES, Sig};
@@ -284,21 +284,20 @@ fn passung(profile: &EngineProfile, evaluation: &Evaluation) -> (Vec<Part>, Vec<
             json!({ "met": nice_met, "partial": nice_partial, "total": nice_total }),
         ));
     }
-    let worse = evaluation
-        .aspects
-        .into_iter()
-        .zip(FRAME_CODES)
-        .filter(|(state, _)| *state > 0);
-    for ((state, aspect), points) in worse.zip(&p.frame[..usize::from(p.steps)]) {
+    // The scorer takes the near steps first, then the missed ones.
+    let (near, missed) = p.frame[..usize::from(p.steps)].split_at(usize::from(p.near));
+    let (mut near, mut missed) = (near.iter(), missed.iter());
+    for (state, aspect) in evaluation.aspects.into_iter().zip(FRAME_CODES) {
+        let (points, name, keep) = match state {
+            0 => continue,
+            1 => (near.next(), "near", FRAME_NEAR),
+            _ => (missed.next(), "missed", FRAME_STEP),
+        };
         parts.push(Part {
             code: PartCode::Frame,
-            points: -i16::from(*points),
+            points: -i16::from(points.copied().unwrap_or(0)),
             max: 0,
-            params: object(&json!({
-                "aspect": aspect,
-                "state": if state == 1 { "near" } else { "missed" },
-                "percent": FRAME_STEP / 10,
-            })),
+            params: object(&json!({ "aspect": aspect, "state": name, "permille": keep })),
         });
     }
     if s.get(Sig::Permanent) == 1 {
