@@ -129,7 +129,7 @@ fn heading_kind(norm: &str) -> Option<HeadingKind> {
     let bare = norm
         .split_once(' ')
         .filter(|(lead, _)| lex::HEADING_LEADS.contains(lead))
-        .map_or(norm, |(_, rest)| rest);
+        .map(|(_, rest)| rest);
     let exact = |text: &str| {
         lex::HEADINGS
             .binary_search_by(|(h, _)| (*h).cmp(text))
@@ -137,9 +137,9 @@ fn heading_kind(norm: &str) -> Option<HeadingKind> {
             .map(|i| lex::HEADINGS[i].1)
     };
     exact(norm)
-        .or_else(|| exact(bare))
+        .or_else(|| bare.and_then(exact))
         .or_else(|| by_prefix(norm))
-        .or_else(|| by_prefix(bare))
+        .or_else(|| bare.and_then(by_prefix))
         .or_else(|| {
             norm.split(" / ")
                 .skip_while(|_| !norm.contains(" / "))
@@ -299,6 +299,17 @@ pub(crate) struct Cue {
 
 static NICE_WORD: LazyLock<Regex> =
     LazyLock::new(|| any_longest_word(lex::NICE_CUES.iter().map(|(cue, _)| *cue)));
+/// The words a nice cue starts at: its first word, a cue of one word also with its endings.
+static NICE_STARTS: LazyLock<HashSet<String>> = LazyLock::new(|| {
+    let endings = || std::iter::once(&"").chain(lex::DECLENSION_ENDINGS);
+    let starts = lex::NICE_CUES
+        .iter()
+        .flat_map(|(cue, _)| match cue.split_once(' ') {
+            Some((first, _)) => vec![first.to_owned()],
+            None => endings().map(|ending| format!("{cue}{ending}")).collect(),
+        });
+    starts.collect()
+});
 
 /// The nice cues of a text, left to right, the longest at each word (`lex::NICE_CUES`: whole
 /// words, `Bonussysteme` holds no `bonus`).
@@ -311,13 +322,14 @@ pub(crate) fn nice_cues(text: &str) -> Vec<Cue> {
     let mut cues = Vec::new();
     let mut i = 0;
     while i < words.len() {
-        let found = lex::NICE_CUES
-            .iter()
-            .filter_map(|&(cue, scope)| {
+        let cues_at = || {
+            let ends = lex::NICE_CUES.iter().filter_map(|&(cue, scope)| {
                 phrase_at(&folded, i, cue, lex::DECLENSION_ENDINGS).map(|end| (end, scope))
-            })
-            .max_by_key(|(end, _)| *end);
-        let Some((end, scope)) = found else {
+            });
+            ends.max_by_key(|(end, _)| *end)
+        };
+        let starts = NICE_STARTS.contains(folded[i].as_ref());
+        let Some((end, scope)) = starts.then(cues_at).flatten() else {
             i += 1;
             continue;
         };

@@ -453,6 +453,10 @@ fn has_onsite(folded: &str) -> bool {
 /// remote days of a week (`zwei Tage vor Ort` = 60 %).
 fn stated_shares(folded: &str) -> Vec<u64> {
     let mut out = Vec::new();
+    // A share is a percentage or a number of days.
+    if !folded.contains('%') && !holds_any(folded, lex::DAY_WORDS) {
+        return out;
+    }
     // Read only where a share or days need them (most sentences state neither).
     let remote = LazyCell::new(|| has_remote(folded));
     let onsite = LazyCell::new(|| has_onsite(folded));

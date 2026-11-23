@@ -539,13 +539,6 @@ fn countries_at(folded: &str) -> Vec<(usize, &'static str)> {
     found
 }
 
-fn countries_in(folded: &str) -> Vec<&'static str> {
-    let mut found: Vec<&'static str> = countries_at(folded).into_iter().map(|(_, c)| c).collect();
-    found.sort_unstable();
-    found.dedup();
-    found
-}
-
 /// Where a sentence says on-site (`true`) or travel (`false`), by byte offset.
 fn place_cues(folded: &str) -> Vec<(usize, bool)> {
     let mut cues: Vec<(usize, bool)> = lex::ONSITE_WORDS
@@ -564,7 +557,9 @@ fn place_cues(folded: &str) -> Vec<(usize, bool)> {
 
 pub(crate) fn location_countries(location: &str) -> Vec<&'static str> {
     let folded = fold(location);
-    let named = countries_in(&folded);
+    let mut named: Vec<&'static str> = countries_at(&folded).into_iter().map(|(_, c)| c).collect();
+    named.sort_unstable();
+    named.dedup();
     if !named.is_empty() {
         return named;
     }

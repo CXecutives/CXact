@@ -14,6 +14,7 @@ use super::fit;
 use super::job::{Class, Stage};
 use super::limits;
 use super::normalize::{char_len, strip};
+use super::object;
 use super::params::{
     E_FULL, E_NONE, FRAME_NEAR, FRAME_STEP, NICE_MAX, PERMANENT_FACTOR, W_CORE, W_MUSTS, W_ROLE,
 };
@@ -94,10 +95,6 @@ fn quote(text: &str) -> String {
     format!("{}…", cut.trim_end())
 }
 
-fn object(value: &Value) -> Map<String, Value> {
-    value.as_object().cloned().unwrap_or_default()
-}
-
 fn class_name(class: &Class) -> &'static str {
     match class {
         Class::Skill => "skill",
@@ -143,7 +140,7 @@ pub(crate) fn assessment(
         let params = requirement_params(profile, scored);
         let reason = b.reason(kind, weight, code);
         reason.label = Some(quote(&item.text));
-        reason.params = object(&params);
+        reason.params = object(params);
         reason.evidence = scored.fit.entry.map(|index| {
             let entry = &profile.skills.entries[index];
             Evidence {
@@ -246,7 +243,7 @@ fn passung(profile: &EngineProfile, evaluation: &Evaluation) -> (Vec<Part>, Vec<
         code,
         points,
         max: max_of(max),
-        params: object(&params),
+        params: object(params),
     };
     let mut core = counts(s, CORE);
     core["counted"] = json!(p.counted[0]);
@@ -354,7 +351,7 @@ fn preferences(profile: &EngineProfile, b: &mut Builder<'_>, evaluation: &Evalua
             (ReasonKind::Partial, "half", Via::General)
         };
         let reason = b.reason(kind, Weight::Info, ReasonCode::TargetRole);
-        reason.params = object(&json!({ "role": role.text, "fit": name }));
+        reason.params = object(json!({ "role": role.text, "fit": name }));
         reason.evidence = Some(Evidence {
             profile: role.text.clone(),
             path: role.path.clone(),
@@ -365,7 +362,7 @@ fn preferences(profile: &EngineProfile, b: &mut Builder<'_>, evaluation: &Evalua
     for wish in &evaluation.wishes {
         let text = b.text;
         let reason = b.reason(wish.state.kind(), Weight::Info, wish.code);
-        reason.params = object(&wish.params);
+        reason.params = object(wish.params.clone());
         reason.evidence = profile
             .wishes
             .source(wish.code)
@@ -400,7 +397,7 @@ fn criterion_states(
             Weight::Info
         };
         let reason = b.reason(finding.kind, weight, finding.code);
-        reason.params = object(&finding.params);
+        reason.params = object(finding.params.clone());
         let id = reason.id;
         for span in &finding.spans {
             b.highlight(span.clone());
@@ -428,7 +425,7 @@ fn criterion_states(
 fn criterion(
     key: CriterionKey,
     status: CriterionStatus,
-    params: &Value,
+    params: Value,
     span: Option<&Range<usize>>,
     text: &str,
 ) -> CriterionState {
@@ -457,7 +454,7 @@ fn told(ok: bool) -> CriterionStatus {
 fn salary_state(min: u64, ad: &AdFacts, text: &str) -> CriterionState {
     let key = CriterionKey::MinSalary;
     let Some(salary) = &ad.salary else {
-        return criterion(key, CriterionStatus::NotMentioned, &json!({}), None, text);
+        return criterion(key, CriterionStatus::NotMentioned, json!({}), None, text);
     };
     let mut params = json!({ "salary": salary.value });
     if let Some(from) = ad.salary_from {
@@ -471,7 +468,7 @@ fn salary_state(min: u64, ad: &AdFacts, text: &str) -> CriterionState {
         return criterion(
             key,
             CriterionStatus::NotMentioned,
-            &params,
+            params,
             salary.span.as_ref(),
             text,
         );
@@ -484,7 +481,7 @@ fn salary_state(min: u64, ad: &AdFacts, text: &str) -> CriterionState {
     criterion(
         key,
         told(compared >= min),
-        &params,
+        params,
         salary.span.as_ref(),
         text,
     )
@@ -498,9 +495,9 @@ fn duration_state(min: u16, ad: &AdFacts, text: &str) -> CriterionState {
         Some(stated) => {
             let params = limits::duration_params(stated.value);
             let ok = !stated.value.below_months(min);
-            criterion(key, told(ok), &params, stated.span.as_ref(), text)
+            criterion(key, told(ok), params, stated.span.as_ref(), text)
         }
-        None => criterion(key, CriterionStatus::NotMentioned, &json!({}), None, text),
+        None => criterion(key, CriterionStatus::NotMentioned, json!({}), None, text),
     }
 }
 
@@ -523,13 +520,13 @@ fn rate_state(min: i128, ad: &AdFacts, text: &str) -> CriterionState {
             params["currency"] = json!(currency_code(currency));
         }
         let ok = r.currency.is_none() && i128::from(r.per_day()) >= min;
-        return criterion(key, told(ok), &params, rate.span.as_ref(), text);
+        return criterion(key, told(ok), params, rate.span.as_ref(), text);
     }
     let (params, span) = match &ad.rate_open {
         Some(open) => (json!({ "rateOpen": true }), open.span.as_ref()),
         None => (json!({}), None),
     };
-    criterion(key, CriterionStatus::NotMentioned, &params, span, text)
+    criterion(key, CriterionStatus::NotMentioned, params, span, text)
 }
 
 /// The start: `Ok` for a stated start (a gap is a finding), `NotMentioned` for none or a
@@ -540,9 +537,9 @@ fn start_state(ad: &AdFacts, text: &str) -> CriterionState {
         Some(start) => {
             let params = json!({ "start": start_code(start.value) });
             let ok = start.value != Start::Vague;
-            criterion(key, told(ok), &params, start.span.as_ref(), text)
+            criterion(key, told(ok), params, start.span.as_ref(), text)
         }
-        None => criterion(key, CriterionStatus::NotMentioned, &json!({}), None, text),
+        None => criterion(key, CriterionStatus::NotMentioned, json!({}), None, text),
     }
 }
 
@@ -556,7 +553,7 @@ fn evidence_states(profile: &EngineProfile, ad: &AdFacts, text: &str) -> Vec<Cri
     let permanent = ad.contract == ContractKind::Permanent;
     // Employment pay: a permanent role or temporary agency work has no day rate.
     let employment = permanent || ad.contract == ContractKind::Anue;
-    let unset = |key| criterion(key, CriterionStatus::Inactive, &json!({}), None, text);
+    let unset = |key| criterion(key, CriterionStatus::Inactive, json!({}), None, text);
     let remote_full =
         ad_facts::location_remote(&ad.location) || ad.remote.is_some_and(|(from, _)| from >= 100);
     let place = if remote_full {
@@ -578,7 +575,7 @@ fn evidence_states(profile: &EngineProfile, ad: &AdFacts, text: &str) -> Vec<Cri
             json!({})
         };
         let span = ad.contract_span.as_ref().filter(|_| ok);
-        criterion(key, told(ok), &params, span, text)
+        criterion(key, told(ok), params, span, text)
     };
     let (interim, permanent_role, anue) = (
         ContractKind::Interim,
@@ -593,7 +590,7 @@ fn evidence_states(profile: &EngineProfile, ad: &AdFacts, text: &str) -> Vec<Cri
         match &c.countries {
             Some(allowed) => {
                 let ok = remote_full || ad_facts::location_allowed(&ad.location, allowed);
-                criterion(CriterionKey::Countries, told(ok), &place, None, text)
+                criterion(CriterionKey::Countries, told(ok), place, None, text)
             }
             None => unset(CriterionKey::Countries),
         },
@@ -630,7 +627,7 @@ fn workload_state(c: &HardCriteria, ad: &AdFacts, text: &str) -> CriterionState 
     let key = CriterionKey::Workload;
     let (min, max) = (c.workload_min, c.workload_max);
     if min.is_none() && max.is_none() {
-        return criterion(key, CriterionStatus::Inactive, &json!({}), None, text);
+        return criterion(key, CriterionStatus::Inactive, json!({}), None, text);
     }
     match &ad.workload {
         Some(stated) => {
@@ -639,9 +636,9 @@ fn workload_state(c: &HardCriteria, ad: &AdFacts, text: &str) -> CriterionState 
                 params["from"] = json!(from);
             }
             let ok = limits::workload_fits(stated.value, min, max);
-            criterion(key, told(ok), &params, stated.span.as_ref(), text)
+            criterion(key, told(ok), params, stated.span.as_ref(), text)
         }
-        None => criterion(key, CriterionStatus::NotMentioned, &json!({}), None, text),
+        None => criterion(key, CriterionStatus::NotMentioned, json!({}), None, text),
     }
 }
 
@@ -654,7 +651,7 @@ fn cap_lines(evaluation: &Evaluation) -> Vec<CapLine> {
         .map(|&(max, code)| CapLine {
             code,
             max,
-            params: object(&match code {
+            params: object(match code {
                 CapCode::CoreOpen => json!({
                     "open": s.get(Sig::CoreOpen),
                     "total": counts(s, CORE)["total"],

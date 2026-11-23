@@ -116,23 +116,23 @@ reads the alert mails (IMAP)
 
 ### core/src/matching
 is the pure integer engine
-- ad_facts.rs 614 · The key facts of an ad, each with the passage that states… · Stated, Duration, AdFacts, read +4
-- application.rs 456 · How to apply to an ad: the application deadline it names… · Contact, deadline, contact
+- ad_facts.rs 616 · The key facts of an ad, each with the passage that states… · Stated, stated, Duration, AdFacts +5
+- application.rs 483 · How to apply to an ad: the application deadline it names… · Contact, deadline, deadline_in, contact +1
 - atoms.rs 867 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +11
-- contract.rs 399 · Contract type of an ad: interim, permanent, temporary… · ContractKind, Contract, student_role, infer
-- engine.rs 746 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
-- exclusion.rs 648 · Exclusion words of the profile: a word excludes the ad… · check
-- explain.rs 684 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
-- facts.rs 1139 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +19
+- contract.rs 395 · Contract type of an ad: interim, permanent, temporary… · ContractKind, Contract, student_role, infer
+- engine.rs 723 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
+- exclusion.rs 615 · Exclusion words of the profile: a word excludes the ad… · Word, compile, check
+- explain.rs 675 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
+- facts.rs 1149 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +19
 - fit.rs 924 · The profile the engine matches against, and the match… · Entry, Broad, Skills, degree_fields_in +8
 - gaps.rs 192 · The gap finder's view of a job: the words of its… · Gap, JobGaps, vocabulary_gaps
 - graph.rs 324 · The engine's knowledge graph: how the atoms of an ad… · fit, packs, other_field, tool_kinds +3
 - layout.rs 104 · The layout of an ad's text for the reader: the lines that… · TextLayout, text_layout
-- limits.rs 548 · The limits of an engagement the profile sets, checked and… · Workload, read, workload, workload_fits +4
+- limits.rs 549 · The limits of an engagement the profile sets, checked and… · Workload, read, workload, workload_fits +4
 - mod.rs 462 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +21
-- normalize.rs 552 · Text primitives with Python semantics: case folding,… · is_space, is_word, decimal, digit_class_body +24
+- normalize.rs 613 · Text primitives with Python semantics: case folding,… · is_space, is_word, decimal, digit_class_body +30
 - params.rs 146 · Frozen parameters of the engine. · E_FULL, E_HALF, E_NONE, W_MUST +58
-- permanent.rs 466 · The rule for permanent roles: the minimum annual salary. · Salary, with_bonus, parse_salary, salary +3
+- permanent.rs 462 · The rule for permanent roles: the minimum annual salary. · Salary, with_bonus, parse_salary, salary +3
 - profile.rs 54 · The profile entries the engine matches against, with their… · CoreText, core_texts
 - pyre.rs 78 · Python `re` semantics on top of the `regex` crate. · compile, view
 - relevance.rs 371 · Relevance of a job for the profile, independent of… · Query, query, title_fit, field_title_fit +3
@@ -140,14 +140,14 @@ is the pure integer engine
 - roles.rs 452 · Target roles: job titles the consultant wants. · Role, read, RoleFit, shape +3
 - score.rs 27 · Integer rounding of the scores. · div_round_half_even
 - scorer.rs 636 · The Passungsgrad: `score = content x frame factor`, then… · FieldClass, class, ScoreParams, Percent +4
-- sections.rs 309 · The line classifier of a job text: what a line is, the one… · ReqKind, Line, classify, skill_term +8
-- seniority.rs 246 · The level of an ad against the profile's own years of… · experience_years, junior_title, entry_level_must, page_junior_level +1
+- sections.rs 347 · The line classifier of a job text: what a line is, the one… · ReqKind, Line, classify, skill_term +9
+- seniority.rs 242 · The level of an ad against the profile's own years of… · experience_years, junior_title, junior_level, check
 - signals.rs 561 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +16
 - terms.rs 725 · The term of a requirement and the profile field it belongs… · is_term, TermField, CoreTerm, term_key +3
-- title.rs 443 · The frame of a job title: the title without its noise, the… · clean, level_of, engagement, ad_level +5
+- title.rs 466 · The frame of a job title: the title without its noise, the… · clean, level_of, engagement, ad_level +5
 - types.rs 459 · Input and output types of the matching engine. · KeyFacts, TextKind, JobInput, Verdict +25
 - vocabulary.rs 576 · The engine's words as a person writes them: the… · Vocabulary, vocabulary
-- wishes.rs 713 · Wishes of the profile: day rate, work mode and regions. · RemoteWish, Wishes, State, WishResult +3
+- wishes.rs 660 · Wishes of the profile: day rate, work mode and regions. · RemoteWish, Wishes, State, WishResult +2
 
 ### core/src/matching/atoms
 - tests.rs 362 · (no header)
@@ -171,10 +171,10 @@ is the pure integer engine
 - classify.rs 246 · The kind of every item: skill, language, degree, soft,… · known_skill, language_of, frame_word, names_degree
 - coordination.rs 297 · Coordinated items: where an `und`, `and`, `&` or a comma…
 - frame.rs 63 · The frame of a requirement clause: `[pronoun] [verbs]… · without_lead
-- lines.rs 259 · Lines of a job text: headings, bullets, closing blocks and… · is_heading_line
-- mod.rs 240 · A job text as the engine reads it: sections with inline… · Stage, Class, Item, Task +2
-- quantities.rs 53 · Numbers in an item: language level and required years. · level_in, years_in
-- split.rs 200 · Cutting a requirement phrase into items, AND parts, OR… · split
+- lines.rs 262 · Lines of a job text: headings, bullets, closing blocks and… · is_heading_line
+- mod.rs 243 · A job text as the engine reads it: sections with inline… · Stage, Class, Item, Task +2
+- quantities.rs 52 · Numbers in an item: language level and required years. · level_in, years_in
+- split.rs 201 · Cutting a requirement phrase into items, AND parts, OR… · split
 - tests.rs 1011 · (no header)
 
 ### core/src/matching/lexicon
@@ -311,7 +311,7 @@ shape what the UI sees.
 - language.rs 243 · English-only sweep: every git-tracked text file must be…
 - mail_fixtures.rs 194 · Checked-in, anonymised alert mails - result as a snapshot.
 - mailbox_slot.rs 172 · Safety invariants of saving the mailbox in `src-tauri`, as…
-- matching_corpus.rs 700 · The synthetic matching corpus.
+- matching_corpus.rs 709 · The synthetic matching corpus.
 - matching_criteria.rs 1086 · The hard-criteria strip rests on evidence: a criterion is…
 - matching_fuzz.rs 270 · Deterministic fuzzing of the engine: every corpus ad line…
 - matching_generalisation.rs 364 · Rules found on the unseen held-out sets 3 to 6, checked on…
