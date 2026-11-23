@@ -6,7 +6,7 @@ file: name, lines, purpose (the first sentence of its header comment), main publ
 (Rust `pub`, TS exports, Svelte props; `+n` more). The notes under the headings come from
 docs/ARCHITECTURE.md "Layers".
 
-512 files, 14 of them without a header comment ("(no header)").
+513 files, 14 of them without a header comment ("(no header)").
 
 ## Where a change goes
 
@@ -113,15 +113,15 @@ reads the alert mails (IMAP)
 is the pure integer engine
 - ad_facts.rs 631 · The key facts of an ad, each with the passage that states… · Stated, Duration, AdFacts, read +4
 - application.rs 498 · How to apply to an ad: the application deadline it names… · Contact, deadline, contact
-- atoms.rs 953 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +11
+- atoms.rs 910 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +11
 - contract.rs 399 · Contract type of an ad: interim, permanent, temporary… · ContractKind, Contract, student_role, infer
-- engine.rs 755 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
+- engine.rs 756 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
 - exclusion.rs 614 · Exclusion words of the profile: a word excludes the ad… · check
 - explain.rs 713 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
 - facts.rs 1274 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +20
 - fit.rs 996 · The profile the engine matches against, and the match… · Entry, Broad, Skills, degree_fields_in +9
 - gaps.rs 193 · The gap finder's view of a job: the words of its… · Gap, JobGaps, vocabulary_gaps
-- graph.rs 101 · The engine's knowledge graph: how the atoms of an ad… · packs, other_field, Known, Row
+- graph.rs 194 · The engine's knowledge graph: how the atoms of an ad… · fit, packs, other_field, Known +1
 - layout.rs 116 · The layout of an ad's text for the reader: the lines that… · TextLayout, text_layout
 - limits.rs 573 · The limits of an engagement the profile sets, checked and… · Workload, read, workload, workload_fits +4
 - mod.rs 466 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +19
@@ -132,12 +132,12 @@ is the pure integer engine
 - pyre.rs 109 · Python `re` semantics on top of the `regex` crate. · compile, view, original_range
 - relevance.rs 375 · Relevance of a job for the profile, independent of… · Query, query, title_fit, field_title_fit +3
 - requirements.rs 52 · Vocabulary terms of a job text, independent of the profile. · extract_job_skills
-- roles.rs 451 · Target roles: job titles the consultant wants. · Role, read, RoleFit, shape +3
+- roles.rs 452 · Target roles: job titles the consultant wants. · Role, read, RoleFit, shape +3
 - score.rs 27 · Integer rounding of the scores. · div_round_half_even
 - scorer.rs 527 · The Passungsgrad: `score = content x frame factor`, then… · FieldClass, class, Percent, percent +3
 - sections.rs 223 · Lines, headings and requirement cues of a job text. · ReqKind, is_bullet, norm_heading, section_kind +4
 - seniority.rs 246 · The level of an ad against the profile's own years of… · experience_years, junior_title, entry_level_must, page_junior_level +1
-- signals.rs 664 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +14
+- signals.rs 665 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +14
 - terms.rs 726 · The term of a requirement and the profile field it belongs… · is_term, TermField, CoreTerm, term_key +3
 - title.rs 443 · The frame of a job title: the title without its noise, the… · clean, level_of, engagement, ad_level +5
 - types.rs 459 · Input and output types of the matching engine. · KeyFacts, TextKind, JobInput, Verdict +25
@@ -145,7 +145,7 @@ is the pure integer engine
 - wishes.rs 643 · Wishes of the profile: day rate, work mode and regions. · RemoteWish, Wishes, State, WishResult +3
 
 ### core/src/matching/atoms
-- tests.rs 380 · (no header)
+- tests.rs 381 · (no header)
 
 ### core/src/matching/engine
 - tests.rs 90 · (no header)
@@ -179,34 +179,35 @@ is the pure integer engine
 - wishes.rs 463 · Word lists of the consultant's wishes and the industries… · LEAD_WORDS, LEAD_ENDINGS, LEVEL_WORDS, ROLE_SHAPE_WORDS +12
 
 ### core/src/matching/lexicon/domains
-- consulting.rs 134 · Management consulting for performance and profit: profit… · DOMAIN
-- customer_service.rs 598 · Customer service and customer experience: customer service… · DOMAIN
-- data.rs 218 · Data and business intelligence: BI tools, SQL, data… · DOMAIN
-- energy.rs 126 · Energy industry: grids and their regulation, metering and… · DOMAIN
-- finance.rs 267 · Finance, controlling, accounting, treasury, restructuring… · DOMAIN
-- hr.rs 332 · Human resources: HR leadership and transformation, labour… · DOMAIN
-- it_project.rs 54 · IT projects and PMO: delivery, testing, data and… · DOMAIN
-- it_service.rs 180 · IT service management: ITIL and ITSM, service desk and IT… · DOMAIN
-- legal.rs 247 · Legal, compliance and risk: compliance management, data… · DOMAIN
-- marketing.rs 215 · Marketing beyond what `sales` already pairs: CRM and… · DOMAIN
-- mod.rs 198 · Domain packs: bilingual pairs and paraphrases of one field… · Domain, DOMAINS
+- consulting.rs 135 · Management consulting for performance and profit: profit… · DOMAIN
+- customer_service.rs 600 · Customer service and customer experience: customer service… · DOMAIN
+- data.rs 219 · Data and business intelligence: BI tools, SQL, data… · DOMAIN
+- energy.rs 127 · Energy industry: grids and their regulation, metering and… · DOMAIN
+- finance.rs 269 · Finance, controlling, accounting, treasury, restructuring… · DOMAIN
+- hr.rs 334 · Human resources: HR leadership and transformation, labour… · DOMAIN
+- it_project.rs 55 · IT projects and PMO: delivery, testing, data and… · DOMAIN
+- it_service.rs 181 · IT service management: ITIL and ITSM, service desk and IT… · DOMAIN
+- legal.rs 248 · Legal, compliance and risk: compliance management, data… · DOMAIN
+- marketing.rs 216 · Marketing beyond what `sales` already pairs: CRM and… · DOMAIN
+- mod.rs 201 · Domain packs: bilingual pairs and paraphrases of one field… · Domain, DOMAINS
 - operations.rs 272 · Operations and engineering: production and plant… · DOMAIN
-- pharma.rs 262 · Pharma quality and regulatory affairs: GMP/GDP/GxP,… · DOMAIN
-- procurement.rs 285 · Procurement and supply chain: strategic and operational… · DOMAIN
-- restructuring.rs 127 · Restructuring: restructuring roles, restructuring… · DOMAIN
-- sales.rs 220 · Sales and marketing: sales leadership, key account… · DOMAIN
-- sap.rs 26 · SAP and ERP: products, modules and process names. · DOMAIN
-- software.rs 217 · Software and cloud: software development and languages,… · DOMAIN
+- pharma.rs 263 · Pharma quality and regulatory affairs: GMP/GDP/GxP,… · DOMAIN
+- procurement.rs 286 · Procurement and supply chain: strategic and operational… · DOMAIN
+- restructuring.rs 128 · Restructuring: restructuring roles, restructuring… · DOMAIN
+- sales.rs 221 · Sales and marketing: sales leadership, key account… · DOMAIN
+- sap.rs 27 · SAP and ERP: products, modules and process names. · DOMAIN
+- software.rs 218 · Software and cloud: software development and languages,… · DOMAIN
 
 ### core/src/matching/lexicon/engine
 - classes.rs 574 · Word classes: languages, soft skills, frames, degrees,… · LANGUAGES, LANGUAGE_NAMES, LEVEL_WORDS, SOFT_SKILLS +24
-- concepts.rs 581 · Concepts, atoms, title heads and field relations. · GENERIC_ATOMS, FIELD_ATOMS, LIGHT_MODIFIERS, ELLIPSIS_HEADS +24
+- concepts.rs 559 · Concepts, atoms, title heads and field relations. · GENERIC_ATOMS, FIELD_ATOMS, LIGHT_MODIFIERS, ELLIPSIS_HEADS +22
 - contact.rs 85 · Contact person, name and phone words. · CONTACT_PERSON_WORDS, CONTACT_LABELS, CONTACT_FILLERS, HONORIFICS +4
 - contract.rs 356 · Contract kinds: agency work (ANUE), interim and permanent. · CONTRACT_DENIED, ANUE_WORDS, ANUE_PARTS, ANUE_HIDDEN +20
 - cues.rs 255 · Nice and must cues, separators, examples, lead verbs and… · SOFT_ALONE, PRONOUN_STARTS, DESCRIPTION_STARTS, MANDATORY_WORDS +17
 - exclusion.rs 259 · Exclusion roles, mentions and denials. · EXCLUSION_WORD_FAMILIES, EXCLUSION_ROLE_WORDS, EXCLUSION_ROLE_ENDINGS, EXCLUSION_ROLE_HEADS +14
+- graph.rs 49 · Relations of the knowledge graph for every profile:… · CORE_COVERS, CORE_NEAR, METHODS
 - level.rs 127 · Seniority and role levels. · ROLE_BRINGS, ENTRY_LEVEL_VALUES, LOW_LEVEL_VALUES, ENTRY_LEVEL_MUSTS +2
-- mod.rs 32 · Word lists of the engine, split by topic.
+- mod.rs 34 · Word lists of the engine, split by topic.
 - morphology.rs 67 · Word endings, linkers, adjective stems and particles. · WORD_ENDINGS, LINKERS, ADJECTIVE_ENDINGS, DECLINED_ENDINGS +7
 - pay.rs 219 · Pay, rate and salary words. · RATE_WORDS, WAGE_PHRASES, WAGE_WORDS_WHOLE, WAGE_HEADS +19
 - places.rs 404 · Places, countries, cities and remote words. · DAY_WORDS_ONSITE, PLACE_LABELS, LOCATION_ONSITE, COUNTRIES +8

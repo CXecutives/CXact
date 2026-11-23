@@ -23,6 +23,7 @@ use std::sync::LazyLock;
 use super::atoms::{self, Fit, Vocab, fold, raw_tokens};
 use super::contract::ContractKind;
 use super::fit::Broad;
+use super::graph;
 use super::lexicon::esco::Kind;
 use super::lexicon::{self, wishes as lex};
 use super::normalize::contains_word;
@@ -196,7 +197,7 @@ fn role_fit(
         let best = title
             .topic
             .iter()
-            .map(|t| atoms::fit(t, atom))
+            .map(|t| graph::fit(t, atom))
             .max()
             .unwrap_or(Fit::None);
         match best {
@@ -224,7 +225,7 @@ fn role_fit(
     // A role of generic words only (`Head of Finance`) is another role when the title
     // names a specific topic of its own (`S/4HANA Finance Lead`, `FP&A`).
     let extra = title.topic.iter().any(|t| {
-        !atoms::is_generic(t) && !role.topic.iter().any(|r| atoms::fit(t, r) != Fit::None)
+        !atoms::is_generic(t) && !role.topic.iter().any(|r| graph::fit(t, r) != Fit::None)
     });
     if !role.specific && extra {
         return None;

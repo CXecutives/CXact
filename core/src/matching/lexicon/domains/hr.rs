@@ -236,7 +236,8 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("personalinformationssystem", "hris"),
         ("success factors", "successfactors"),
     ],
-    half: &[("hr-transformation", &["hr-harmonisierung"])],
+    covers: &[("hr-transformation", &["hr-harmonisierung"])],
+    near: &[],
 };
 
 #[cfg(test)]
@@ -299,11 +300,12 @@ mod tests {
         );
     }
 
-    /// An HR transformation meets the harmonisation of HR processes in half, never the other
-    /// way.
+    /// An HR transformation meets the harmonisation of HR processes in half, and the
+    /// harmonisation the transformation.
     #[test]
     fn harmonising_hr_processes_is_part_of_a_transformation() {
-        use crate::matching::atoms::{Fit, atoms, fit};
+        use crate::matching::atoms::{Fit, atoms};
+        use crate::matching::graph::fit;
         let v = hr();
         assert_same(
             &v,
@@ -316,7 +318,7 @@ mod tests {
         let transformation = one("HR-Transformation");
         let harmonising = one("HR-Prozessharmonisierung");
         assert_eq!(fit(&harmonising, &transformation), Fit::General);
-        assert_eq!(fit(&transformation, &harmonising), Fit::None);
+        assert_eq!(fit(&transformation, &harmonising), Fit::General);
     }
 
     /// Broad companion words never count alone; the field name `HR` heads job titles and

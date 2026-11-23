@@ -178,40 +178,42 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("shared service centre", "shared-service-cent"),
         ("shared service center", "shared-service-cent"),
     ],
-    // Planning, analysis and the P&L are the work of controlling, cash management is part of
-    // treasury and liquidity planning, accounting part of the statements; integration and due
-    // diligence are steps of M&A, planning and controlling of steering the company.
-    half: &[
+    // Planning, analysis and the P&L are the work of controlling, controlling and planning
+    // steer the company, cash management is part of treasury, the statements part of
+    // accounting, the eliminations steps of a consolidation, integration and due diligence
+    // steps of M&A.
+    covers: &[
         (
             "controlling",
-            &[
-                "finanzanalyse",
-                "finanzplanung",
-                "forecast",
-                "fp&a",
-                "guv",
-                "unternehmenssteuerung",
-            ],
+            &["finanzanalyse", "finanzplanung", "forecast", "fp&a", "guv"],
         ),
-        ("due-diligence", &["m&a"]),
-        ("post-merger-integration", &["m&a"]),
-        ("unternehmensplanung", &["unternehmenssteuerung"]),
+        ("konsolidierung", &["ic-eliminierung", "wahrungsumrechnung"]),
+        ("m&a", &["due-diligence", "post-merger-integration"]),
+        (
+            "rechnungswesen",
+            &["jahresabschluss", "konzernrechnungslegung"],
+        ),
+        ("treasury", &["cash-management"]),
+        (
+            "unternehmenssteuerung",
+            &["controlling", "unternehmensplanung"],
+        ),
+    ],
+    // A finance business partner plans and analyses; liquidity planning manages cash.
+    near: &[
+        ("cash-management", &["liquiditatsplanung"]),
         (
             "finance-bp",
             &["finanzanalyse", "finanzplanung", "fp&a", "guv"],
         ),
-        ("jahresabschluss", &["rechnungswesen"]),
-        ("konzernrechnungslegung", &["rechnungswesen"]),
-        ("konsolidierung", &["ic-eliminierung", "wahrungsumrechnung"]),
-        ("liquiditatsplanung", &["cash-management"]),
-        ("treasury", &["cash-management"]),
     ],
 };
 
 #[cfg(test)]
 mod tests {
     use super::super::testing::{assert_same, vocab};
-    use crate::matching::atoms::{Fit, Vocab, atoms, fit};
+    use crate::matching::atoms::{Fit, Vocab, atoms};
+    use crate::matching::graph::fit;
 
     fn finance() -> Vocab {
         let v = vocab(&[
@@ -224,7 +226,7 @@ mod tests {
     }
 
     /// English group accounting reads as the German; the steps of a consolidation are met
-    /// in half by it, never the other way.
+    /// in half by it, and it by them.
     #[test]
     fn group_accounting_and_the_steps_of_a_consolidation() {
         let v = finance();
@@ -261,7 +263,7 @@ mod tests {
         let consolidation = one("Konsolidierung");
         for step in ["intercompany eliminations", "currency translation"] {
             assert_eq!(fit(&one(step), &consolidation), Fit::General, "{step}");
-            assert_eq!(fit(&consolidation, &one(step)), Fit::None, "{step}");
+            assert_eq!(fit(&consolidation, &one(step)), Fit::General, "{step}");
         }
     }
 }

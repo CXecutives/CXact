@@ -8,6 +8,7 @@ use std::rc::Rc;
 use std::sync::LazyLock;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use super::graph;
 use super::lexicon::domains::{DOMAINS, Domain};
 use super::lexicon::{self, engine as lex};
 use super::normalize::casefold;
@@ -651,14 +652,13 @@ static ALL_PACKS: LazyLock<Vocab> = LazyLock::new(Vocab::all);
 
 /// Is a term too broad to be searched for on its own (`Projektmanagement`,
 /// `Personalführung`, `Generative KI`, `SAP`)? It is when every atom of it is a word the
-/// engine finds generic, a concept of general business work (`lex::CORE_CONCEPTS`),
+/// engine finds generic, general business work (`lex::METHODS`),
 /// leadership, a soft skill or a word too broad for a search (`lex::SEARCH_BROAD_ATOMS`); a
 /// term without an atom is too.
 pub(crate) fn broad_search_term(term: &str) -> bool {
-    let general: Vec<&str> = lex::CORE_CONCEPTS.iter().map(|&(_, to)| to).collect();
     atoms(term, &ALL_PACKS).iter().all(|atom| {
         is_generic(atom)
-            || general.contains(&atom.as_str())
+            || lex::METHODS.contains(&atom.as_str())
             || lex::LEADERSHIP_ATOMS.contains(&atom.as_str())
             || lex::SOFT_SKILLS.iter().any(|soft| atom.starts_with(soft))
             || lex::SEARCH_BROAD_ATOMS
@@ -669,14 +669,13 @@ pub(crate) fn broad_search_term(term: &str) -> bool {
 
 /// Is a text general business work any field does (`Projektmanagement`, `Stakeholder
 /// Management`, leadership)? Every atom of it is generic, a concept of general business work
-/// (`lex::CORE_CONCEPTS`) or leadership: it meets requirements, but shows no field.
+/// (`lex::METHODS`) or leadership: it meets requirements, but shows no field.
 pub(crate) fn general_work(text: &str) -> bool {
-    let general: Vec<&str> = lex::CORE_CONCEPTS.iter().map(|&(_, to)| to).collect();
     let atoms = atoms(text, &ALL_PACKS);
     !atoms.is_empty()
         && atoms.iter().all(|atom| {
             is_generic(atom)
-                || general.contains(&atom.as_str())
+                || lex::METHODS.contains(&atom.as_str())
                 || lex::LEADERSHIP_ATOMS.contains(&atom.as_str())
         })
 }
@@ -741,7 +740,7 @@ fn field_shares<'a>(texts: impl IntoIterator<Item = &'a str>) -> Vec<usize> {
             for ((share, names), concept) in shares.iter_mut().zip(PACK_NAMES.iter()).zip(concept) {
                 if names
                     .iter()
-                    .any(|n| fit(atom, n) != Fit::None || fit(n, atom) != Fit::None)
+                    .any(|n| graph::fit(atom, n) != Fit::None || graph::fit(n, atom) != Fit::None)
                 {
                     *share += SHARE;
                 }
@@ -807,51 +806,6 @@ fn light(part: &str, table: &[&str]) -> bool {
             .any(|p| lexicon::contains(table, p) || lexicon::contains(table, &stem(p)))
 }
 
-/// How a job atom relates to a profile atom (V2 compounds, V4 specific/general). A head
-/// the lexicon treats as a near equivalent (`Projektleitung` for `Projektmanagement`, also
-/// in `Projektleitungserfahrung`) meets it in half: close, but leading a project and
-/// managing projects are not always the same skill.
-pub(crate) fn fit(job: &str, profile: &str) -> Fit {
-    let direct = fit_direct(job, profile);
-    if direct != Fit::None {
-        return direct;
-    }
-    for &(a, b) in lex::EQUIVALENT_HEADS {
-        for (from, to) in [(a, b), (b, a)] {
-            if let Some(rest) = job.strip_prefix(from)
-                && fit_direct(&format!("{to}{rest}"), profile) != Fit::None
-            {
-                return Fit::General;
-            }
-        }
-    }
-    // The narrower work of a broader field the profile names (`Beschwerdemanagement` for
-    // `Customer Service Management`), an AI tool for AI: half.
-    if HALF.get(job).is_some_and(|broader| {
-        broader
-            .iter()
-            .any(|b| matches!(fit_direct(b, profile), Fit::Equal | Fit::Specific))
-    }) {
-        return Fit::General;
-    }
-    Fit::None
-}
-
-/// The concepts of an ad and the profile concepts that meet them in half
-/// (`lexicon::engine::CORE_HALF`, `Domain::half`), stemmed.
-static HALF: LazyLock<HashMap<String, Vec<String>>> = LazyLock::new(|| {
-    let mut half: HashMap<String, Vec<String>> = HashMap::new();
-    for (profile, jobs) in lex::CORE_HALF
-        .iter()
-        .chain(DOMAINS.iter().flat_map(|d| d.half.iter()))
-    {
-        for job in *jobs {
-            half.entry(stem(job)).or_default().push(stem(profile));
-        }
-    }
-    half
-});
-
 /// The same compound with and without the linking `s` (`Werksleiter`, `Werkleiter`): one
 /// atom is the other with an `s` after a modifier of four letters or more and before a head
 /// of three or more (`Leistung` is no `Leitung`).
@@ -872,7 +826,10 @@ fn linking_s(a: &str, b: &str) -> bool {
         && long.get(at + 1..) == short.get(at..)
 }
 
-fn fit_direct(job: &str, profile: &str) -> Fit {
+/// How a job atom relates to a profile atom by their words (V2 compounds, V4
+/// specific/general): equal, one a compound of the other, a linking `s`. The knowledge graph
+/// adds what the words do not say (`graph::fit`).
+pub(crate) fn fit_direct(job: &str, profile: &str) -> Fit {
     if job == profile {
         return Fit::Equal;
     }

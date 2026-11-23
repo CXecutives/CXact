@@ -413,7 +413,7 @@ impl Asked {
         }
     }
 
-    /// The ad atom against the profile atom `i` ([`atoms::fit`], abbreviations too).
+    /// The ad atom against the profile atom `i` ([`graph::fit`], abbreviations too).
     fn fit(&self, i: usize) -> Fit {
         match self.row.fits[i] {
             Fit::None if self.abbreviates.contains(&i) => Fit::Specific,

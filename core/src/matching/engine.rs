@@ -16,6 +16,7 @@ use super::contract::{self, Contract, ContractKind};
 use super::exclusion;
 use super::facts::{self, Finding, HardCriteria, JobFacts, Segment};
 use super::fit::{self, ItemFit, Skills};
+use super::graph;
 use super::job::{self, Class, Item, Stage};
 use super::lexicon::engine as lex;
 use super::limits;
@@ -427,7 +428,7 @@ fn scored(profile: &EngineProfile, items: Vec<Item>, title: &str, far: bool) -> 
                     .atoms
                     .iter()
                     .filter(|a| !atoms::is_generic(a))
-                    .any(|a| title_atoms.iter().any(|t| atoms::fit(t, a) == Fit::Equal))
+                    .any(|a| title_atoms.iter().any(|t| graph::fit(t, a) == Fit::Equal))
             {
                 fit.value /= 2;
             }

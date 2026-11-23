@@ -221,28 +221,6 @@ pub(crate) const CORE_CONCEPTS: &[(&str, &str)] = &[
     ("spanish", "spanisch"),
 ];
 
-/// Heads that name nearly the same skill (half a match, both ways, also at the start of a
-/// compound).
-pub(crate) const EQUIVALENT_HEADS: &[(&str, &str)] = &[
-    ("projektleitung", "projektmanagement"),
-    ("programmleitung", "programmmanagement"),
-    ("programmmanagement", "projektmanagement"),
-];
-
-/// A concept of a profile entry and the concepts of an ad it meets in half, for every
-/// profile (the packs add their own, `Domain::half`): an AI tool used is half of AI asked for,
-/// stakeholder management half of stakeholders.
-pub(crate) const CORE_HALF: &[(&str, &[&str])] = &[
-    ("chatgpt", AI),
-    ("claude", AI),
-    ("copilot", AI),
-    // Working with stakeholders (`Umgang mit Stakeholdern`) is half of managing them.
-    ("stakeholdermanagement", &["stakeholder"]),
-];
-
-/// What an ad asks for as artificial intelligence.
-const AI: &[&str] = &["generative-ki", "ki", "llm"];
-
 /// Leadership asked for (`Führungserfahrung`, `leadership experience`): a profile with a
 /// leading role meets it at least half.
 pub(crate) const LEADERSHIP_ATOMS: &[&str] = &[

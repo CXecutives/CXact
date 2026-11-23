@@ -215,7 +215,8 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("dispositionskredit", "kontokorrentkredit"),
         ("data warehouse", "data-warehouse"),
     ],
-    half: &[],
+    covers: &[],
+    near: &[],
 };
 
 #[cfg(test)]

@@ -1,4 +1,5 @@
 use super::*;
+use crate::matching::graph::fit;
 
 fn all(text: &str) -> Vec<String> {
     atoms(text, &Vocab::all()).to_vec()
@@ -32,8 +33,8 @@ fn integration_and_central_alone_meet_nothing() {
     );
 }
 
-/// English process words are their German concepts; an AI tool meets AI in half; a
-/// programme is half a project.
+/// English process words are their German concepts; an AI tool and AI meet in half both
+/// ways; a programme is half a project.
 #[test]
 fn process_words_ai_tools_and_programmes() {
     assert_eq!(all("Process Optimization"), all("Prozessoptimierung"));
@@ -41,7 +42,7 @@ fn process_words_ai_tools_and_programmes() {
     assert_eq!(all("Automation"), all("Automatisierung"));
     assert_eq!(all("Quality Management"), all("Qualitätsmanagement"));
     assert_eq!(fit("ki", "chatgpt"), Fit::General);
-    assert_eq!(fit("chatgpt", "ki"), Fit::None);
+    assert_eq!(fit("chatgpt", "ki"), Fit::General);
     assert_eq!(fit("programmmanagement", "projektmanagement"), Fit::General);
 }
 

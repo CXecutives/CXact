@@ -76,7 +76,8 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("distribution system operator", "netzbetreiber"),
         ("grid operator", "netzbetreiber"),
     ],
-    half: &[],
+    covers: &[],
+    near: &[],
 };
 
 #[cfg(test)]

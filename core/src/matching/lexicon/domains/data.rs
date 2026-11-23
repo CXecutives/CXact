@@ -152,7 +152,8 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("warehouse management", "lagerlogistik"),
         ("warehouse logistics", "lagerlogistik"),
     ],
-    half: &[],
+    covers: &[],
+    near: &[],
 };
 
 #[cfg(test)]

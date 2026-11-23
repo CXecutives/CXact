@@ -197,10 +197,10 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("ehs", "arbeitssicherheit"),
         ("arbeitsschutz", "arbeitssicherheit"),
     ],
-    // Systems, audits and certifications are the narrower work of quality management: a
-    // profile that names the field (`Qualitätsmanagement`) or the audit meets them in half.
-    half: &[
-        ("qualitatsmanagement", &["qualitatsmanagementsystem"]),
+    // A management system is the narrower work of quality management; audits and
+    // certifications are close to the system and to a process audit.
+    covers: &[("qualitatsmanagement", &["qualitatsmanagementsystem"])],
+    near: &[
         ("prozessaudit", &["audit", "zertifizierung"]),
         ("qualitatsmanagementsystem", &["audit", "zertifizierung"]),
     ],
