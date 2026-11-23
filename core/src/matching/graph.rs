@@ -189,6 +189,19 @@ pub(crate) struct Row {
     /// Does a profile atom relate to it the other way round ([`fit`] of the profile atom
     /// against it)?
     back: OnceCell<bool>,
+    /// The profile atoms it names ([`Row::named`]).
+    named: OnceCell<Box<[usize]>>,
+}
+
+impl Row {
+    /// The indices of the profile atoms the ad atom names: the same or narrower.
+    pub(crate) fn named(&self) -> &[usize] {
+        self.named.get_or_init(|| {
+            let names =
+                |(i, f): (usize, &Fit)| matches!(f, Fit::Equal | Fit::Specific).then_some(i);
+            self.fits.iter().enumerate().filter_map(names).collect()
+        })
+    }
 }
 
 thread_local! {
@@ -210,11 +223,6 @@ impl Known {
         &self.atoms
     }
 
-    /// The index of an atom.
-    pub(crate) fn index(&self, atom: &str) -> Option<usize> {
-        self.atoms.iter().position(|a| a == atom)
-    }
-
     /// The packs of the atom at `index` ([`packs`]).
     pub(crate) fn packs(&self, index: usize) -> u32 {
         self.packs[index]
@@ -234,6 +242,7 @@ impl Known {
                 .collect(),
             packs: packs(job),
             back: OnceCell::new(),
+            named: OnceCell::new(),
         });
         ROWS.with(|rows| rows.borrow_mut().put(self.id, job, row.clone()));
         row

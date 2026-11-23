@@ -4,11 +4,12 @@
 
 use std::collections::{BTreeMap, HashMap};
 use std::ops::Range;
+use std::rc::Rc;
 use std::sync::LazyLock;
 
 use super::atoms::{self, Fit, Vocab, fold};
 use super::fit::Skills;
-use super::graph::{self, Known};
+use super::graph::{self, Known, Row};
 use super::lexicon::engine as lex;
 use super::params::{
     BM25_B, BM25_K1, BM25_LENGTH, FIELD_REQUIREMENTS, FIELD_REST, FIELD_TITLE, GENERIC_WEIGHT,
@@ -239,24 +240,19 @@ pub(crate) fn relevance(
     // Length normalisation in per-mille: 1 - b + b * len / avg.
     let norm = (1000 - BM25_B) + BM25_B * length / BM25_LENGTH;
     // Each distinct atom of the ad against the query once: the profile atoms it names.
-    let mut named: HashMap<&str, Vec<usize>> = HashMap::new();
+    let mut named: HashMap<&str, Rc<Row>> = HashMap::new();
     for job in title_counts
         .keys()
         .map(String::as_str)
         .chain(all.keys().copied())
         .chain(requirement_counts.keys().copied())
     {
-        named.entry(job).or_insert_with(|| {
-            let row = query.known.row(job);
-            (0..query.atoms.len())
-                .filter(|&i| matches!(row.fits[i], Fit::Equal | Fit::Specific))
-                .collect()
-        });
+        named.entry(job).or_insert_with(|| query.known.row(job));
     }
     let field = |counts: &mut dyn Iterator<Item = (&str, u64)>| {
         let mut per_atom = vec![0u64; query.atoms.len()];
         for (job, n) in counts {
-            for &index in named.get(job).into_iter().flatten() {
+            for &index in named.get(job).map(|row| row.named()).unwrap_or_default() {
                 per_atom[index] += n;
             }
         }

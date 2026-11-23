@@ -113,15 +113,15 @@ reads the alert mails (IMAP)
 is the pure integer engine
 - ad_facts.rs 631 · The key facts of an ad, each with the passage that states… · Stated, Duration, AdFacts, read +4
 - application.rs 498 · How to apply to an ad: the application deadline it names… · Contact, deadline, contact
-- atoms.rs 913 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +11
+- atoms.rs 918 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +11
 - contract.rs 399 · Contract type of an ad: interim, permanent, temporary… · ContractKind, Contract, student_role, infer
-- engine.rs 756 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
+- engine.rs 730 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
 - exclusion.rs 614 · Exclusion words of the profile: a word excludes the ad… · check
 - explain.rs 713 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
 - facts.rs 1274 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +20
-- fit.rs 1002 · The profile the engine matches against, and the match… · Entry, Broad, Skills, degree_fields_in +9
-- gaps.rs 193 · The gap finder's view of a job: the words of its… · Gap, JobGaps, vocabulary_gaps
-- graph.rs 225 · The engine's knowledge graph: how the atoms of an ad… · fit, packs, other_field, tool_kinds +3
+- fit.rs 924 · The profile the engine matches against, and the match… · Entry, Broad, Skills, degree_fields_in +8
+- gaps.rs 192 · The gap finder's view of a job: the words of its… · Gap, JobGaps, vocabulary_gaps
+- graph.rs 324 · The engine's knowledge graph: how the atoms of an ad… · fit, packs, other_field, tool_kinds +3
 - layout.rs 116 · The layout of an ad's text for the reader: the lines that… · TextLayout, text_layout
 - limits.rs 573 · The limits of an engagement the profile sets, checked and… · Workload, read, workload, workload_fits +4
 - mod.rs 466 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +19
@@ -130,7 +130,7 @@ is the pure integer engine
 - permanent.rs 496 · The rule for permanent roles: the minimum annual salary. · Salary, with_bonus, parse_salary, salary +3
 - profile.rs 54 · The profile entries the engine matches against, with their… · CoreText, core_texts
 - pyre.rs 109 · Python `re` semantics on top of the `regex` crate. · compile, view, original_range
-- relevance.rs 375 · Relevance of a job for the profile, independent of… · Query, query, title_fit, field_title_fit +3
+- relevance.rs 371 · Relevance of a job for the profile, independent of… · Query, query, title_fit, field_title_fit +3
 - requirements.rs 52 · Vocabulary terms of a job text, independent of the profile. · extract_job_skills
 - roles.rs 452 · Target roles: job titles the consultant wants. · Role, read, RoleFit, shape +3
 - score.rs 27 · Integer rounding of the scores. · div_round_half_even
@@ -160,7 +160,7 @@ is the pure integer engine
 - tests.rs 549 · (no header)
 
 ### core/src/matching/fit
-- tests.rs 233 · (no header)
+- tests.rs 204 · (no header)
 
 ### core/src/matching/job
 - classify.rs 271 · The kind of every item: skill, language, degree, soft,… · known_skill, language_of, frame_word, names_degree
@@ -180,10 +180,10 @@ is the pure integer engine
 
 ### core/src/matching/lexicon/domains
 - consulting.rs 135 · Management consulting for performance and profit: profit… · DOMAIN
-- customer_service.rs 600 · Customer service and customer experience: customer service… · DOMAIN
+- customer_service.rs 604 · Customer service and customer experience: customer service… · DOMAIN
 - data.rs 219 · Data and business intelligence: BI tools, SQL, data… · DOMAIN
 - energy.rs 127 · Energy industry: grids and their regulation, metering and… · DOMAIN
-- finance.rs 323 · Finance, controlling, accounting, treasury, restructuring… · DOMAIN
+- finance.rs 324 · Finance, controlling, accounting, treasury, restructuring… · DOMAIN
 - hr.rs 334 · Human resources: HR leadership and transformation, labour… · DOMAIN
 - it_project.rs 55 · IT projects and PMO: delivery, testing, data and… · DOMAIN
 - it_service.rs 181 · IT service management: ITIL and ITSM, service desk and IT… · DOMAIN
@@ -200,13 +200,13 @@ is the pure integer engine
 
 ### core/src/matching/lexicon/engine
 - classes.rs 574 · Word classes: languages, soft skills, frames, degrees,… · LANGUAGES, LANGUAGE_NAMES, LEVEL_WORDS, SOFT_SKILLS +24
-- concepts.rs 559 · Concepts, atoms, title heads and field relations. · GENERIC_ATOMS, FIELD_ATOMS, LIGHT_MODIFIERS, ELLIPSIS_HEADS +22
+- concepts.rs 535 · Concepts, atoms, title heads and field relations. · GENERIC_ATOMS, FIELD_ATOMS, LIGHT_MODIFIERS, ELLIPSIS_HEADS +21
 - contact.rs 85 · Contact person, name and phone words. · CONTACT_PERSON_WORDS, CONTACT_LABELS, CONTACT_FILLERS, HONORIFICS +4
 - contract.rs 356 · Contract kinds: agency work (ANUE), interim and permanent. · CONTRACT_DENIED, ANUE_WORDS, ANUE_PARTS, ANUE_HIDDEN +20
 - cues.rs 255 · Nice and must cues, separators, examples, lead verbs and… · SOFT_ALONE, PRONOUN_STARTS, DESCRIPTION_STARTS, MANDATORY_WORDS +17
 - exclusion.rs 259 · Exclusion roles, mentions and denials. · EXCLUSION_WORD_FAMILIES, EXCLUSION_ROLE_WORDS, EXCLUSION_ROLE_ENDINGS, EXCLUSION_ROLE_HEADS +14
 - graph.rs 250 · Relations of the knowledge graph for every profile:… · CORE_COVERS, CORE_NEAR, METHODS, TOOL_KINDS
-- level.rs 127 · Seniority and role levels. · ROLE_BRINGS, ENTRY_LEVEL_VALUES, LOW_LEVEL_VALUES, ENTRY_LEVEL_MUSTS +2
+- level.rs 93 · Seniority and role levels. · ENTRY_LEVEL_VALUES, LOW_LEVEL_VALUES, ENTRY_LEVEL_MUSTS, LEVEL_CODES +1
 - mod.rs 34 · Word lists of the engine, split by topic.
 - morphology.rs 67 · Word endings, linkers, adjective stems and particles. · WORD_ENDINGS, LINKERS, ADJECTIVE_ENDINGS, DECLINED_ENDINGS +7
 - pay.rs 219 · Pay, rate and salary words. · RATE_WORDS, WAGE_PHRASES, WAGE_WORDS_WHOLE, WAGE_HEADS +19

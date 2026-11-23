@@ -287,7 +287,8 @@ impl Skills {
         distinct.dedup();
         let known = Known::new(distinct);
         for entry in &mut entries {
-            entry.ids = entry.atoms.iter().filter_map(|a| known.index(a)).collect();
+            let index = |a: &String| known.atoms().binary_search(a).ok();
+            entry.ids = entry.atoms.iter().filter_map(index).collect();
         }
         let languages = languages_of(form);
         let mut degree_fields: Option<Vec<&'static str>> = None;
@@ -541,16 +542,19 @@ fn covered(skills: &Skills, atom: &Asked) -> bool {
                 .all(|p| Asked::new(skills, p).related(known)))
 }
 
-/// The best entry on the ladder for the atoms of a requirement (`industries`: the profile's
-/// industries count too), the first of equals.
-fn best_entry(skills: &Skills, job: &Alternative, industries: bool) -> ItemFit {
+/// The best entry on the ladder for the atoms of a requirement, the first of equals. An
+/// industry of the profile meets a requirement through a compound only when the requirement
+/// asks for an industry (`industry`; `Kommunikationsfähigkeit` is no `Telekommunikation`);
+/// its own name it always meets.
+fn best_entry(skills: &Skills, job: &Alternative, industry: impl Fn() -> bool) -> ItemFit {
     let mut best = NONE;
     let mut best_rank = (E_NONE, false);
+    let industry = std::cell::LazyCell::new(industry);
     for (index, entry) in skills.entries.iter().enumerate() {
-        if !industries && entry.industry {
+        let (value, via) = entry_fit(job, entry);
+        if entry.industry && via != Via::Exact && !*industry {
             continue;
         }
-        let (value, via) = entry_fit(job, entry);
         // What the entry names itself beats what it covers (`Projektmanagement` before
         // `Programmmanagement` for project management asked).
         let rank = (value, !job.covered(entry));
@@ -574,19 +578,7 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
         return NONE;
     }
     let asked = Alternative::new(skills, &job);
-    let mut best = best_entry(skills, &asked, true);
-    // An industry of the profile meets a requirement through a compound only when the
-    // requirement asks for an industry (`Kommunikationsfähigkeit` is no `Telekommunikation`);
-    // its own name it always meets.
-    if best.via != Via::Exact
-        && best
-            .entry
-            .and_then(|e| skills.entries.get(e))
-            .is_some_and(|e| e.industry)
-        && !industry_only(text, &skills.vocab)
-    {
-        best = best_entry(skills, &asked, false);
-    }
+    let mut best = best_entry(skills, &asked, || industry_only(text, &skills.vocab));
     // A generic family asked for alone (`SAP-Kenntnisse`) is met by an entry that names a
     // product of it (`SAP S/4HANA`).
     if best.value == E_NONE
