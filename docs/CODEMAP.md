@@ -116,7 +116,7 @@ is the pure integer engine
 - atoms.rs 1313 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +10
 - contract.rs 399 · Contract type of an ad: interim, permanent, temporary… · ContractKind, Contract, student_role, infer
 - engine.rs 843 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
-- exclusion.rs 859 · Exclusion words of the profile: a word excludes the ad… · check
+- exclusion.rs 893 · Exclusion words of the profile: a word excludes the ad… · check
 - explain.rs 947 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
 - facts.rs 1825 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +20
 - fit.rs 1137 · The profile the engine matches against, and the match… · Entry, Broad, forget, Skills +11
