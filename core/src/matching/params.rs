@@ -59,7 +59,7 @@ pub(crate) const OFF_FIELD_CAP: u8 = 24;
 // score = content x frame factor, then the lowest cap. The weights, the level values, the
 // field values, the frame step and the caps are fixed by what they mean (the owner's rules
 // in `export/ai_rubric.de.md`); only `PARTIAL` is fitted, on the private teacher labels
-// (train and lockbox without the gold pairs) by `tools/scorer/train.py`.
+// (train and lockbox without the gold pairs) by `core/examples/fit_partial.rs`.
 
 /// The weights of the three content parts in points (sum 100): role and field, core of the
 /// role, other musts. Fixed by meaning: the role and its core decide, the rest of the list

@@ -43,6 +43,7 @@ everything the app knows and does, without UI and without…
 - cv_compare.rs 71 · One paid call of the CV worker, read and sent exactly as…
 - dump_alerts.rs 69 · Save alert mails as local test data:
 - export_gold.rs 365 · Export the app's fetched job texts as the private gold set:
+- fit_partial.rs 367 · Fits the free value of the Passungsgrad on teacher labels…
 - live_search.rs 329 · A real search of the sources the app searches itself, run…
 - match_eval.rs 374 · Evaluate the engine against the blind labels of the…
 - vocab_gaps.rs 30 · The gap finder: which words of the ads' requirements and…
@@ -124,7 +125,7 @@ is the pure integer engine
 - job.rs 1969 · A job text as the engine reads it: sections with inline… · Stage, Class, Item, JobDoc +12
 - layout.rs 116 · The layout of an ad's text for the reader: the lines that… · TextLayout, text_layout
 - limits.rs 573 · The limits of an engagement the profile sets, checked and… · Workload, read, workload, workload_fits +4
-- mod.rs 467 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +19
+- mod.rs 468 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +21
 - normalize.rs 303 · Text primitives with Python semantics: case folding,… · is_space, is_word, decimal, digit_class_body +8
 - params.rs 142 · Frozen parameters of the engine. · E_FULL, E_HALF, E_NONE, W_MUST +57
 - permanent.rs 496 · The rule for permanent roles: the minimum annual salary. · Salary, with_bonus, parse_salary, salary +3
@@ -134,10 +135,10 @@ is the pure integer engine
 - requirements.rs 52 · Vocabulary terms of a job text, independent of the profile. · extract_job_skills
 - roles.rs 442 · Target roles: job titles the consultant wants. · Role, read, RoleFit, title_core +2
 - score.rs 27 · Integer rounding of the scores. · div_round_half_even
-- scorer.rs 514 · The Passungsgrad: `score = content x frame factor`, then… · FieldClass, class, Percent, percent +3
+- scorer.rs 605 · The Passungsgrad: `score = content x frame factor`, then… · FieldClass, class, ScoreParams, Percent +4
 - sections.rs 223 · Lines, headings and requirement cues of a job text. · ReqKind, is_bullet, norm_heading, section_kind +4
 - seniority.rs 245 · The level of an ad against the profile's own years of… · experience_years, junior_title, entry_level_must, page_junior_level +1
-- signals.rs 565 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +14
+- signals.rs 580 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +14
 - terms.rs 993 · The term of a requirement and the profile field it belongs… · is_term, TermField, CoreTerm, term_key +3
 - title.rs 443 · The frame of a job title: the title without its noise, the… · clean, level_of, engagement, ad_level +5
 - types.rs 459 · Input and output types of the matching engine. · KeyFacts, TextKind, JobInput, Verdict +25
@@ -516,9 +517,6 @@ beside the app.
 
 ### tools/esco
 - build.py 544 · ESCO vocabulary of the matching engine:…
-
-### tools/scorer
-- train.py 324 · Fits the free value of the Passungsgrad on teacher labels…
 
 ### tools/ui-harness
 - playwright.config.ts 81 · UI harness: the harness build served by `vite preview`… · default

@@ -21,7 +21,7 @@ mod layout;
 pub(crate) mod lexicon;
 mod limits;
 mod normalize;
-mod params;
+pub(crate) mod params;
 mod permanent;
 mod profile;
 mod pyre;
@@ -50,6 +50,7 @@ use crate::profile::ProfileForm;
 #[cfg(debug_assertions)]
 pub use gaps::{Gap, JobGaps, vocabulary_gaps};
 pub use layout::{TextLayout, text_layout};
+pub use scorer::{ScoreParams, signal_score};
 pub use signals::{
     MAX as SIGNAL_MAX, N as SIGNALS, NAMES as SIGNAL_NAMES, SIGN, Sig, Signals, Trace, TraceItem,
     signals, trace,
