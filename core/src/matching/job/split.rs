@@ -21,14 +21,15 @@ pub(super) fn separators(text: &str, words: &[&str]) -> Vec<Range<usize>> {
         // `Risiko- und Qualitätsmanagement` parts like the written-out form when the head of
         // the word after it is known; any other word ending in a hyphen keeps its part.
         let after_hyphen =
-            i > 0 && bytes[i - 1] == b'-' && leading_ellipsis(&text[..i], &text[i..]).is_none();
+            || i > 0 && bytes[i - 1] == b'-' && leading_ellipsis(&text[..i], &text[i..]).is_none();
         if depth == 0
-            && !after_hyphen
             && let Some(word) = words.iter().find(|w| {
-                bytes
-                    .get(i..i + w.len())
-                    .is_some_and(|b| b.eq_ignore_ascii_case(w.as_bytes()))
+                w.as_bytes()[0].eq_ignore_ascii_case(&bytes[i])
+                    && bytes
+                        .get(i..i + w.len())
+                        .is_some_and(|b| b.eq_ignore_ascii_case(w.as_bytes()))
             })
+            && !after_hyphen()
         {
             found.push(i..i + word.len());
             i += word.len();

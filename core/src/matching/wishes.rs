@@ -29,11 +29,12 @@ use std::sync::LazyLock;
 
 use serde_json::{Value, json};
 
-use super::atoms::{Vocab, fold};
+use super::ad_facts::AdFacts;
+use super::atoms::fold;
 use super::contract::ContractKind;
 use super::facts::{self, JobFacts, Segment, fact};
 use super::lexicon::{engine as core_lex, wishes as lex};
-use super::normalize::contains_word;
+use super::normalize::{contains_word, holds_any};
 use super::params::{
     HYBRID_SHARE, ONSITE_MAX, REGION_REMOTE_NEAR, REMOTE_FULL, REMOTE_MARGIN, REMOTE_NAMED_SHARE,
     REMOTE_PARTLY, WISH_RATE_NEAR, WORKDAYS,
@@ -362,10 +363,6 @@ impl Wishes {
             .find(|(c, _, _)| *c == code)
             .map(|(_, text, path)| (text.as_str(), path.as_str()))
     }
-
-    fn any(&self) -> bool {
-        self.rate.is_some() || self.remote.is_some() || self.regions.is_some()
-    }
 }
 
 /// How a wish came out.
@@ -421,21 +418,13 @@ fn result(
     }
 }
 
-/// What an ad says for the wishes.
-pub(crate) struct Ad<'a> {
-    pub job: &'a JobFacts<'a>,
-    pub segments: &'a [Segment],
-    pub folded: &'a str,
-    pub contract: ContractKind,
-    pub vocab: &'a Vocab,
-}
-
-/// The wishes for one ad, in the order day rate, remote, region.
-pub(crate) fn evaluate(wishes: &Wishes, ad: &Ad<'_>) -> Vec<WishResult> {
-    if !wishes.any() {
-        return Vec::new();
-    }
-    let share = remote_share(ad.job, ad.segments, ad.folded);
+/// The wishes for one ad (`ad`: what it states), in the order day rate, remote, region.
+pub(crate) fn evaluate(
+    wishes: &Wishes,
+    job: &JobFacts<'_>,
+    segments: &[Segment],
+    ad: &AdFacts,
+) -> Vec<WishResult> {
     let mut out = Vec::new();
     if let Some(wish) = wishes.rate
         && ad.contract != ContractKind::Permanent
@@ -443,22 +432,22 @@ pub(crate) fn evaluate(wishes: &Wishes, ad: &Ad<'_>) -> Vec<WishResult> {
         out.push(rate(wish, ad));
     }
     if let Some(wish) = wishes.remote {
-        out.push(remote(wish, share));
+        out.push(remote(wish, ad.remote));
     }
     if wishes.regions.is_some() {
-        out.push(region(&wishes.places, ad, share));
+        out.push(region(&wishes.places, job, segments, ad.remote));
     }
     out
 }
 
-fn rate(wish: u64, ad: &Ad<'_>) -> WishResult {
+fn rate(wish: u64, ad: &AdFacts) -> WishResult {
     let code = ReasonCode::DayRateWish;
     // A wage is employment pay, no day rate.
-    let Some((rate, span)) = facts::stated_rate(ad.job, ad.segments).filter(|(r, _)| !r.wage)
-    else {
+    let Some(stated) = ad.rate.as_ref().filter(|r| !r.value.wage) else {
         return result(code, State::Unknown, json!({ "wish": wish }), Vec::new());
     };
-    let spans: Vec<Range<usize>> = span.into_iter().collect();
+    let rate = stated.value;
+    let spans: Vec<Range<usize>> = stated.span.clone().into_iter().collect();
     if let Some(currency) = rate.currency {
         let params = json!({ "wish": wish, "currency": currency.to_uppercase() });
         return result(code, State::Unknown, params, spans);
@@ -478,14 +467,15 @@ fn rate(wish: u64, ad: &Ad<'_>) -> WishResult {
 
 /// Does a folded text name one of `list` (whole words, word starts from six letters on, or
 /// phrases)?
-fn names(folded: &str, list: &[&str]) -> bool {
-    list.iter().any(|entry| {
-        if entry.contains(' ') {
-            contains_word(folded, entry)
-        } else {
-            words(folded).any(|w| word_is(w, entry))
-        }
-    })
+fn names(folded: &str, list: &'static [&'static str]) -> bool {
+    holds_any(folded, list)
+        && list.iter().any(|entry| {
+            if entry.contains(' ') {
+                contains_word(folded, entry)
+            } else {
+                words(folded).any(|w| word_is(w, entry))
+            }
+        })
 }
 
 fn has_remote(folded: &str) -> bool {
@@ -604,10 +594,8 @@ pub(crate) fn remote_share(
         .iter()
         .flat_map(|(_, f)| stated_shares(f))
         .collect();
-    let full = core_lex::FULL_REMOTE
-        .iter()
-        .chain(core_lex::REMOTE_FULL_EXTRA)
-        .any(|w| folded.contains(w))
+    let full = holds_any(folded, core_lex::FULL_REMOTE)
+        || holds_any(folded, core_lex::REMOTE_FULL_EXTRA)
         || contains_word(&location, "remote");
     if full {
         stated.push(100);
@@ -615,10 +603,10 @@ pub(crate) fn remote_share(
     if let Some(&max) = stated.iter().max() {
         return Some((max, max));
     }
-    if lex::REMOTE_NONE.iter().any(|w| folded.contains(w)) {
+    if holds_any(folded, lex::REMOTE_NONE) {
         return Some((0, 0));
     }
-    if lex::HYBRID_WORDS.iter().any(|w| folded.contains(w)) || contains_word(&location, "hybrid") {
+    if holds_any(folded, lex::HYBRID_WORDS) || contains_word(&location, "hybrid") {
         return Some(HYBRID_SHARE);
     }
     if segments.iter().any(|(_, f)| has_remote(f)) {
@@ -668,19 +656,23 @@ fn as_written(text: &str, place: &str) -> String {
         .map_or_else(|| place.to_owned(), str::to_owned)
 }
 
-fn region(places: &Places, ad: &Ad<'_>, share: Option<(u64, u64)>) -> WishResult {
+fn region(
+    places: &Places,
+    job: &JobFacts<'_>,
+    segments: &[Segment],
+    share: Option<(u64, u64)>,
+) -> WishResult {
     let code = ReasonCode::RegionWish;
     let from = share.map_or(0, |(from, _)| from);
     if from >= 100 {
         return result(code, State::Met, json!({ "remote": true }), Vec::new());
     }
-    let job = ad.job;
     let raw = fact(job.facts, super::fact_key::LOCATION)
         .and_then(Value::as_str)
         .unwrap_or(job.location);
     // Where the ad names its place: the location, location lines, on-site sentences.
     let mut sources: Vec<(String, Option<Range<usize>>, &str)> = vec![(fold(raw), None, raw)];
-    for (range, f) in ad.segments {
+    for (range, f) in segments {
         let line = core_lex::LOCATION_LINES.iter().any(|w| f.starts_with(w));
         let onsite = core_lex::ONSITE_WORDS.iter().any(|w| f.contains(w));
         if line || onsite {

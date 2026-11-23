@@ -17,14 +17,17 @@ use jiff::civil::Date;
 use regex::Regex;
 use serde_json::{Value, json};
 
+use super::ad_facts::AdFacts;
 use super::atoms::fold;
 use super::contract::{Contract, ContractKind};
 use super::lexicon::engine as lex;
 use super::normalize::{
-    amount_at, amount_sides, clauses, contains_word, contains_word_with, ends_word, find_word,
-    month_named, numeric_date, quarter, sentences, splitlines, starts_word, word_bounded,
+    amount_at, amount_sides, any_word, clauses, contains_word, contains_word_with, ends_word,
+    find_word, month_named, numeric_date, quarter, sentences, splitlines, starts_word,
+    word_bounded,
 };
 use super::params::HOURS_PER_DAY;
+use super::sections;
 use super::types::{CriterionKey, ReasonCode, ReasonKind};
 use crate::portal::Portal;
 use crate::profile::{ProfileForm, Workload};
@@ -186,7 +189,9 @@ pub(crate) type Segment = (Range<usize>, String);
 fn line_parts(line: &str) -> Vec<&str> {
     let mut parts = vec![line];
     for sep in lex::SEGMENT_SEPARATORS {
-        parts = parts.into_iter().flat_map(|p| p.split(sep)).collect();
+        if line.contains(sep) {
+            parts = parts.into_iter().flat_map(|p| p.split(sep)).collect();
+        }
     }
     parts
 }
@@ -197,9 +202,11 @@ fn line_parts(line: &str) -> Vec<&str> {
 pub(crate) fn own_text(text: &str) -> &str {
     let mut offset = 0;
     for line in text.split_inclusive('\n') {
-        let folded = fold(line.trim());
-        let heading = super::sections::is_listings_heading(&folded);
-        if heading && offset > 0 {
+        let trimmed = line.trim();
+        let heading = offset > 0
+            && sections::listings_length(trimmed)
+            && sections::is_listings_heading(&fold(trimmed));
+        if heading {
             return &text[..offset];
         }
         offset += line.len();
@@ -226,7 +233,8 @@ pub(crate) fn fact<'a>(facts: Option<&'a Value>, key: &str) -> Option<&'a Value>
     facts.and_then(|f| f.get(key)).filter(|v| !v.is_null())
 }
 
-/// Findings of the contract type, ANÜ, country, day rate and availability.
+/// Findings of the contract type, ANÜ, country, day rate and availability (`ad`: what the ad
+/// states).
 pub(crate) fn check(
     criteria: &HardCriteria,
     job: &JobFacts<'_>,
@@ -234,6 +242,7 @@ pub(crate) fn check(
     folded: &str,
     contract: &Contract,
     anue_findings: Vec<Finding>,
+    ad: &AdFacts,
 ) -> Vec<Finding> {
     let mut findings = Vec::new();
     let (row, inferred) = match contract.kind {
@@ -285,7 +294,7 @@ pub(crate) fn check(
     }
     // The pay of an employment or of temporary agency work is no day rate.
     if !matches!(contract.kind, ContractKind::Permanent | ContractKind::Anue) {
-        findings.extend(day_rate(criteria, job, segments));
+        findings.extend(day_rate(criteria, ad));
     }
     if let Availability::From(date) = criteria.available {
         findings.extend(availability(date, job, segments));
@@ -310,6 +319,12 @@ fn project(contract: &Contract) -> Option<Finding> {
         contract.spans.clone(),
     ))
 }
+
+/// A sentence mentions ANÜ only with one of these words in it.
+static ANUE_WORD: LazyLock<Regex> = LazyLock::new(|| {
+    let words = [lex::ANUE_WORDS, lex::ANUE_PARTS, lex::ANUE_HIDDEN];
+    any_word(words.into_iter().flatten().copied())
+});
 
 /// ANÜ named (decided), optional or hidden; empty when not mentioned.
 pub(crate) fn anue(job: &JobFacts<'_>, segments: &[Segment]) -> Vec<Finding> {
@@ -345,7 +360,7 @@ pub(crate) fn anue(job: &JobFacts<'_>, segments: &[Segment]) -> Vec<Finding> {
             decided.push(0..0);
         }
     }
-    for (range, f) in segments {
+    for (range, f) in segments.iter().filter(|(_, f)| ANUE_WORD.is_match(f)) {
         if anue_topic(f, &named) {
             continue;
         }
@@ -801,11 +816,16 @@ pub(crate) fn hourly_pay_in(folded: &str) -> Option<Rate> {
 /// The rates of the clauses of a sentence. A sentence that is employment pay as a whole
 /// (`18,50 € pro Stunde (brutto)`) makes every rate in it a wage.
 fn clause_rates(folded: &str) -> impl Iterator<Item = Rate> {
-    let rates: Vec<Rate> = clauses(folded, &[';', '(', ')'])
-        .flat_map(|part| part.split(" oder "))
-        .flat_map(|part| part.split(" or "))
-        .filter_map(parse_rate)
-        .collect();
+    // Every amount is written in digits.
+    let rates: Vec<Rate> = if folded.bytes().any(|b| b.is_ascii_digit()) {
+        clauses(folded, &[';', '(', ')'])
+            .flat_map(|part| part.split(" oder "))
+            .flat_map(|part| part.split(" or "))
+            .filter_map(parse_rate)
+            .collect()
+    } else {
+        Vec::new()
+    };
     // Only a sentence with a rate is read for employment pay.
     let whole = !rates.is_empty() && is_wage(folded) && !names_freelance_rate(folded);
     rates.into_iter().map(move |rate| Rate {
@@ -974,19 +994,13 @@ fn rate_context(folded: &str, start: usize, end: usize) -> bool {
             .any(|w| before.ends_with(w))
 }
 
-fn day_rate(
-    criteria: &HardCriteria,
-    job: &JobFacts<'_>,
-    segments: &[(Range<usize>, String)],
-) -> Vec<Finding> {
-    let Some((rate, span)) = stated_rate(job, segments) else {
+fn day_rate(criteria: &HardCriteria, ad: &AdFacts) -> Vec<Finding> {
+    // Employment pay is judged as employment (salary rules), never as a day rate.
+    let Some(stated) = ad.rate.as_ref().filter(|r| !r.value.wage) else {
         return Vec::new();
     };
-    // Employment pay is judged as employment (salary rules), never as a day rate.
-    if rate.wage {
-        return Vec::new();
-    }
-    let spans: Vec<Range<usize>> = span.into_iter().collect();
+    let rate = stated.value;
+    let spans: Vec<Range<usize>> = stated.span.clone().into_iter().collect();
     if let Some(currency) = rate.currency {
         let params = json!({ "currency": currency.to_uppercase(), "amount": rate.upper });
         return vec![Finding::new(

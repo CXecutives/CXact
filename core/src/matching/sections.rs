@@ -14,7 +14,8 @@ use super::lexicon::domains::DOMAINS;
 use super::lexicon::engine::{self as lex, CueScope};
 use super::lexicon::{self, HeadingKind};
 use super::normalize::{
-    Phrases, char_len, decimal, folded_word, is_space, split_whitespace, strip, word_spans,
+    Phrases, any_word, char_len, decimal, folded_word, holds_any, is_space, split_whitespace,
+    strip, word_spans,
 };
 use super::pyre;
 
@@ -62,7 +63,12 @@ pub(crate) enum Line<'a> {
 /// tag list it is the portal's tags).
 pub(crate) fn classify<'a>(line: &'a str, bullet: bool, next: Option<&str>) -> Line<'a> {
     let bullet = bullet || is_bullet(line);
-    let norm = norm_heading(line);
+    // Only a line without a bullet can be a heading.
+    let norm = if bullet {
+        String::new()
+    } else {
+        norm_heading(line)
+    };
     if !bullet && lex::TAG_HEADINGS.contains(&norm.as_str()) {
         let prose = next.is_some_and(|n| {
             let n = clean_phrase(n);
@@ -98,7 +104,7 @@ pub(crate) fn classify<'a>(line: &'a str, bullet: bool, next: Option<&str>) -> L
             };
         }
     }
-    if lex::CLOSING_WORDS.iter().any(|w| folded.contains(w)) {
+    if holds_any(&folded, lex::CLOSING_WORDS) {
         return Line::Closing;
     }
     if line.trim_end().ends_with(':')
@@ -189,7 +195,7 @@ pub(crate) fn skill_term(norm: &str) -> bool {
 /// known tail (`anzeigen`, `dieses Anbieters`). A line that goes on is a sentence of the ad
 /// (`Ähnliche Projekterfahrung von Vorteil`, `Weitere Projekte sind geplant.`).
 pub(crate) fn is_listings_heading(folded: &str) -> bool {
-    char_len(folded) <= LISTINGS_MAX_CHARS
+    listings_length(folded)
         && lex::OTHER_LISTINGS.iter().any(|heading| {
             let Some(tail) = folded.strip_prefix(heading) else {
                 return false;
@@ -203,6 +209,11 @@ pub(crate) fn is_listings_heading(folded: &str) -> bool {
                 || (!count.is_empty() && count.chars().all(|c| c.is_ascii_digit()))
                 || lex::LISTING_TAILS.contains(&tail)
         })
+}
+
+/// Is a line short enough to head the other listings (folding never shortens a line)?
+pub(crate) fn listings_length(line: &str) -> bool {
+    char_len(line) <= LISTINGS_MAX_CHARS
 }
 
 /// Does the (stripped) line start with a bullet character?
@@ -243,17 +254,27 @@ pub(crate) fn norm_heading(line: &str) -> String {
 /// read as one (`ue` as `ü`, so `Wuenschenswert` is `Wünschenswert`), only letters, digits,
 /// spaces, `&`, `/` and `-` kept (`What you'll do` reads `what youll do`), spaces joined.
 pub(crate) fn heading_fold(text: &str) -> String {
-    let kept: String = fold(text)
-        .chars()
-        .filter(|&c| {
-            c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, ' ' | '&' | '/' | '-')
-        })
-        .collect();
-    let spelled = kept
-        .replace("ae", "a")
-        .replace("oe", "o")
-        .replace("ue", "u");
-    split_whitespace(&spelled).collect::<Vec<_>>().join(" ")
+    let mut out = String::with_capacity(text.len());
+    // After `a`, `o` or `u` the `e` of a spelled umlaut goes.
+    let mut spelled = false;
+    for c in fold(text).chars() {
+        match c {
+            'e' if spelled => spelled = false,
+            ' ' => {
+                spelled = false;
+                if !out.is_empty() && !out.ends_with(' ') {
+                    out.push(' ');
+                }
+            }
+            'a'..='z' | '0'..='9' | '&' | '/' | '-' => {
+                spelled = matches!(c, 'a' | 'o' | 'u');
+                out.push(c);
+            }
+            _ => {}
+        }
+    }
+    out.truncate(out.trim_end().len());
+    out
 }
 
 /// Python `_clean_phrase`: leading bullets and numbering removed.
@@ -280,10 +301,18 @@ pub(crate) struct Cue {
 
 static NICE_CUES: LazyLock<Phrases<CueScope>> =
     LazyLock::new(|| Phrases::new(lex::NICE_CUES.iter().copied(), lex::DECLENSION_ENDINGS));
+/// A text holds a nice cue only with the longest word of one in it.
+static NICE_WORD: LazyLock<Regex> = LazyLock::new(|| {
+    let longest = |cue: &'static str| cue.split(' ').max_by_key(|word| word.len());
+    any_word(lex::NICE_CUES.iter().filter_map(|(cue, _)| longest(cue)))
+});
 
 /// The nice cues of a text, left to right, the longest at each word (`lex::NICE_CUES`: whole
 /// words, `Bonussysteme` holds no `bonus`).
 pub(crate) fn nice_cues(text: &str) -> Vec<Cue> {
+    if !NICE_WORD.is_match(&fold(text)) {
+        return Vec::new();
+    }
     let words = word_spans(text, &[]);
     let folded: Vec<Cow<'_, str>> = words.iter().map(|(_, w)| folded_word(w)).collect();
     let mut cues = Vec::new();

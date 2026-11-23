@@ -74,10 +74,14 @@ fn count(n: usize) -> u16 {
     u16::try_from(n).unwrap_or(u16::MAX)
 }
 
+/// The UTF-16 offset of a byte of the text: a unit for every character before it, two for
+/// one of four bytes.
 fn utf16_offset(text: &str, byte: usize) -> u32 {
-    let units = text
-        .get(..byte)
-        .map_or(0, |prefix| prefix.encode_utf16().count());
+    let units = text.get(..byte).map_or(0, |prefix| {
+        let bytes = prefix.as_bytes();
+        let characters = bytes.iter().filter(|b| !(0x80..0xC0).contains(*b)).count();
+        characters + bytes.iter().filter(|b| **b >= 0xF0).count()
+    });
     u32::try_from(units).unwrap_or(u32::MAX)
 }
 

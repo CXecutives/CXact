@@ -8,10 +8,13 @@ use super::lexicon::engine::{
     AND, AND_OR, AND_WORDS, CueScope, EN_CUES, EXAMPLE_SEPARATORS, EXAMPLES, OR, YEAR_UNITS,
 };
 use super::lexicon::{HeadingKind, engine as lex};
-use super::normalize::{contains_word, find_word, number_word, sentences, splitlines, strip};
+use super::normalize::{
+    any_word, contains_word, find_word, holds_any, number_word, sentences, splitlines, strip,
+};
 use super::requirements::extract_job_skills;
 use super::sections::{self, Line, ReqKind};
 use regex::Regex;
+use std::collections::HashSet;
 use std::ops::Range;
 use std::sync::LazyLock;
 

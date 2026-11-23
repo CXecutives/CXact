@@ -8,7 +8,12 @@ use super::*;
 
 /// Highest language level word in a text.
 pub(crate) fn level_in(text: &str) -> Option<u8> {
+    static LEVEL_WORD: LazyLock<Regex> =
+        LazyLock::new(|| any_word(lex::LEVEL_WORDS.iter().map(|(word, _)| *word)));
     let folded = fold(text);
+    if !LEVEL_WORD.is_match(&folded) {
+        return None;
+    }
     lex::LEVEL_WORDS
         .iter()
         .filter(|(word, _)| contains_word(&folded, word))

@@ -16,12 +16,15 @@
 //! title (three times) and the musts trigger most; its distance to the profile's families is
 //! same, near (`NEAR_FIELDS`) or far.
 
+use std::collections::HashMap;
 use std::sync::LazyLock;
+
+use regex::Regex;
 
 use super::atoms::{fold, raw_tokens};
 use super::lexicon::domains::DOMAINS;
 use super::lexicon::engine as lex;
-use super::normalize::contains_word;
+use super::normalize::{any_word, contains_word};
 use super::relevance;
 
 /// The title without its noise: HTML entities decoded, a leading ID (`1083881 Power
@@ -52,21 +55,39 @@ pub(crate) fn clean(title: &str) -> String {
     relevance::clean_title(&text)
 }
 
-/// The head word a token is or ends with (the longest) and its level.
-fn head_level(token: &str) -> Option<(&'static str, u8)> {
+static TITLE_HEADS: LazyLock<HashMap<&'static str, (&'static str, u8)>> = LazyLock::new(|| {
     lex::TITLE_HEADS
         .iter()
-        .filter(|(head, _)| {
-            token == *head || (token.len() >= head.len() + 3 && token.ends_with(head))
-        })
-        .max_by_key(|(head, _)| head.len())
-        .copied()
+        .map(|&(head, level)| (head, (head, level)))
+        .collect()
+});
+
+/// The head word a token is or ends with (the longest, after three bytes or more) and its
+/// level.
+fn head_level(token: &str) -> Option<(&'static str, u8)> {
+    token
+        .char_indices()
+        .map(|(at, _)| at)
+        .filter(|&at| at == 0 || at >= 3)
+        .find_map(|at| TITLE_HEADS.get(&token[at..]).copied())
 }
 
 /// The level of a title's head noun (none when it names no head: `Customer Service`) and
 /// whether a head of it is an engagement of every level (`TITLE_ENGAGEMENTS`).
 fn head_of(title: &str) -> (Option<u8>, bool) {
+    /// A title names a level only with a head, a head phrase or a senior word in it.
+    static LEVEL_WORD: LazyLock<Regex> = LazyLock::new(|| {
+        let heads = lex::TITLE_HEADS.iter().chain(lex::TITLE_HEAD_PHRASES);
+        any_word(
+            heads
+                .map(|(head, _)| *head)
+                .chain(lex::TITLE_SENIOR.iter().copied()),
+        )
+    });
     let mut folded = fold(title);
+    if !LEVEL_WORD.is_match(&folded) {
+        return (None, false);
+    }
     let mut level: Option<u8> = None;
     let mut engagement = false;
     for &(phrase, phrase_level) in lex::TITLE_HEAD_PHRASES {
@@ -217,28 +238,37 @@ pub(crate) fn profile_fields(packs: &[&'static str]) -> Vec<&'static str> {
     out
 }
 
-/// Every trigger of the packs with the index of its family in `FIELD_PACKS`.
-static TRIGGERS: LazyLock<Vec<(&'static str, usize)>> = LazyLock::new(|| {
-    DOMAINS
-        .iter()
-        .filter_map(|domain| {
-            let family = family_of_pack(domain.name)?;
-            let index = lex::FIELD_PACKS.iter().position(|(f, _)| *f == family)?;
-            Some(domain.triggers.iter().map(move |t| (*t, index)))
-        })
-        .flatten()
-        .collect()
+/// Every trigger of the packs with the families it stands for (a bit per index in
+/// `FIELD_PACKS`).
+static TRIGGERS: LazyLock<HashMap<&'static str, u16>> = LazyLock::new(|| {
+    let mut triggers: HashMap<&'static str, u16> = HashMap::new();
+    for domain in DOMAINS {
+        let family = family_of_pack(domain.name);
+        if let Some(index) = lex::FIELD_PACKS
+            .iter()
+            .position(|(f, _)| Some(*f) == family)
+        {
+            for trigger in domain.triggers {
+                *triggers.entry(trigger).or_default() |= 1 << index;
+            }
+        }
+    }
+    triggers
 });
 
-/// Trigger hits of each family in a text (`weight` per hit, once per pack and token).
+/// Trigger hits of each family in a text (`weight` per hit, once per pack and token): a
+/// token is hit by the triggers it starts with.
 fn tally(text: &str, weight: u32, hits: &mut [u32]) {
     let folded = fold(text);
     for token in raw_tokens(&folded) {
-        let mut seen = [false; 16];
-        for &(trigger, index) in TRIGGERS.iter() {
-            if !seen[index] && token.starts_with(trigger) {
-                seen[index] = true;
-                hits[index] += weight;
+        let starts = token.char_indices().skip(1).map(|(at, _)| &token[..at]);
+        let families = starts
+            .chain([token])
+            .filter_map(|start| TRIGGERS.get(start))
+            .fold(0, |all, families| all | families);
+        for (index, hit) in hits.iter_mut().enumerate() {
+            if families & (1 << index) != 0 {
+                *hit += weight;
             }
         }
     }

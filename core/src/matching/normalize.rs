@@ -7,7 +7,7 @@
 
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::sync::LazyLock;
+use std::sync::{LazyLock, Mutex};
 
 use regex::Regex;
 
@@ -256,43 +256,35 @@ pub(crate) fn sentences(line: &str) -> Vec<&str> {
     let text = strip(line);
     let mut parts = Vec::new();
     let mut start = 0;
-    let chars: Vec<(usize, char)> = text.char_indices().collect();
-    for (i, &(at, c)) in chars.iter().enumerate() {
-        if !matches!(c, '.' | '!' | '?' | ';') {
-            continue;
+    let mut part = |from: usize, to: usize| {
+        let part = strip(&text[from..to]);
+        if !part.is_empty() {
+            parts.push(part);
         }
-        let Some(&(_, next)) = chars.get(i + 1) else {
+    };
+    for (at, sign) in text.match_indices(['.', '!', '?', ';']) {
+        let after = &text[at + 1..];
+        let Some(space) = after.find(|c: char| !c.is_whitespace()).filter(|n| *n > 0) else {
             continue;
         };
-        if !next.is_whitespace() {
-            continue;
-        }
-        let Some(&(word_at, first)) = chars[i + 1..].iter().find(|(_, c)| !c.is_whitespace())
-        else {
-            continue;
-        };
-        if !(first.is_uppercase() || first.is_ascii_digit()) {
+        if !after[space..].starts_with(|c: char| c.is_uppercase() || c.is_ascii_digit()) {
             continue;
         }
         let word = text[..at]
             .rsplit(|c: char| !c.is_alphanumeric())
             .next()
             .unwrap_or("");
-        if c == '.'
+        if sign == "."
             && (word.chars().count() <= 2
                 || lexicon::engine::ABBREVIATIONS.contains(&word.to_lowercase().as_str()))
         {
             continue;
         }
-        parts.push(&text[start..=at]);
-        start = word_at;
+        part(start, at + 1);
+        start = at + 1 + space;
     }
-    parts.push(&text[start..]);
+    part(start, text.len());
     parts
-        .into_iter()
-        .map(strip)
-        .filter(|p| !p.is_empty())
-        .collect()
 }
 
 /// Whole-word (or whole-phrase) containment in a folded text.
@@ -457,6 +449,22 @@ impl<T: Copy> Phrases<T> {
 pub(crate) fn any_word<'a>(words: impl IntoIterator<Item = &'a str>) -> Regex {
     let pattern: Vec<String> = words.into_iter().map(regex::escape).collect();
     Regex::new(&pattern.join("|")).expect("a list of literal words")
+}
+
+/// Does a text hold any word of a list (anywhere, also inside a word)? The list's pattern
+/// ([`any_word`]) is built once.
+pub(crate) fn holds_any(text: &str, words: &'static [&'static str]) -> bool {
+    static BUILT: LazyLock<Mutex<HashMap<(usize, usize), &'static Regex>>> =
+        LazyLock::new(Mutex::default);
+    if words.is_empty() {
+        return false;
+    }
+    let pattern = *BUILT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .entry((words.as_ptr() as usize, words.len()))
+        .or_insert_with(|| Box::leak(Box::new(any_word(words.iter().copied()))));
+    pattern.is_match(text)
 }
 
 /// The lines of a text that `pattern` matches in (a match lies in one line), in their order.

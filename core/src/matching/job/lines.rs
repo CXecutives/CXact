@@ -139,31 +139,34 @@ pub(super) fn offset(text: &str, part: &str) -> usize {
 /// An item about the company or the frame, no requirement: a legal form (`Muster GmbH`), a
 /// founding year (`seit 1998`), or only places, days and contract words.
 pub(super) fn noise_item(item: &str) -> bool {
+    static PLACES: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
+        let named = lex::CITIES.iter().chain(lex::COUNTRIES);
+        let names = named.map(|(name, _)| *name);
+        lex::GERMAN_CITIES.iter().copied().chain(names).collect()
+    });
     let folded = fold(item);
     let tokens: Vec<&str> = atoms::raw_tokens(&folded).collect();
-    let legal = lex::LEGAL_FORMS.iter().any(|f| {
-        if f.contains(' ') {
-            folded.contains(f)
-        } else {
-            tokens.contains(f)
-        }
-    }) && tokens.len() <= 12;
+    let legal = tokens.len() <= 12
+        && holds_any(&folded, lex::LEGAL_FORMS)
+        && lex::LEGAL_FORMS.iter().any(|f| {
+            if f.contains(' ') {
+                folded.contains(f)
+            } else {
+                tokens.contains(f)
+            }
+        });
     let founded = tokens
         .windows(2)
         .any(|w| w[0] == "seit" && w[1].len() == 4 && w[1].chars().all(|c| c.is_ascii_digit()));
-    let place = |t: &str| {
-        lex::GERMAN_CITIES.contains(&t)
-            || lex::CITIES.iter().any(|(c, _)| *c == t)
-            || lex::COUNTRIES.iter().any(|(c, _)| *c == t)
-    };
+    let place = |t: &str| PLACES.contains(t);
     let frame_only = !tokens.is_empty()
         && tokens.iter().all(|t| {
-            place(t)
-                || atoms::is_filler(t)
+            atoms::is_filler(t)
                 || t.chars().all(|c| c.is_ascii_digit() || c == '%')
                 || lex::FRAME_WORDS.contains(t)
                 || lex::DAY_WORDS_ONSITE.contains(t)
                 || lex::TITLE_CONTRACT_WORDS.contains(t)
+                || place(t)
         })
         && tokens
             .iter()
