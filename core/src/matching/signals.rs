@@ -72,93 +72,179 @@ pub enum Sig {
     Family,
 }
 
-impl Sig {
-    /// Every signal in table order.
-    pub const ALL: [Sig; N] = [
-        Sig::Role,
-        Sig::TitleField,
-        Sig::Relevance,
-        Sig::OffField,
-        Sig::Level,
-        Sig::CoreMet,
-        Sig::CorePartial,
-        Sig::CoreOpen,
-        Sig::OtherMet,
-        Sig::OtherPartial,
-        Sig::OtherOpen,
-        Sig::FrameNear,
-        Sig::FrameMissed,
-        Sig::NiceMet,
-        Sig::NicePartial,
-        Sig::NiceOpen,
-        Sig::FormalOpen,
-        Sig::Junior,
-        Sig::Permanent,
-        Sig::CoreHits,
-        Sig::Family,
-    ];
-}
-
-/// The direction of each signal: +1 up, -1 down, 0 either.
-pub const SIGN: [i8; N] = [
-    1, 1, 1, -1, 0, 1, 0, -1, 1, 0, -1, -1, -1, 1, 0, -1, -1, -1, -1, 1, 1,
-];
-
-/// The names of the signals (the fitter's and the dump's).
-pub const NAMES: [&str; N] = [
-    "role",
-    "title_field",
-    "relevance",
-    "off_field",
-    "level",
-    "core_met",
-    "core_partial",
-    "core_open",
-    "other_met",
-    "other_partial",
-    "other_open",
-    "frame_near",
-    "frame_missed",
-    "nice_met",
-    "nice_partial",
-    "nice_open",
-    "formal_open",
-    "junior",
-    "permanent",
-    "core_hits",
-    "family",
-];
-
 /// Most requirements of one kind a signal counts.
 const COUNT_MAX: u16 = 30;
 
 /// The frame aspects: day rate, remote and place, start, duration, workload.
 pub(crate) const FRAME_ASPECTS: u16 = 5;
 
-/// The highest value of each signal.
-pub const MAX: [u16; N] = [
-    2,
-    1000,
-    1000,
-    1,
-    4,
-    COUNT_MAX,
-    COUNT_MAX,
-    COUNT_MAX,
-    COUNT_MAX,
-    COUNT_MAX,
-    COUNT_MAX,
-    FRAME_ASPECTS,
-    FRAME_ASPECTS,
-    COUNT_MAX,
-    COUNT_MAX,
-    COUNT_MAX,
-    1,
-    1,
-    1,
-    8,
-    3,
+/// One row of the signal table: the one place that knows a signal's name, direction and top.
+struct Row {
+    sig: Sig,
+    name: &'static str,
+    sign: i8,
+    max: u16,
+}
+
+/// The signal table, in the order of [`Sig`]: the signal, its name (the fitter's and the dump's),
+/// its direction (+1 up, -1 down, 0 either) and its highest value. [`Sig::ALL`], [`SIGN`],
+/// [`NAMES`] and [`MAX`] are derived from it.
+const TABLE: [Row; N] = [
+    Row {
+        sig: Sig::Role,
+        name: "role",
+        sign: 1,
+        max: 2,
+    },
+    Row {
+        sig: Sig::TitleField,
+        name: "title_field",
+        sign: 1,
+        max: 1000,
+    },
+    Row {
+        sig: Sig::Relevance,
+        name: "relevance",
+        sign: 1,
+        max: 1000,
+    },
+    Row {
+        sig: Sig::OffField,
+        name: "off_field",
+        sign: -1,
+        max: 1,
+    },
+    Row {
+        sig: Sig::Level,
+        name: "level",
+        sign: 0,
+        max: 4,
+    },
+    Row {
+        sig: Sig::CoreMet,
+        name: "core_met",
+        sign: 1,
+        max: COUNT_MAX,
+    },
+    Row {
+        sig: Sig::CorePartial,
+        name: "core_partial",
+        sign: 0,
+        max: COUNT_MAX,
+    },
+    Row {
+        sig: Sig::CoreOpen,
+        name: "core_open",
+        sign: -1,
+        max: COUNT_MAX,
+    },
+    Row {
+        sig: Sig::OtherMet,
+        name: "other_met",
+        sign: 1,
+        max: COUNT_MAX,
+    },
+    Row {
+        sig: Sig::OtherPartial,
+        name: "other_partial",
+        sign: 0,
+        max: COUNT_MAX,
+    },
+    Row {
+        sig: Sig::OtherOpen,
+        name: "other_open",
+        sign: -1,
+        max: COUNT_MAX,
+    },
+    Row {
+        sig: Sig::FrameNear,
+        name: "frame_near",
+        sign: -1,
+        max: FRAME_ASPECTS,
+    },
+    Row {
+        sig: Sig::FrameMissed,
+        name: "frame_missed",
+        sign: -1,
+        max: FRAME_ASPECTS,
+    },
+    Row {
+        sig: Sig::NiceMet,
+        name: "nice_met",
+        sign: 1,
+        max: COUNT_MAX,
+    },
+    Row {
+        sig: Sig::NicePartial,
+        name: "nice_partial",
+        sign: 0,
+        max: COUNT_MAX,
+    },
+    Row {
+        sig: Sig::NiceOpen,
+        name: "nice_open",
+        sign: -1,
+        max: COUNT_MAX,
+    },
+    Row {
+        sig: Sig::FormalOpen,
+        name: "formal_open",
+        sign: -1,
+        max: 1,
+    },
+    Row {
+        sig: Sig::Junior,
+        name: "junior",
+        sign: -1,
+        max: 1,
+    },
+    Row {
+        sig: Sig::Permanent,
+        name: "permanent",
+        sign: -1,
+        max: 1,
+    },
+    Row {
+        sig: Sig::CoreHits,
+        name: "core_hits",
+        sign: 1,
+        max: 8,
+    },
+    Row {
+        sig: Sig::Family,
+        name: "family",
+        sign: 1,
+        max: 3,
+    },
 ];
+
+/// One column of the table, in table order (a row sits at its signal's index).
+macro_rules! column {
+    ($field:ident) => {{
+        let mut out = [TABLE[0].$field; N];
+        let mut i = 0;
+        while i < N {
+            assert!(TABLE[i].sig as usize == i, "signal table out of order");
+            out[i] = TABLE[i].$field;
+            i += 1;
+        }
+        out
+    }};
+}
+
+impl Sig {
+    /// Every signal in table order.
+    pub const ALL: [Sig; N] = column!(sig);
+}
+
+/// The direction of each signal: +1 up, -1 down, 0 either.
+pub const SIGN: [i8; N] = column!(sign);
+
+/// The names of the signals (the fitter's and the dump's).
+pub const NAMES: [&str; N] = column!(name);
+
+/// The highest value of each signal.
+pub const MAX: [u16; N] = column!(max);
 
 /// The signals of one job.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
