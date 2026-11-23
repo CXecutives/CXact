@@ -5,8 +5,8 @@
 use std::path::Path;
 
 use jobalert_core::matching::{
-    Assessment, CriterionKey, JobInput, ProfileQuality, ReasonCode, ReasonKind, TextKind, Verdict,
-    assess, compile_profile,
+    Assessment, CapCode, CriterionKey, JobInput, ProfileQuality, ReasonCode, ReasonKind, TextKind,
+    Verdict, assess, compile_profile,
 };
 use jobalert_core::portal::Portal;
 use jobalert_core::profile::{ProfileForm, parse};
@@ -145,8 +145,10 @@ fn the_summary_shows_years_degrees_and_criteria() {
     assert_eq!(senior.quality(), ProfileQuality::Good);
 }
 
+/// A licence the ad makes mandatory and the profile lacks excludes; asked for without that
+/// word it is a check and an open must, never a cap (the rubric caps only what is mandatory).
 #[test]
-fn a_mandatory_licence_excludes_an_optional_one_caps() {
+fn a_mandatory_licence_excludes_an_optional_one_is_an_open_must() {
     let profile = fixture("sample_profile_senior.json");
     let ad = |licence: &str| {
         format!(
@@ -173,7 +175,12 @@ fn a_mandatory_licence_excludes_an_optional_one_caps() {
     );
     assert_eq!(optional.verdict, Verdict::Scored);
     assert!(has(&optional, ReasonCode::FormalOpen, ReasonKind::Check));
-    assert!(optional.score <= 40, "capped, got {}", optional.score);
+    assert!(
+        optional.caps.iter().all(|c| c.code != CapCode::Formal),
+        "{:?}",
+        optional.caps
+    );
+    assert!(optional.summary.must_open >= 1, "{:?}", optional.summary);
 }
 
 /// A certificate the ad makes mandatory and the profile does not hold excludes; asked for

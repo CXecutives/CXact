@@ -16,7 +16,8 @@
 //! A requirement met in part counts `PARTIAL`; what is unclear or missing never counts
 //! against. The nice-to-haves add up to `NICE_MAX` inside the content. The frame factor
 //! keeps `FRAME_STEP` for each stated condition worse than wished (day rate, work mode and
-//! place, start, duration, workload; what the ad does not state fits), a permanent role keeps
+//! place, start, duration, workload; what the ad does not state fits), `FRAME_NEAR` (half a
+//! step) for one met in part, a permanent role keeps
 //! `PERMANENT_FACTOR`; then the lowest cap holds, each with its reason. Integer arithmetic
 //! only; every line is whole points, so the lines add up to the score.
 //!
@@ -26,10 +27,10 @@
 
 use super::engine::Cap;
 use super::params::{
-    CORE_OPEN_CAP, CORE_SATURATION, E_FULL, FIELD_VALUES, FORMAL_CAP, FRAME_STEP, HIT_RELEVANCE,
-    HITS_MAX, JUNIOR_CAP, LEVEL_CAP, LEVEL_ONE, LEVEL_TWO_ABOVE, MUST_SATURATION, NICE_MAX,
-    OFF_FIELD_CAP, PARTIAL, PERMANENT_FACTOR, RELEVANCE_FAR, RELEVANCE_NEAR, RELEVANCE_SAME,
-    TITLE_NEAR, TITLE_SAME, UNNAMED, W_CORE, W_MUSTS, W_ROLE,
+    CORE_OPEN_CAP, CORE_SATURATION, E_FULL, FIELD_VALUES, FORMAL_CAP, FRAME_NEAR, FRAME_STEP,
+    HIT_RELEVANCE, HITS_MAX, JUNIOR_CAP, LEVEL_CAP, LEVEL_ONE, LEVEL_TWO_ABOVE, MUST_SATURATION,
+    NICE_MAX, OFF_FIELD_CAP, PARTIAL, PERMANENT_FACTOR, RELEVANCE_FAR, RELEVANCE_NEAR,
+    RELEVANCE_SAME, TITLE_NEAR, TITLE_SAME, UNNAMED, W_CORE, W_MUSTS, W_ROLE,
 };
 use super::score::div_round_half_even;
 use super::signals::{FRAME_ASPECTS, Sig, Signals};
@@ -157,14 +158,17 @@ pub(crate) struct Percent {
     pub shares: [u16; 3],
     /// The points of each content part, at most its weight.
     pub points: [u8; 3],
+    /// The musts the core and the other musts count: those named, at least their saturation.
+    pub counted: [u16; 2],
     /// The nice-to-have bonus (points, at most `NICE_MAX`, never above 100 with the parts).
     pub nice: u8,
     /// The content: the parts plus the bonus.
     pub content: u8,
-    /// The points each frame step takes, in the order of the frame aspects worse than wished
-    /// (the first `steps` count).
+    /// The points each frame step takes: the `near` steps of the aspects met in part first,
+    /// then the missed ones (the first `steps` count).
     pub frame: [u8; STEPS_MAX],
     pub steps: u8,
+    pub near: u8,
     /// The points a permanent role takes after the frame.
     pub permanent: u8,
     /// The score before the caps: the content minus the frame steps and the permanent line.
@@ -243,12 +247,19 @@ fn percent_with(s: &Signals, p: ScoreParams) -> Percent {
         / 100)
         .min(1000);
     let mut total = content;
-    let steps = (s.get(Sig::FrameNear) + s.get(Sig::FrameMissed)).min(FRAME_ASPECTS);
+    let missed = s.get(Sig::FrameMissed).min(FRAME_ASPECTS);
+    let near = s.get(Sig::FrameNear).min(FRAME_ASPECTS - missed);
+    let steps = near + missed;
     let mut frame = [0u8; STEPS_MAX];
-    for step in frame.iter_mut().take(usize::from(steps)) {
-        *step = taken(total, FRAME_STEP);
+    for (i, step) in frame.iter_mut().take(usize::from(steps)).enumerate() {
+        let keep = if i < usize::from(near) {
+            FRAME_NEAR
+        } else {
+            FRAME_STEP
+        };
+        *step = taken(total, keep);
         total -= *step;
-        fine = fine * FRAME_STEP / 1000;
+        fine = fine * keep / 1000;
     }
     let permanent = if s.get(Sig::Permanent) == 1 {
         fine = fine * PERMANENT_FACTOR / 1000;
@@ -256,33 +267,46 @@ fn percent_with(s: &Signals, p: ScoreParams) -> Percent {
     } else {
         0
     };
+    let counted = |kinds: [Sig; 3], units: u64| {
+        let named = kinds.iter().map(|&k| u64::from(s.get(k))).sum::<u64>();
+        u16::try_from(named.max(units)).unwrap_or(u16::MAX)
+    };
+    let counted = [
+        counted(
+            [Sig::CoreMet, Sig::CorePartial, Sig::CoreOpen],
+            CORE_SATURATION,
+        ),
+        counted(
+            [Sig::OtherMet, Sig::OtherPartial, Sig::OtherOpen],
+            MUST_SATURATION,
+        ),
+    ];
     Percent {
         class: Some(class),
         shares: shares.map(|v| u16::try_from(v.min(1000)).unwrap_or(1000)),
         points,
+        counted,
         nice,
         content,
         frame,
         steps: u8::try_from(steps).unwrap_or(0),
+        near: u8::try_from(near).unwrap_or(0),
         permanent,
         total: total - permanent,
         fine: u16::try_from(fine).unwrap_or(1000),
     }
 }
 
-/// The core of the role clearly open: a must on it open and less than half of the core met.
+/// The core of the role clearly open: a must on it open and less than half of the core part
+/// met, counted as the part counts it (at least `CORE_SATURATION`, the musts the ad does not
+/// name as the part fills them), so one open must among few does not cap a good fit.
 fn core_open(s: &Signals, p: ScoreParams) -> bool {
-    let (met, partial, open) = (
-        s.get(Sig::CoreMet),
-        s.get(Sig::CorePartial),
-        s.get(Sig::CoreOpen),
-    );
-    open >= 1 && 2 * share(met, partial, open, 0, 0, p) < u64::from(E_FULL)
+    s.get(Sig::CoreOpen) >= 1 && 2 * shares(s, class(s), p)[1] < u64::from(E_FULL)
 }
 
-/// Every cap the signals give, with the highest score it allows: an open formal must, the core
-/// of the role clearly open, a foreign field, a junior role for a senior profile, two or more
-/// levels below the target roles.
+/// Every cap the signals give, with the highest score it allows: a mandatory formal must open,
+/// the core of the role clearly open, a foreign field, a junior role for a senior profile, two
+/// or more levels below the target roles.
 pub(crate) fn caps(s: &Signals) -> Vec<Cap> {
     caps_with(s, ScoreParams::ENGINE)
 }
@@ -569,7 +593,8 @@ mod tests {
     }
 
     /// The frame is a factor: what the ad does not state fits (factor 1), each condition worse
-    /// than wished keeps `FRAME_STEP`, a permanent role then keeps `PERMANENT_FACTOR`.
+    /// than wished keeps `FRAME_STEP`, one met in part half a step (`FRAME_NEAR`), a permanent
+    /// role then keeps `PERMANENT_FACTOR`.
     #[test]
     fn the_frame_is_a_factor() {
         let full = [(Sig::Role, 2), (Sig::CoreMet, 3), (Sig::OtherMet, 7)];
@@ -580,9 +605,12 @@ mod tests {
         };
         let fits = at(&[]);
         assert_eq!((fits.content, fits.total, fits.steps), (100, 100, 0));
-        let one = at(&[(Sig::FrameNear, 1)]);
+        let one = at(&[(Sig::FrameMissed, 1)]);
         assert_eq!((one.frame[0], one.total), (5, 95));
-        let two = at(&[(Sig::FrameNear, 1), (Sig::FrameMissed, 1)]);
+        let near = at(&[(Sig::FrameNear, 1)]);
+        assert_eq!(near.frame[0], taken(100, FRAME_NEAR));
+        assert!(near.frame[0] < one.frame[0] && near.total > one.total);
+        let two = at(&[(Sig::FrameMissed, 2)]);
         assert_eq!((two.frame[..2].to_vec(), two.total), (vec![5, 5], 90));
         let permanent = at(&[(Sig::FrameMissed, 1), (Sig::Permanent, 1)]);
         assert_eq!((permanent.permanent, permanent.total), (10, 85));
@@ -592,7 +620,7 @@ mod tests {
         );
     }
 
-    /// A foreign field caps at 24, the core clearly open (less than half of it met) at 49.
+    /// A foreign field caps at 24, the core clearly open (less than half of its part met) at 49.
     #[test]
     fn the_caps_hold_with_their_reasons() {
         let foreign = sig(&[(Sig::OffField, 1), (Sig::OtherOpen, 3)]);
@@ -601,5 +629,8 @@ mod tests {
         assert_eq!(caps(&core_open), vec![(CORE_OPEN_CAP, CapCode::CoreOpen)]);
         let half_met = sig(&[(Sig::Role, 2), (Sig::CoreMet, 1), (Sig::CoreOpen, 1)]);
         assert!(caps(&half_met).is_empty());
+        // One open must of a core the ad barely names: the unnamed ones count as the role.
+        let one_open = sig(&[(Sig::Role, 2), (Sig::CoreOpen, 1)]);
+        assert!(caps(&one_open).is_empty());
     }
 }

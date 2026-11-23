@@ -34,8 +34,9 @@ Erfüllte Kann-Punkte bringen bis zu {NICE_MAX} Punkte dazu, offene kosten nicht
 
 Dann der Rahmen: Tagessatz, Arbeitsmodell und Ort, Start, Dauer und Auslastung gegen die Wünsche. Was
 die Anzeige nicht nennt, passt. Jede genannte Bedingung, die schlechter ist als gewünscht, aber kein
-hartes Kriterium verletzt, kostet {FRAME_STEP_COST} der Zahl. Eine Festanstellung kostet danach {PERMANENT_COST}, solange das
-Profil sie nicht ausschließt. Zuletzt gilt die niedrigste Grenze (siehe unten).
+hartes Kriterium verletzt, kostet {FRAME_STEP_COST} der Zahl, eine nur knapp verfehlte die Hälfte.
+Eine Festanstellung kostet danach {PERMANENT_COST}, solange das Profil sie nicht ausschließt. Zuletzt
+gilt die niedrigste Grenze (siehe unten).
 
 So liest sich die Zahl:
 
@@ -84,7 +85,7 @@ Ab {HIGH_FROM} Punkten ist die Übereinstimmung hoch, ab {MID_FROM} mittel, daru
   Vertragsform, keine Ebene. Disziplinarische Führung in der Anzeige macht eine Rolle zur
   Führungsrolle, ohne Personalverantwortung ist sie keine.
 - Nennt eine Wunschrolle die Ebene der Anzeige, passt die Ebene voll.
-- Eine Ebene über oder unter dem Profil kostet wenig (Rolle und Fach zählen zu {LEVEL_ONE}).
+- Eine Ebene über oder unter dem Profil kostet kaum etwas (Rolle und Fach zählen zu {LEVEL_ONE}).
 - Zwei Ebenen über dem Profil halbieren Rolle und Fach.
 - Zwei oder mehr Ebenen unter dem Profil heißen höchstens {LEVEL_CAP}, außer eine Wunschrolle nennt diese
   Ebene. Das ist nie ein Ausschluss.
@@ -93,7 +94,8 @@ Ab {HIGH_FROM} Punkten ist die Übereinstimmung hoch, ab {MID_FROM} mittel, daru
 
 Jede Grenze braucht einen klaren Grund in der Anzeige.
 
-- Der Kern der Rolle ist klar offen: höchstens {CORE_OPEN_CAP}
+- Der Kern der Rolle ist klar offen, also weniger als die Hälfte seiner Punkte erreicht und ein
+  Muss-Punkt zum Kern offen: höchstens {CORE_OPEN_CAP}
 - Das Fachgebiet ist fremd: höchstens {OFF_FIELD_CAP}
 - Eine zwingende formale Pflicht ist offen (Abschluss, Zulassung, Zertifikat): höchstens {FORMAL_CAP}
 - Eine Junior- oder Einstiegsrolle bei mindestens {SENIOR_YEARS} Jahren Berufserfahrung: höchstens {JUNIOR_CAP}
@@ -131,4 +133,5 @@ Jede Grenze braucht einen klaren Grund in der Anzeige.
 - Eine passende Wunschrolle gehört zu Rolle und Fach. Sie bringt keinen eigenen Bonus und hebt keine
   Grenze auf.
 - Wünsche (tagessatz_wunsch, arbeitsmodell und regionen) schließen nie aus. Sie zählen nur im
-  Rahmen und heben die Zahl nie. Nennt die Anzeige einen Wert nicht, passt der Wunsch.
+  Rahmen und heben die Zahl nie. Nennt die Anzeige einen Wert nicht, passt der Wunsch. Hybrides
+  Arbeiten bei einem Wunsch nach remote ist knapp verfehlt, eine Stelle vor Ort klar verfehlt.

@@ -48,9 +48,9 @@ pub(crate) const SENTENCE_ATOMS: usize = 4;
 /// Permanent roles are the second category of a consultant: the score keeps this share
 /// (per-mille), shown as a line of its own after the frame.
 pub(crate) const PERMANENT_FACTOR: u64 = 900;
-/// Score caps of the Passungsgrad, each with its reason: an open formal must (degree field,
-/// licence, mandatory certificate) at most 40; the core of the role clearly open (less than
-/// half of it met, a must on it open) at most 49; a foreign field at most 24.
+/// Score caps of the Passungsgrad, each with its reason: a formal must the ad makes mandatory
+/// open (degree field, licence, certificate) at most 40; the core of the role clearly open (a
+/// must on it open, less than half of its part met) at most 49; a foreign field at most 24.
 pub(crate) const FORMAL_CAP: u8 = 40;
 pub(crate) const CORE_OPEN_CAP: u8 = 49;
 pub(crate) const OFF_FIELD_CAP: u8 = 24;
@@ -68,7 +68,7 @@ pub(crate) const W_ROLE: u64 = 40;
 pub(crate) const W_CORE: u64 = 40;
 pub(crate) const W_MUSTS: u64 = 20;
 /// What a requirement met in part counts (per-mille; fitted).
-pub(crate) const PARTIAL: u64 = 900;
+pub(crate) const PARTIAL: u64 = 950;
 /// The other musts a short list does not name count this share of role and field
 /// (per-mille). Set by the owner's rule 8, a short ad is not punished (it is judged from
 /// its title and field), not fitted on a check set: the teacher fit gave 300, which costs
@@ -78,9 +78,10 @@ pub(crate) const UNNAMED: u64 = 700;
 /// count as role and field and the other musts do on average (a short ad is judged from its
 /// title and field, the rubric's rule 8).
 pub(crate) const CORE_SATURATION: u64 = 3;
-/// Role and field at a level one above or one below the target roles, and two or more
-/// above (per-mille of the part); two or more below caps at `LEVEL_CAP`.
-pub(crate) const LEVEL_ONE: u64 = 850;
+/// Role and field at a level one above or one below the target roles (one level costs hardly
+/// anything, the rubric's rule 6), and two or more above (per-mille of the part); two or more
+/// below caps at `LEVEL_CAP`.
+pub(crate) const LEVEL_ONE: u64 = 950;
 pub(crate) const LEVEL_TWO_ABOVE: u64 = 500;
 /// Role and field by the field of the role (per-mille): the same field, near, far, foreign.
 pub(crate) const FIELD_VALUES: [u64; 4] = [1000, 700, 200, 0];
@@ -100,8 +101,10 @@ pub(crate) const RELEVANCE_FAR: u64 = 350;
 pub(crate) const NICE_MAX: u64 = 5;
 /// The frame factor: each stated condition worse than wished that breaks no hard criterion
 /// (day rate, work mode and place, start, duration, workload) keeps this share of the score
-/// (per-mille); what the ad does not state fits.
+/// (per-mille); one met in part (near) takes half a step, `FRAME_NEAR`; what the ad does not
+/// state fits.
 pub(crate) const FRAME_STEP: u64 = 950;
+pub(crate) const FRAME_NEAR: u64 = u64::midpoint(1000, FRAME_STEP);
 
 // --- ENGINE_VERSION 4: target roles and wishes (all off without their key) ---
 
@@ -130,8 +133,9 @@ pub(crate) const REMOTE_FULL: u64 = 100;
 pub(crate) const REMOTE_PARTLY: u64 = 20;
 /// `vor_ort`: the largest remote share that still means presence on site.
 pub(crate) const ONSITE_MAX: u64 = 60;
-/// A remote share at most this many points short of the wish is near, not missed.
-pub(crate) const REMOTE_MARGIN: u64 = 30;
+/// A remote share at most this many points short of the wish is near, not missed: hybrid
+/// wording (up to 60 %) is near a fully remote wish.
+pub(crate) const REMOTE_MARGIN: u64 = 40;
 /// Remote share (percent, from-to) of hybrid wording without numbers, and of remote work
 /// named without numbers and without presence on site.
 pub(crate) const HYBRID_SHARE: (u64, u64) = (20, 60);

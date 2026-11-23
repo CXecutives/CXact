@@ -196,13 +196,14 @@ Rahmen. Der Inhalt setzt sich aus drei Teilen zusammen, jeder mit seinem festen 
 - Weitere Muss-Punkte (20): der Anteil der übrigen erfüllten Muss-Punkte, gezählt als mindestens
   sieben. Was eine kurze Liste nicht nennt, zählt zu 70 % wie Rolle und Fach.
 
-Ein teilweise erfüllter Punkt zählt fast voll (CXact rechnet 90 %). Was unklar ist, zählt nicht mit.
+Ein teilweise erfüllter Punkt zählt fast voll (CXact rechnet 95 %). Was unklar ist, zählt nicht mit.
 Erfüllte Kann-Punkte bringen bis zu 5 Punkte dazu, offene kosten nichts.
 
 Dann der Rahmen: Tagessatz, Arbeitsmodell und Ort, Start, Dauer und Auslastung gegen die Wünsche. Was
 die Anzeige nicht nennt, passt. Jede genannte Bedingung, die schlechter ist als gewünscht, aber kein
-hartes Kriterium verletzt, kostet 5 % der Zahl. Eine Festanstellung kostet danach 10 %, solange das
-Profil sie nicht ausschließt. Zuletzt gilt die niedrigste Grenze (siehe unten).
+hartes Kriterium verletzt, kostet 5 % der Zahl, eine nur knapp verfehlte die Hälfte.
+Eine Festanstellung kostet danach 10 %, solange das Profil sie nicht ausschließt. Zuletzt
+gilt die niedrigste Grenze (siehe unten).
 
 So liest sich die Zahl:
 
@@ -251,7 +252,7 @@ Ab 80 Punkten ist die Übereinstimmung hoch, ab 40 mittel, darunter gering.
   Vertragsform, keine Ebene. Disziplinarische Führung in der Anzeige macht eine Rolle zur
   Führungsrolle, ohne Personalverantwortung ist sie keine.
 - Nennt eine Wunschrolle die Ebene der Anzeige, passt die Ebene voll.
-- Eine Ebene über oder unter dem Profil kostet wenig (Rolle und Fach zählen zu 85 %).
+- Eine Ebene über oder unter dem Profil kostet kaum etwas (Rolle und Fach zählen zu 95 %).
 - Zwei Ebenen über dem Profil halbieren Rolle und Fach.
 - Zwei oder mehr Ebenen unter dem Profil heißen höchstens 40, außer eine Wunschrolle nennt diese
   Ebene. Das ist nie ein Ausschluss.
@@ -260,7 +261,8 @@ Ab 80 Punkten ist die Übereinstimmung hoch, ab 40 mittel, darunter gering.
 
 Jede Grenze braucht einen klaren Grund in der Anzeige.
 
-- Der Kern der Rolle ist klar offen: höchstens 49
+- Der Kern der Rolle ist klar offen, also weniger als die Hälfte seiner Punkte erreicht und ein
+  Muss-Punkt zum Kern offen: höchstens 49
 - Das Fachgebiet ist fremd: höchstens 24
 - Eine zwingende formale Pflicht ist offen (Abschluss, Zulassung, Zertifikat): höchstens 40
 - Eine Junior- oder Einstiegsrolle bei mindestens 10 Jahren Berufserfahrung: höchstens 40
@@ -298,7 +300,8 @@ Jede Grenze braucht einen klaren Grund in der Anzeige.
 - Eine passende Wunschrolle gehört zu Rolle und Fach. Sie bringt keinen eigenen Bonus und hebt keine
   Grenze auf.
 - Wünsche (tagessatz_wunsch, arbeitsmodell und regionen) schließen nie aus. Sie zählen nur im
-  Rahmen und heben die Zahl nie. Nennt die Anzeige einen Wert nicht, passt der Wunsch.
+  Rahmen und heben die Zahl nie. Nennt die Anzeige einen Wert nicht, passt der Wunsch. Hybrides
+  Arbeiten bei einem Wunsch nach remote ist knapp verfehlt, eine Stelle vor Ort klar verfehlt.
 
 # Antwortformat
 

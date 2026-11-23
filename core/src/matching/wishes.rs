@@ -14,7 +14,8 @@
 //!   share (facts, `N % remote`, office or remote days, full-remote
 //!   wording, hybrid wording, on site only): met when the share is at least the minimum,
 //!   missed when the ad is on site only or its share stays more than `REMOTE_MARGIN` below
-//!   it; `vor_ort` is met up to `ONSITE_MAX` percent.
+//!   it (hybrid wording is near a fully remote wish); `vor_ort` is met up to `ONSITE_MAX`
+//!   percent and missed only by a fully remote ad.
 //! - Regions (`regionen`: places, German states, regions such as `Rhein-Main`, countries):
 //!   a fully remote ad is met; a wished place in the location, a location line or an
 //!   on-site sentence is met; another known place (larger German cities, states, foreign
@@ -648,7 +649,7 @@ fn remote(wish: RemoteWish, share: Option<(u64, u64)>) -> WishResult {
     }
     let (met, missed) = match wish {
         RemoteWish::Min(min) => (from >= min, to == 0 || to + REMOTE_MARGIN < min),
-        RemoteWish::OnSite => (to <= ONSITE_MAX, from > ONSITE_MAX + REMOTE_MARGIN),
+        RemoteWish::OnSite => (to <= ONSITE_MAX, from >= REMOTE_FULL),
     };
     let state = if met {
         State::Met

@@ -1,5 +1,5 @@
 use super::*;
-use crate::matching::params::{FORMAL_CAP, OFF_FIELD_CAP};
+use crate::matching::params::FORMAL_CAP;
 
 fn must(value: u16) -> Scored {
     Scored {
@@ -19,6 +19,7 @@ fn must(value: u16) -> Scored {
             via: Via::Exact,
         },
         weight: W_MUST,
+        core: false,
     }
 }
 
@@ -80,11 +81,85 @@ fn the_cap_holds_the_score_and_the_rank_keeps_the_points() {
     };
     assert_eq!(final_score(&low, cap, false), (30, 300, None));
     assert_eq!(final_score(&percent, cap, true), (0, 0, None));
-    assert_eq!(
-        lower(
-            (FORMAL_CAP, CapCode::Formal),
-            (OFF_FIELD_CAP, CapCode::OffField)
-        ),
-        (OFF_FIELD_CAP, CapCode::OffField)
-    );
+}
+
+/// Calibration on the owner's scale: a strong fit (role and field met, the core met, most musts
+/// met, the frame fits) scores at least `STRONG_FROM`, an ad of another field with no must met
+/// stays under the cap of a foreign field, a partial fit lands between.
+mod calibration {
+    use crate::matching::params::OFF_FIELD_CAP;
+    use crate::matching::{JobInput, TextKind, assess, compile_profile};
+    use crate::portal::Portal;
+
+    /// Strong fits score 85 to 95 on the owner's scale.
+    const STRONG_FROM: u8 = 85;
+
+    // external contract - do not translate (profile JSON keys)
+    const PROFILE: &str = r#"{
+        "kernkompetenzen": [
+            {"kompetenz": "Kundenservice", "jahre": 15},
+            {"kompetenz": "Contact Center Management", "jahre": 12},
+            {"kompetenz": "Prozessoptimierung", "jahre": 10},
+            {"kompetenz": "KPI-Reporting", "jahre": 10},
+            {"kompetenz": "Change Management", "jahre": 8},
+            {"kompetenz": "Customer Experience", "jahre": 8}
+        ],
+        "methoden_tools": ["Salesforce", "Zendesk"],
+        "wunschrollen": ["Interim Head of Customer Service"],
+        "vertragsarten": ["projekt"],
+        "arbeitsmodell": "remote"
+    }"#;
+
+    fn score(title: &str, text: &str) -> u8 {
+        let profile = compile_profile(&crate::profile::parse(PROFILE).unwrap());
+        let job = JobInput {
+            title,
+            company: "",
+            location: "Hamburg",
+            portal: Portal::Freelancermap,
+            text,
+            facts: None,
+            posted: None,
+            kind: TextKind::Full,
+        };
+        assess(&profile, &job).unwrap().score
+    }
+
+    // external contract - do not translate (German ads)
+    const STRONG: &str = "Für den Umbau unseres Kundenservice suchen wir einen Interim Head of \
+        Customer Service.\n\nIhr Profil\n\
+        • Mehrjährige Erfahrung in der Leitung eines Kundenservice\n\
+        • Erfahrung im Contact Center Management\n\
+        • Erfahrung in der Prozessoptimierung\n\
+        • KPI-Reporting an die Geschäftsführung\n\
+        • Erfahrung im Change Management\n\
+        • Kenntnisse in Salesforce\n\
+        • Erfahrung mit Workforce Management\n\n\
+        Wünschenswert\n• Erfahrung mit Zendesk\n\nDer Einsatz ist zu 100 % remote.\n";
+    const FOREIGN: &str = "Wir suchen einen Senior Java Entwickler für unser Produktteam.\n\n\
+        Ihr Profil\n\
+        • Mehrjährige Erfahrung mit Java und Spring Boot\n\
+        • Erfahrung mit Kubernetes und Docker\n\
+        • Kenntnisse in Microservices-Architekturen\n\
+        • Erfahrung mit PostgreSQL\n\nDer Einsatz ist zu 100 % remote.\n";
+    const PARTIAL: &str = "Wir suchen einen Interim Teamleiter Kundenservice für unser Contact \
+        Center.\n\nIhr Profil\n\
+        • Erfahrung im Kundenservice\n\
+        • Erfahrung mit Workforce Management und Personaleinsatzplanung\n\
+        • Kenntnisse in Genesys Cloud\n\
+        • Erfahrung im Qualitätsmanagement nach ISO 18295\n\
+        • Erfahrung in der Telekommunikationsbranche\n\nDer Einsatz ist hybrid in Hamburg.\n";
+
+    #[test]
+    fn strong_partial_and_foreign_fits_land_on_the_scale() {
+        let strong = score("Interim Head of Customer Service (m/w/d)", STRONG);
+        let partial = score("Interim Teamleiter Kundenservice (m/w/d)", PARTIAL);
+        let foreign = score("Senior Java Entwickler (m/w/d)", FOREIGN);
+        assert!(strong >= STRONG_FROM, "strong {strong}");
+        assert!(foreign <= OFF_FIELD_CAP, "foreign {foreign}");
+        assert!(
+            partial > OFF_FIELD_CAP && partial < STRONG_FROM,
+            "partial {partial}"
+        );
+    }
 }

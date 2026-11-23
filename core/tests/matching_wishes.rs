@@ -209,10 +209,12 @@ fn day_rate_wish_met_near_missed_unknown() {
         (r.params["wish"].as_u64(), r.params["rate"].as_u64()),
         (Some(1000), Some(1100))
     );
-    // Between the minimum and the wish (near or missed): one frame line, 5 % of the score.
-    for (rate, wished) in [
-        ("Tagessatz 960 € pro Tag", "near"),
-        ("Tagessatz 850 € pro Tag", "missed"),
+    // Between the minimum and the wish: one frame line, 5 % of the score when missed, half of
+    // that when near.
+    let mut costs = Vec::new();
+    for (rate, wished, cost) in [
+        ("Tagessatz 960 € pro Tag", "near", -3..=-1),
+        ("Tagessatz 850 € pro Tag", "missed", -5..=-3),
     ] {
         let (delta, a) = check(rate, wished);
         let lines = frame(&a);
@@ -223,8 +225,13 @@ fn day_rate_wish_met_near_missed_unknown() {
             delta,
             "{rate}: the line is the difference"
         );
-        assert!((-5..=-3).contains(&delta), "{rate}: {delta}");
+        assert!(cost.contains(&delta), "{rate}: {delta}");
+        costs.push(delta);
     }
+    assert!(
+        costs[0] > costs[1],
+        "near costs less than missed: {costs:?}"
+    );
     assert_eq!(check("Start ab sofort", "unknown").0, 0);
     let (_, chf) = check("Tagessatz CHF 1.200 pro Tag", "unknown");
     assert_eq!(
@@ -258,7 +265,16 @@ fn work_mode_wishes() {
     // Remote: at least fully remote.
     assert_eq!(case(WorkWish::Remote, "Einsatz zu 100 % remote"), "met");
     assert_eq!(case(WorkWish::Remote, "Einsatz zu 80 % remote"), "near");
-    assert_eq!(case(WorkWish::Remote, "Einsatz zu 60 % remote"), "missed");
+    assert_eq!(case(WorkWish::Remote, "Einsatz zu 60 % remote"), "near");
+    assert_eq!(
+        case(WorkWish::Remote, "Hybrides Arbeiten nach Absprache"),
+        "near"
+    );
+    assert_eq!(case(WorkWish::Remote, "Einsatz zu 50 % remote"), "missed");
+    assert_eq!(
+        case(WorkWish::Remote, "Einsatz vor Ort in Hamburg"),
+        "missed"
+    );
     assert_eq!(case(WorkWish::Remote, "Start ab sofort"), "unknown");
     // Hybrid: at least partly remote.
     assert_eq!(case(WorkWish::Hybrid, "Remote-Anteil 40 %"), "met");
