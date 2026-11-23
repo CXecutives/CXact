@@ -226,8 +226,11 @@ Ab 80 Punkten ist die Übereinstimmung hoch, ab 40 mittel, darunter gering.
 3. Ähnliches ist teilweise erfüllt, nicht offen: ein anderes Tool derselben Art (CRM, ERP, BI,
    Ticketing, Contact-Center-Software), ein nahes Fach, gleichwertige Normen. Fragt die Anzeige nur
    nach der Art (ein CRM, ein ERP-System), erfüllt ein Tool dieser Art den Punkt voll.
+   Wer das Ganze macht, erfüllt auch seine Teile: Hauptbuchhaltung deckt Monats- und
+   Jahresabschluss und Bilanzierung, IATF 16949 deckt ISO 9001.
 4. Floskeln und Selbstverständlichkeiten zählen nicht: analytisches Denken, Hands-on-Mentalität,
-   Reisebereitschaft, MS Office, Teamfähigkeit.
+   Reisebereitschaft, MS Office, Teamfähigkeit. Auch Interesse an einem Thema, IT-Affinität und
+   verlangte Referenzprojekte zählen nicht.
 5. Branche und geforderte Berufsjahre kosten wenig und deckeln nie.
 6. Eine Ebene Abstand kostet kaum etwas. Erst zwei Ebenen zählen deutlich.
 7. Im Zweifel gilt die günstige Lesart: bei Spannen das obere Ende, bei „6 Monate plus Verlängerung“

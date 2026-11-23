@@ -103,8 +103,11 @@ pub(crate) const LIGHT_MODIFIERS: &[&str] = &[
 
 /// Heads of a closed compound that a German hyphen ellipsis shares: the longest one the
 /// compound ends in is the head.
-/// (`Projekt- und Programmmanagement`, `Projektplanung und -controlling`)
+/// (`Projekt- und Programmmanagement`, `Projektplanung und -controlling`, the closings of a
+/// month and of a year in `Monats- und Jahresabschlüsse`)
 pub(crate) const ELLIPSIS_HEADS: &[&str] = &[
+    "abschlusse",
+    "abschlussen",
     "abwicklung",
     "analyse",
     "analysen",
@@ -205,6 +208,7 @@ pub(crate) const CORE_CONCEPTS: &[(&str, &str)] = &[
     ("interim mandat", "interimmanagement"),
     ("gesamtprojektleitung", "projektleitung"),
     ("programmleitung", "programmmanagement"),
+    ("grossprogramm", "programmmanagement"),
     ("veranderungsmanagement", "changemanagement"),
     ("implementation", "einfuhrung"),
     ("implementierung", "einfuhrung"),
@@ -215,6 +219,12 @@ pub(crate) const CORE_CONCEPTS: &[(&str, &str)] = &[
     ("process automation", "prozessautomatisierung"),
     ("automation", "automatisierung"),
     ("quality management", "qualitatsmanagement"),
+    // Steering and managing a budget, the stakeholders or the suppliers are one work.
+    ("budgetsteuerung", "budgetmanagement"),
+    ("stakeholdersteuerung", "stakeholdermanagement"),
+    ("lieferantensteuerung", "lieferantenmanagement"),
+    ("vendormanagement", "lieferantenmanagement"),
+    ("vendor management", "lieferantenmanagement"),
     ("german", "deutsch"),
     ("english", "englisch"),
     ("french", "franzosisch"),

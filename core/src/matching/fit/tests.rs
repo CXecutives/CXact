@@ -52,6 +52,23 @@ fn a_family_is_met_by_its_products() {
         E_NONE
     );
     assert_eq!(skill_fit_in(&skills, "SAP", true).value, E_NONE);
+    // Generic words around the family ask for nothing more (the wording of real ads); a
+    // module does, and so does a line without a word of knowledge.
+    for met in [
+        "Kenntnisse in der Betreuung von SAP-Projekten",
+        "Kenntnisse in SAP-Integrationen",
+        "Erfahrung im SAP-Umfeld",
+    ] {
+        assert_eq!(skill_fit_in(&skills, met, true).value, E_FULL, "{met}");
+    }
+    for open in [
+        "Grundlegendes Verständnis der SAP-Module PS/PPM",
+        "Erfahrung mit SAP Ariba",
+        "Betreuung von SAP-Projekten",
+        "Erfahrung im Oracle-Umfeld",
+    ] {
+        assert_eq!(skill_fit_in(&skills, open, true).value, E_NONE, "{open}");
+    }
     // Another field with leadership stays open.
     assert_eq!(
         skill_fit_in(
@@ -201,4 +218,112 @@ fn a_kind_of_tool_is_met_by_its_tools() {
         skill_fit_in(&skills, "Erfahrung mit Salesforce", true).value,
         E_HALF
     );
+}
+/// The first part of a hyphen ellipsis is matched as it is written out: `Risiko-` before
+/// the quality management it shares its head with asks for risk management.
+#[test]
+fn an_ellipsis_part_is_matched_written_out() {
+    let data = of_json(&json!({"kernkompetenzen": [
+        {"kompetenz": "Risikomanagement"},
+        {"kompetenz": "Controlling"}
+    ]}));
+    let skills = Skills::new(&core_texts(&data), &data);
+    let values = |line: &str| -> Vec<u16> {
+        let text = format!("Anforderungen:\n- {line}\n");
+        let doc = crate::matching::job::read(&text, &skills.vocab);
+        doc.items
+            .iter()
+            .map(|i| item_fit(&skills, i).value)
+            .collect()
+    };
+    assert_eq!(
+        values("Erfahrung im Risiko- und Qualitätsmanagement"),
+        [E_FULL, E_NONE]
+    );
+    assert_eq!(
+        values("Erfahrung im Qualitäts- und Risikomanagement"),
+        [E_NONE, E_FULL]
+    );
+    // An abbreviation written out without its hyphen still counts as it stands.
+    let data = of_json(&json!({"kernkompetenzen": [{"kompetenz": "CRM-Einführung"}]}));
+    let skills = Skills::new(&core_texts(&data), &data);
+    let text = "Anforderungen:\n- Fundiertes Verständnis von CRM- und Vertriebsprozessen\n";
+    let doc = crate::matching::job::read(text, &skills.vocab);
+    assert_eq!(item_fit(&skills, &doc.items[0]).value, E_HALF);
+}
+
+/// The parts of a programme are met by programme management (the wording of a real ad), a
+/// method the ad accepts a comparable one for by another method of its kind, `Mehr als` asks
+/// for nothing more; risk management is no part of a programme alone, a procurement tool is
+/// no method.
+#[test]
+fn a_programme_manager_meets_the_parts_and_comparable_methods() {
+    let data = of_json(&json!({
+        "kernkompetenzen": [
+            {"kompetenz": "Programmmanagement"},
+            {"kompetenz": "Stakeholdermanagement"}
+        ],
+        "methoden_tools": ["PRINCE2", "Scrum"]
+    }));
+    let skills = Skills::new(&core_texts(&data), &data);
+    let value = |text: &str| skill_fit_in(&skills, text, true).value;
+    for met in [
+        "Erfahrung in internationalen Großprogrammen",
+        "Sehr gute Kenntnisse in Programmplanung",
+        "Ressourcenmanagement",
+        "Abhängigkeitsmanagement",
+        "Mehr als 5 Jahre Erfahrung im Stakeholdermanagement",
+    ] {
+        assert_eq!(value(met), E_FULL, "{met}");
+    }
+    assert_eq!(
+        value("Erfahrung mit SAP Activate oder vergleichbaren Transformationsmethoden"),
+        E_HALF
+    );
+    for open in [
+        "Risikomanagement",
+        "Erfahrung mit Bonusprogrammen",
+        "Erfahrung mit SAP Ariba oder vergleichbaren Tools",
+        "Produktionsplanung",
+    ] {
+        assert_eq!(value(open), E_NONE, "{open}");
+    }
+}
+
+/// Steering and managing a budget, the stakeholders or the suppliers are one work, whichever
+/// word the ad and the profile use; controlling a budget is another.
+#[test]
+fn steering_is_managing() {
+    let data = of_json(&json!({"kernkompetenzen": [
+        {"kompetenz": "Budgetsteuerung"},
+        {"kompetenz": "Lieferantensteuerung"},
+        {"kompetenz": "Stakeholdermanagement"}
+    ]}));
+    let skills = Skills::new(&core_texts(&data), &data);
+    let value = |text: &str| skill_fit_in(&skills, text, true).value;
+    for met in [
+        "Budgetmanagement",
+        "Vendormanagement",
+        "Stakeholdersteuerung",
+    ] {
+        assert_eq!(value(met), E_FULL, "{met}");
+    }
+    assert_eq!(value("Budgetcontrolling"), E_NONE);
+    assert_eq!(value("Produktionssteuerung"), E_NONE);
+}
+
+/// What an entry names beside the skill is generic (`SAP SD`): something near the skill is
+/// met in half as by an entry of one word (order to cash by the module); a sentence proves
+/// nothing, and another process stays open.
+#[test]
+fn an_entry_with_a_generic_word_meets_near_work_in_half() {
+    let data = of_json(&json!({
+        "kernkompetenzen": [{"kompetenz": "Kundenservice"}],
+        "methoden_tools": ["SAP SD", "SAP S/4HANA"]
+    }));
+    let skills = Skills::new(&core_texts(&data), &data);
+    let value = |text: &str| skill_fit_in(&skills, text, true).value;
+    assert_eq!(value("O2C-Expertise"), E_HALF);
+    assert_eq!(value("SD-Kenntnisse"), E_FULL);
+    assert_eq!(value("P2P-Expertise"), E_NONE);
 }

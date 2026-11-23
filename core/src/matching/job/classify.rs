@@ -166,6 +166,21 @@ pub(super) fn soft_token(folded: &str, tokens: &[&str], i: usize) -> bool {
     })
 }
 
+/// Does an item open with an interest or a liking (`lex::SOFT_LEADS`)? After a word of
+/// knowledge it only adds to a skill (`Erfahrung im Vertrieb mit Interesse an Technik`).
+pub(super) fn soft_lead(folded: &str) -> bool {
+    lex::SOFT_LEADS.iter().any(|lead| {
+        folded
+            .find(lead)
+            .is_some_and(|at| !names_knowledge(&folded[..at]))
+    })
+}
+
+/// Does a folded text hold a word of knowledge or experience (`Kenntnisse`, `Erfahrung`)?
+pub(super) fn names_knowledge(folded: &str) -> bool {
+    lex::KNOWLEDGE_STEMS.iter().any(|k| folded.contains(k))
+}
+
 /// Other atoms from which an item that names a language is a skill line instead.
 pub(super) const LANGUAGE_ITEM_OTHERS: usize = 4;
 
@@ -181,12 +196,16 @@ pub(super) fn classify(text: &str, phrase_level: Option<u8>, vocab: &Vocab) -> C
     {
         return Class::Licence(word);
     }
+    if soft_lead(&folded) {
+        return Class::Soft;
+    }
     let content = atoms::atoms(text, vocab);
     let soft = (0..tokens.len())
         .filter(|&i| soft_token(&folded, &tokens, i))
         .count()
         + lex::SOFT_PHRASES
             .iter()
+            .chain(lex::SOFT_LEADS)
             .filter(|p| folded.contains(*p))
             .count();
     // Whom the soft skill addresses is no skill of its own.

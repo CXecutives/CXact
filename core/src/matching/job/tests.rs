@@ -1009,3 +1009,62 @@ fn one_word_table_per_meaning() {
         "an English adjective shares the next noun"
     );
 }
+
+/// The class of every item of one requirement line.
+fn classes_of(line: &str) -> Vec<(String, Class)> {
+    let text = format!("Anforderungen:\n- {line}\n");
+    let doc = read(&text, &Vocab::all());
+    doc.items.into_iter().map(|i| (i.text, i.class)).collect()
+}
+
+/// An interest and a liking ask for no skill (the wording of real ads), and neither do the
+/// bare objects listed after them; a part with a word of knowledge of its own does, and so
+/// does a skill the interest only adds to.
+#[test]
+fn an_interest_asks_for_no_skill() {
+    for line in [
+        "Interesse an KI, Automatisierung und digitalen Innovationen",
+        "IT-Affinität",
+        "Hohe Affinität für digitale Themen und neue Technologien",
+    ] {
+        let classes = classes_of(line);
+        assert!(
+            !classes.is_empty() && classes.iter().all(|(_, c)| *c == Class::Soft),
+            "{classes:?}"
+        );
+    }
+    let mixed = classes_of("Interesse an KI, Erfahrung mit SAP S/4HANA und SQL-Kenntnisse");
+    let skills: Vec<&str> = mixed
+        .iter()
+        .filter(|(_, c)| *c == Class::Skill)
+        .map(|(t, _)| t.as_str())
+        .collect();
+    assert_eq!(skills, ["Erfahrung mit SAP S/4HANA", "SQL-Kenntnisse"]);
+    for skill in [
+        "Erfahrung im Vertrieb mit Interesse an Technik",
+        "Erfahrung mit Affinity Designer",
+        "Kenntnisse im Affinitätsdiagramm",
+    ] {
+        assert_eq!(
+            classes_of(skill).first().map(|(_, c)| c.clone()),
+            Some(Class::Skill),
+            "{skill}"
+        );
+    }
+}
+
+/// The label of a line names no skill alone (`Delivery & Governance Track Record: ...`); with
+/// a head it is a skill.
+#[test]
+fn a_bare_label_is_no_skill() {
+    for label in ["Delivery", "Werdegang"] {
+        assert_eq!(classify(label, None, &Vocab::all()), Class::Soft, "{label}");
+    }
+    for skill in ["Service Delivery", "Delivery Management im SAP-Umfeld"] {
+        assert_eq!(
+            classify(skill, None, &Vocab::all()),
+            Class::Skill,
+            "{skill}"
+        );
+    }
+}

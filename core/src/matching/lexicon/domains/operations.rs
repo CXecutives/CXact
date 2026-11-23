@@ -169,6 +169,8 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("leiterin qualitatssicherung", "qualitatsleitung"),
         ("leitung qualitatssicherung", "qualitatsleitung"),
         ("failure mode effects analysis", "fmea"),
+        ("8d methodik", "8d-problemlosung"),
+        ("8d methode", "8d-problemlosung"),
         ("statistical process control", "spc"),
         ("statistische prozesslenkung", "spc"),
         ("complaint management", "reklamationsmanagement"),
@@ -199,7 +201,20 @@ pub(crate) const DOMAIN: Domain = Domain {
     ],
     // A management system is the narrower work of quality management; audits and
     // certifications are close to the system and to a process audit.
-    covers: &[("qualitatsmanagement", &["qualitatsmanagementsystem"])],
+    // IATF 16949 holds all of ISO 9001, the standard of quality management; IATF 16949 and
+    // VDA 6.3 are the standards of the car industry, its quality methods the core tools and 8D.
+    covers: &[
+        ("automobilstandards", &["iatf", "vda"]),
+        ("iso-9001", &["iatf"]),
+        (
+            "qualitatsmethoden",
+            &["8d-problemlosung", "apqp", "fmea", "msa", "ppap", "spc"],
+        ),
+        (
+            "qualitatsmanagement",
+            &["iso-9001", "qualitatsmanagementsystem"],
+        ),
+    ],
     near: &[
         ("prozessaudit", &["audit", "zertifizierung"]),
         ("qualitatsmanagementsystem", &["audit", "zertifizierung"]),
@@ -209,12 +224,61 @@ pub(crate) const DOMAIN: Domain = Domain {
 #[cfg(test)]
 mod tests {
     use super::super::testing::{assert_apart, assert_same, vocab};
-    use crate::matching::atoms::{Vocab, atoms};
+    use crate::matching::atoms::{Fit, Vocab, atoms};
+    use crate::matching::graph::fit;
 
     fn operations() -> Vocab {
         let v = vocab(&["Lean Management", "Werksleitung", "Instandhaltung"]);
         assert_eq!(v.packs(), ["operations"]);
         v
+    }
+
+    /// IATF 16949 holds all of ISO 9001, quality management names it in part; another ISO
+    /// standard is none of the two.
+    #[test]
+    fn iso_9001_is_held_by_iatf_and_quality_management() {
+        let v = operations();
+        let one = |text: &str| atoms(text, &v).last().cloned().expect("one atom");
+        let iso = one("Tiefgehende Kenntnisse der ISO 9001");
+        assert_eq!(fit(&iso, &one("IATF 16949")), Fit::Covered);
+        assert_eq!(fit(&iso, &one("Qualitätsmanagement")), Fit::General);
+        assert_eq!(fit(&one("IATF 16949"), &iso), Fit::General);
+        assert_eq!(
+            fit(&one("Qualitätsmanagement"), &one("IATF 16949")),
+            Fit::Covered
+        );
+        assert_eq!(fit(&one("ISO 27001"), &one("IATF 16949")), Fit::None);
+        assert_eq!(
+            fit(&one("ISO 14001"), &one("Qualitätsmanagement")),
+            Fit::None
+        );
+    }
+
+    /// Quality methods asked for are met by FMEA, 8D or SPC, the standards of the car
+    /// industry by IATF 16949 (the wording of a real ad); `8D-Methodik` is 8D problem solving.
+    /// The methods of manufacturing and an agile method are none of them.
+    #[test]
+    fn quality_methods_and_car_standards_are_met_by_their_members() {
+        let v = operations();
+        let one = |text: &str| atoms(text, &v).last().cloned().expect("one atom");
+        for member in ["FMEA", "8D-Problemlösung", "Statistische Prozesslenkung"] {
+            assert_eq!(
+                fit(&one("Qualitätsmethoden"), &one(member)),
+                Fit::Covered,
+                "{member}"
+            );
+        }
+        assert_eq!(
+            fit(
+                &one("Umfassende Kenntnisse der Automobilstandards"),
+                &one("IATF 16949")
+            ),
+            Fit::Covered
+        );
+        assert_eq!(one("8D-Methodik"), one("8D-Problemlösung"));
+        assert_eq!(fit(&one("Qualitätsmethoden"), &one("Scrum")), Fit::None);
+        assert_eq!(fit(&one("Fertigungsmethoden"), &one("FMEA")), Fit::None);
+        assert_eq!(fit(&one("FMEA"), &one("Qualitätsmethoden")), Fit::General);
     }
 
     #[test]

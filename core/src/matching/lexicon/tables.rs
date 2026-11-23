@@ -574,7 +574,8 @@ pub(crate) const JOB_SKILL_VOCAB: &[&str] = &[
 ];
 
 /// Hygiene requirements every candidate is expected to meet (folded, sorted): office tools,
-/// a driving licence, willingness to travel, soft traits and native German. They carry no
+/// a driving licence, willingness to travel, soft traits, native German and reference
+/// projects (the proof of the other requirements, no skill of its own). They carry no
 /// information about the fit: met or open, they are no must (the rubric's rule 4).
 pub(crate) const HYGIENE: &[&str] = &[
     "analytical thinking",
@@ -593,6 +594,9 @@ pub(crate) const HYGIENE: &[&str] = &[
     "ms office",
     "native german",
     "powerpoint",
+    "referenzprojekt",
+    "referenzprojekte",
+    "referenzprojekten",
     "reisebereitschaft",
     "team player",
     "teamfahigkeit",
@@ -615,6 +619,21 @@ mod tests {
         assert_eq!(fold("Teamfähigkeit"), "teamfahigkeit");
         assert_eq!(fold("Kommunikationsstärke"), "kommunikationsstarke");
         assert!(HYGIENE.binary_search(&"ms office").is_ok());
+    }
+
+    /// Reference projects prove the other requirements; a reference architecture is a skill,
+    /// and references with what they must show are a requirement.
+    #[test]
+    fn reference_projects_are_hygiene() {
+        use crate::matching::signals::is_hygiene;
+        assert!(is_hygiene(
+            "Mindestens zwei vergleichbare Referenzprojekte (Transition/Provider-Wechsel im \
+             IT-Service-Umfeld) aus den letzten fünf Jahren"
+        ));
+        assert!(!is_hygiene("Erfahrung mit Referenzarchitekturen"));
+        assert!(!is_hygiene(
+            "Mindestens 3 Referenzen mit nachweisbarer Verantwortung in Rollout-Programmen"
+        ));
     }
 
     #[test]

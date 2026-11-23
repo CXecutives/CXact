@@ -109,6 +109,7 @@ pub(crate) const FILLERS: &[&str] = &[
     "least",
     "level",
     "meet",
+    "mehr",
     "mehrere",
     "mind",
     "mindestens",
@@ -242,6 +243,10 @@ pub(crate) const KNOWLEDGE_STEMS: &[&str] = &[
     "wissen",
     "skills",
 ];
+
+/// Work on a product family that names no skill beside it (`Betreuung von SAP-Projekten`,
+/// `Mitarbeit in SAP-Projekten`), as atoms.
+pub(crate) const FAMILY_WORK: &[&str] = &["begleitung", "betreuung", "mitarbeit"];
 
 /// Words that only say "knowledge of" around a skill (`SAP-Kenntnisse`, `Erfahrung mit SAP`).
 pub(crate) const KNOWLEDGE_WORDS: &[&str] = &[

@@ -10,7 +10,10 @@
 use super::*;
 
 /// The class of each part of a line, classified once: one soft part among parts without a
-/// known skill makes all of them soft (`verbindlich, pragmatisch und mit Freude am Detail`).
+/// known skill makes all of them soft (`verbindlich, pragmatisch und mit Freude am Detail`),
+/// and so are the bare parts after an interest, its further objects (the automation and the
+/// innovations of `Interesse an KI, Automatisierung und digitalen Innovationen`), up to a
+/// part with a word of knowledge of its own.
 pub(super) fn part_classes(texts: &[String], level: Option<u8>, vocab: &Vocab) -> Vec<Class> {
     let classes: Vec<Class> = texts.iter().map(|t| classify(t, level, vocab)).collect();
     let soft_line = classes.contains(&Class::Soft)
@@ -18,11 +21,18 @@ pub(super) fn part_classes(texts: &[String], level: Option<u8>, vocab: &Vocab) -
             .iter()
             .zip(&classes)
             .all(|(t, class)| *class == Class::Soft || !known_skill(t));
-    classes
-        .into_iter()
-        .map(|class| match class {
-            Class::Skill if soft_line => Class::Soft,
-            class => class,
+    let mut interest = false;
+    texts
+        .iter()
+        .zip(classes)
+        .map(|(text, class)| {
+            let folded = fold(text);
+            interest = soft_lead(&folded)
+                || (interest && class == Class::Skill && !names_knowledge(&folded));
+            match class {
+                Class::Skill if soft_line || interest => Class::Soft,
+                class => class,
+            }
         })
         .collect()
 }

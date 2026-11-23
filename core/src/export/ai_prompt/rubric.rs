@@ -103,7 +103,8 @@ mod tests {
     }
 
     /// No number of the engine is written into the text: the digits left are the scale and
-    /// its bands, the numbering of the rules and the examples of a reading.
+    /// its bands, the numbering of the rules, the examples of a reading and the names of
+    /// standards.
     #[test]
     fn the_rubric_writes_no_number_of_the_engine() {
         let mut text = flat(raw());
@@ -116,6 +117,7 @@ mod tests {
             "- unter 25 ",
             "„6 Monate plus Verlängerung“",
             "„80 bis 100 %“",
+            "IATF 16949 deckt ISO 9001",
         ] {
             assert!(text.contains(fixed), "{fixed}");
             text = text.replace(fixed, " ");

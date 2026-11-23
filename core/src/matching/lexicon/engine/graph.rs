@@ -1,6 +1,6 @@
 //! Relations of the knowledge graph for every profile (the packs add their own,
 //! `Domain::covers` and `Domain::near`): concepts that cover narrower ones, concepts close to
-//! each other, and the kinds of concept the engine treats apart.
+//! each other, work and its parts, and the kinds of concept the engine treats apart.
 //!
 //! external contract - do not translate.
 
@@ -21,6 +21,38 @@ pub(crate) const CORE_NEAR: &[(&str, &[&str])] = &[
     ("projektleitung", &["projektmanagement"]),
     ("stakeholdermanagement", &["stakeholder"]),
 ];
+
+/// Work and the parts it comprises (stemmed when the graph is built): who does the whole does
+/// its parts, so a part asked for is met in full by a profile naming the whole, and the whole
+/// asked in half by a part. No chain into the umbrellas: general ledger accounting closes the
+/// books, but accounting asked for is not met by bookkeeping alone (`Domain::covers`).
+pub(crate) const PARTS: &[(&str, &[&str])] = &[
+    // The general ledger closes the months and the year and draws up the balance sheet.
+    (
+        "hauptbuchhaltung",
+        &[
+            "bilanzierung",
+            "jahresabschluss",
+            "monatsabschluss",
+            "rechnungslegung",
+        ],
+    ),
+    // A programme is planned, its resources and the dependencies of its projects managed.
+    (
+        "programmmanagement",
+        &[
+            "abhangigkeitsmanagement",
+            "programmplanung",
+            "ressourcenmanagement",
+        ],
+    ),
+];
+
+/// Heads of a compound that names an undertaking (stems): the compound
+/// (`Transformationsvorhaben`) is near project management, the work that runs it. `Projekt`
+/// is none of them: `IT-Projekte` near project management lifts the project jobs of other
+/// fields (measured on the 154 graded jobs and the held-out sets).
+pub(crate) const PROJECT_HEADS: &[&str] = &["vorhab"];
 
 /// AI tools a profile names.
 const AI_TOOLS: &[&str] = &["chatgpt", "claude", "copilot"];
@@ -231,6 +263,7 @@ pub(crate) const TOOL_KINDS: &[(&str, &[&str], &[&str])] = &[
         &[],
         &["as9100", "en 9100", "iatf 16949", "iso 13485", "iso 9001"],
     ),
+    ("project method", &[], &["pmp", "prince2", "sap activate"]),
 ];
 
 #[cfg(test)]
