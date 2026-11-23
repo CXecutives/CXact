@@ -342,7 +342,7 @@ comes from the profile.
 | Items | AND at `,` `;` `und` `sowie` `&` `and` `inkl.`; OR alternatives at `oder` `bzw.` `or` ` / ` (an OR requirement is met when one branch is met); examples after `z. B.`/`e.g.` are alternatives of their head; negated items dropped; comma tails (`, gerne auch`, `, ob`) stay with their item, `in Wort und Schrift` never splits, the partners after `Zusammenarbeit mit`, `gegenüber` and `rund um` stay one item, parts joined by `und` keep the object the last one names |
 | Kinds | skill, language (CEFR level; weight 250 in `M`, a hygiene factor, full weight in the evidence `n`; an item that names a language among four or more other atoms is a skill line), degree, licence (`Zulassung als Steuerberater`), soft (weight 250, unproven = half; a sentence starting with `Sie`, `Du`, `You` that names no known skill is one soft item), frame (weight 0: rate, duration, place, `Vollzeit`, `Verlängerung`) |
 | Vocabulary | general core (languages, degrees, contract, remote and seniority words, general business pairs such as `project management` = `Projektmanagement`) plus domain packs (finance, sap, itProject, hr, procurement, data, pharma, operations, sales, legal, software, restructuring, consulting, energy, customerService, itService, marketing) that switch on when at least `PACK_HITS` 2 tokens of the profile's competences start with a pack trigger; a pack never maps words for other profiles, only its broad companion words (`Personal`, `Lieferant`, `Kunde`, `Entwicklung`) are generic for every profile; ESCO under them ("ESCO") |
-| Ladder | umlauts folded, light stemming, concepts, compounds (light modifier or head = equal, other modifier = half, profile more specific = full; a modifier of three letters or more, a hyphen marks a compound however short; with or without the linking `s`), two thirds of a long entry = half; frame and soft words are words, not prefixes (`Verfügbarkeit` is frame, `Vergütungsmanagement` a skill); `SQL-Kenntnisse` is the skill, `ISO 9001` keeps its number, short codes (`QP`, `R`, `5S`, `CI/CD`) survive the minimum length; generic atoms (`SAP`, `Management`, `Finance`, `Einführung`, `ERP`, `Unternehmen`, `Head`, `Chief`) never alone and never reach a compound; verbal particles are no modifiers (`Einführung`, `Durchführung` are no `Führung`); a USP sentence or a long free-text entry never proves a requirement; an ad that asks for more than the profile names (`Tableau im Reporting` against `Reporting`) is half; knowledge of a product family (`SAP-Kenntnisse`) is met by an entry naming a product of it; leadership asked for alone is met half by a leading role; an industry of the profile is the setting of a requirement, never its function; leading roles are one concept (`Head of Finance`, `VP Finance`, `Kaufmännischer Leiter` = CFO) |
+| Ladder | umlauts folded, light stemming, concepts, compounds (light modifier or head = equal, other modifier = half, profile more specific = full; a modifier of three letters or more, a hyphen marks a compound however short; with or without the linking `s`), then the knowledge graph (`graph.rs`: an umbrella asked is met in full by the narrower work the profile names, also through a chain, the narrower asked is half by the umbrella; near concepts are half both ways; who does a whole meets its parts in full; a kind of tool asked, `CRM`, is met by a tool of it, another tool of the kind is half; edges in `lexicon/engine/graph.rs` and each pack's `covers` and `near`); frame and soft words are words, not prefixes (`Verfügbarkeit` is frame, `Vergütungsmanagement` a skill); `SQL-Kenntnisse` is the skill, `ISO 9001` keeps its number, short codes (`QP`, `R`, `5S`, `CI/CD`) survive the minimum length; generic atoms (`SAP`, `Management`, `Finance`, `Einführung`, `ERP`, `Unternehmen`, `Head`, `Chief`) never alone and never reach a compound; verbal particles are no modifiers (`Einführung`, `Durchführung` are no `Führung`); a USP sentence or a long free-text entry never proves a requirement; an ad that asks for more than the profile names (`Tableau im Reporting` against `Reporting`) is half; knowledge of a product family (`SAP-Kenntnisse`, also with generic words: `Betreuung von SAP-Projekten`) is met by an entry naming a product of it; an industry of the profile is the setting of a requirement, never its function; leading roles are one concept (`Head of Finance`, `VP Finance`, `Kaufmännischer Leiter` = CFO) |
 | Degrees | field (same = full, neighbouring such as business and business informatics = half, other = open), level (`Master` needs master level: `Diplom (Univ.)` counts as master, `Diplom (FH)` and a bachelor are half), `vergleichbar` accepts any field; `Promotion`, `Staatsexamen`, `MSc`, `PhD` are degrees, `Master Data` is none; `Qualified Person` and `Sachkundige Person` are one licence |
 | Languages, years | a language one level below the required one is half, further below open; English language names in profiles and ads. Years against the profile's own years (`berufserfahrung_jahre`, else the most years of a competence): general experience (`10 Jahre Berufserfahrung`, plain `Erfahrung`) met at or below them, below in part (the rubric's rule 5: asked years cost little), not weighed without the profile's years; years in a topic (`3 Jahre S/4HANA`) use the competence's own years where the profile names it, else the profile's; a range counts from its lower end and keeps its upper end (`max`); a part of a total (`davon mindestens drei Jahre`) is no minimum |
 | Contract type | stated (`Festanstellung`, `Jahresgehalt`, `Werkvertrag`, `Tagessatz`, `Interim`, `permanent, full-time`, a page's limited employment type `Befristet`, `Contract`, `Freiberuflich`) > hints (benefits, `Why join us`, work permit: permanent, inferred) > portal (freelance portals: interim); both stated = unclear; an agency without details = unclear with `anueRisk`; denied interim wording is no interim signal; `Vakanzüberbrückung`, `übergangsweise` and `fractional` are interim; employment pay (an hourly wage, `Stundenlohn`, `iGZ`, `equal pay`, a pay scale; never a part of another word such as `Lohnbuchhaltung`) states an employment; reason `contractType {type, inferred}` |
@@ -558,12 +558,52 @@ means up, held-out 5 and 9 up 0.013 and 0.015), so it is in.
 | Teacher test split, grade-3 / grade-0 mean | 0.739, 59.7 / 23.9 | 0.739, 60.8 / 24.4 |
 | Held-out 1 to 10 | 0.953 0.877 0.925 0.866 0.858 0.934 0.916 0.941 0.896 0.905 | 0.950 0.883 0.925 0.863 0.871 0.932 0.919 0.953 0.913 0.907 |
 
-Known limits: strong fits stay lower than the gold where the profile lacks the ad's words and a
-consultant would infer them (a CFO and `Rechnungswesen`, a PMO and `Governance` or
-`Programmplanung`): the engine counts what the profile names, never guesses. The two note-3 AI
-roles of the 154 (48 and 57) ask for governance, portfolio steering and vendor selection the CX
-profile does not name. General project work meets requirements of any field, so a project job of
-another field can rank high on skills alone.
+Engine 26 (2026-11-23, the last round on the scoring) rebuilt the roots in parallel tracks, each
+merged only with its measurement:
+- Structure: the word lists by topic (`lexicon/engine/*.rs`), the reader by step (`job/*.rs`), one
+  signal table, one source for every number (the fitter runs the scorer itself, the rubric takes
+  its numbers from `params.rs`), a fingerprint of the engine in the match revision (stored scores
+  are scored again after any change of the engine).
+- Knowledge: one graph (`graph.rs`) in place of eight relation tables and six special cases:
+  `covers`, `near`, `PARTS`, kinds of tools. A knowledge round then closed the core musts of very
+  fitting graded ads that were read as open although the profile covers them (`Abschlusssicherheit`
+  as Jahresabschluss, closings as parts of Hauptbuchhaltung, ISO 9001 inside IATF 16949,
+  `X-Vorhaben` as a project, a product family with generic words), and made non-skills soft
+  (`IT-Affinität`, `Interesse an ...`, reference projects).
+- Reading: one line classifier, one cue table with a scope, one conjunct parser, a clause frame,
+  the task section as data (`JobDoc.tasks`), text primitives once (`normalize.rs`).
+- Measured out: 42 rule groups of engines 1 to 24 were switched off one by one; five that moved
+  nothing are gone (the leadership fallback, role-brings, the teaser half, the industry retry, the
+  two-thirds rule); a neighbouring degree and ESCO for requirements stay (fairness; the bench
+  profiles all have packs, so the bench cannot measure ESCO).
+- Tried and not kept, each measured: ITSM and service desk near customer service (the 154 NDCG@10
+  0.700 -> 0.640), any `X-Projekt` near project management (held-out 3 -0.048), `Leitung von
+  Projekten` as a compound (teacher -0.011), `LEVEL_ONE` 950, the scoring levers named above.
+
+| Set | Before engine 26 | Engine 26 |
+|---|---|---|
+| Gold 1+2 tune, NDCG@10 / Spearman, note 3/2/1/0 | 0.829 / 0.716, 75/76/50/23 | 0.844 / 0.719, 82/78/53/23 |
+| Gold 1+2 locked (read once), same | 0.809 / 0.663, 64/68/53/20, lowest note 3 at 47 | 0.810 / 0.658, 68/69/55/19, lowest note 3 at 60 |
+| The owner's 154, NDCG@10 / Spearman, grade 3/2/1/0 | 0.692 / 0.648, 72/70/47/26 | 0.700 / 0.655, 73/71/50/26 |
+| Teacher test split, NDCG@10, grade-3 / grade-0 mean | 0.739, 59.7 / 23.9 | 0.757, 63.0 / 24.0 |
+| Held-out 1 to 10 | 0.953 0.877 0.925 0.866 0.858 0.934 0.916 0.941 0.896 0.905 | 0.951 0.870 0.918 0.862 0.882 0.935 0.916 0.948 0.900 0.905 |
+| A full run of the 1296 bench pairs (release) | 6.4 s | 2.9 s |
+
+Held-out 2 and 3 fall by 0.007 each: the price of two misreading fixes (a nice cue with its scope,
+`Rechnungswesen / Buchhaltung, gerne mit ...`; a pronoun sentence that asks for knowledge is a
+requirement, no soft phrase). Against the bar of an AI the locked half meets NDCG@10 (0.810),
+Spearman (0.658), note 0 (19) and no note 3 below 40 (lowest 60); it misses the note-3 mean (68,
+4 pairs).
+
+Known limits: the engine counts what the profile names and what the graph knows, never guesses.
+Very fitting jobs average 82 on gold tune and 73 on the owner's 154, not 85 to 95: what would lift
+them further (unnamed musts counted in full, a half target role as the same field) lifts weaker
+ads of the same field more and was measured out. The two note-3 AI roles of the 154 (54 and 66)
+ask for governance, portfolio steering and vendor selection the CX profile does not name. One
+industry branch (an ad that asks for more than the profile names, with an industry) keeps one
+grade-3 job of the 154 lower (`Risikothemen im Banking` open); without it low grades rise, so it
+stays. The engine code did not shrink (11,051 -> 11,257 lines without tests and word data): the
+graph and the readers cost what the removed rules saved.
 
 Refit (private data; from the repo root):
 
