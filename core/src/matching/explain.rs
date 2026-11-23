@@ -145,7 +145,7 @@ pub(crate) fn assessment(
             (Weight::Must, ReasonKind::Met) => summary.must_met += 1,
             (Weight::Must, ReasonKind::Partial) => summary.must_partial += 1,
             (Weight::Must, _) => summary.must_open += 1,
-            (Weight::Nice, ReasonKind::Met | ReasonKind::Partial) => summary.nice_met += 1,
+            (Weight::Nice, ReasonKind::Met) => summary.nice_met += 1,
             _ => {}
         }
         if weight == Weight::Nice {

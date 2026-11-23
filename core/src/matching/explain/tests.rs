@@ -1,4 +1,6 @@
-use crate::matching::{Assessment, CapCode, JobInput, PartCode, TextKind, assess, compile_profile};
+use crate::matching::{
+    Assessment, CapCode, JobInput, PartCode, ReasonKind, TextKind, Weight, assess, compile_profile,
+};
 use crate::portal::Portal;
 
 // external contract - do not translate (profile JSON keys)
@@ -228,4 +230,28 @@ fn the_frame_is_a_factor_with_a_line_per_condition() {
     );
     assert!(points(&onsite, PartCode::Frame) < 0);
     assert!(onsite.score < remote.score);
+}
+
+/// The summary counts a nice-to-have met in part in the total, never as met.
+#[test]
+fn a_nice_to_have_met_in_part_is_not_met() {
+    let a = assessed(
+        "Interim CFO (m/w/d)",
+        &CFO.replace(
+            "• Erfahrung mit Treasury
+",
+            "• Erfahrung mit Treasury
+• Erfahrung im Cash Management
+",
+        ),
+    );
+    let nice = |kind| {
+        a.reasons
+            .iter()
+            .filter(|r| r.weight == Weight::Nice && r.kind == kind)
+            .count()
+    };
+    assert!(nice(ReasonKind::Partial) >= 1, "{:?}", a.reasons);
+    assert_eq!(usize::from(a.summary.nice_met), nice(ReasonKind::Met));
+    assert_eq!(a.summary.nice_total, 2);
 }
