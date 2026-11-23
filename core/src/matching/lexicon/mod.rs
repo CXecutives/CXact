@@ -38,9 +38,6 @@ pub(crate) const CUE_HARD: &str = r"\b(?:vorausgesetzt|erforderlich|benötigt|be
 /// `Erfahrung ... in/mit/im/von` within 40 characters.
 pub(crate) const CUE_EXPERIENCE: &str =
     r"\b(?:erfahrung|erfahrungen|kenntnis|kenntnisse)\b.{0,40}\b(?:in|mit|im|von)\b";
-/// Marks a cue sentence as nice-to-have.
-pub(crate) const CUE_NICE: &str = r"\b(?:von{S}+vorteil|nice{S}+to{S}+have|nice-to-have|wünschenswert|wuenschenswert|idealerweise|vorteilhaft|bonus)\b";
-
 /// Membership test in a sorted table.
 pub(crate) fn contains(table: &[&str], word: &str) -> bool {
     table.binary_search(&word).is_ok()

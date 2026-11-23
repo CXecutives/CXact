@@ -314,6 +314,52 @@ pub(crate) fn contains_word(folded: &str, word: &str) -> bool {
     false
 }
 
+/// The words of a text with their byte offsets: runs of letters and digits, with `inner` signs
+/// inside a word (`Müller-Lüdenscheidt`).
+pub(crate) fn word_spans<'a>(text: &'a str, inner: &[char]) -> Vec<(usize, &'a str)> {
+    let mut out = Vec::new();
+    let mut start = None;
+    for (at, c) in text.char_indices() {
+        let inside = c.is_alphanumeric() || (start.is_some() && inner.contains(&c));
+        match (inside, start) {
+            (true, None) => start = Some(at),
+            (false, Some(from)) => {
+                out.push((from, &text[from..at]));
+                start = None;
+            }
+            _ => {}
+        }
+    }
+    if let Some(from) = start {
+        out.push((from, &text[from..]));
+    }
+    out
+}
+
+/// Whether the words from `at` are `phrase` (words separated by single spaces), its last word
+/// perhaps with one of `endings`; the index after it.
+pub(crate) fn phrase_at<S: AsRef<str>>(
+    words: &[S],
+    at: usize,
+    phrase: &str,
+    endings: &[&str],
+) -> Option<usize> {
+    let parts: Vec<&str> = phrase.split(' ').collect();
+    for (i, part) in parts.iter().enumerate() {
+        let word = words.get(at + i)?.as_ref();
+        let ending = || {
+            i + 1 == parts.len()
+                && word
+                    .strip_prefix(part)
+                    .is_some_and(|rest| endings.contains(&rest))
+        };
+        if word != *part && !ending() {
+            return None;
+        }
+    }
+    Some(at + parts.len())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

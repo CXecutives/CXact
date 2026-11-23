@@ -352,27 +352,6 @@ pub(crate) const LISTING_TAILS: &[&str] = &[
     "for you",
 ];
 
-/// Nice cues that close a line (`X und Y von Vorteil`): the whole line is nice.
-pub(crate) const NICE_CLOSING: &[&str] = &[
-    "von vorteil",
-    "wunschenswert",
-    "a plus",
-    "ein plus",
-    "strong plus",
-    "nice to have",
-    "nice-to-have",
-    "vorteilhaft",
-    "bonus",
-    "an advantage",
-    "advantageous",
-    "hilfreich",
-    "grosses plus",
-    "an asset",
-    "klarer vorteil",
-    "preferred",
-    "is a plus",
-];
-
 /// Separators of the parts of one line (`Start: 02/2027 · Dauer: 10 Monate · 78 €/h`).
 pub(crate) const SEGMENT_SEPARATORS: &[&str] = &[" // ", " · ", " | ", " • "];
 

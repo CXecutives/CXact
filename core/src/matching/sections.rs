@@ -3,14 +3,18 @@
 //! the requirement cues of a sentence.
 
 use std::collections::HashSet;
+use std::ops::Range;
 use std::sync::LazyLock;
 
 use regex::Regex;
 
 use super::atoms::{self, fold};
 use super::lexicon::domains::DOMAINS;
-use super::lexicon::{self, HeadingKind, engine as lex};
-use super::normalize::{char_len, decimal, is_space, split_whitespace, strip};
+use super::lexicon::engine::{self as lex, CueScope};
+use super::lexicon::{self, HeadingKind};
+use super::normalize::{
+    char_len, decimal, is_space, phrase_at, split_whitespace, strip, word_spans,
+};
 use super::pyre;
 
 /// Headings longer than this are ordinary lines.
@@ -27,7 +31,6 @@ const LISTINGS_MAX_CHARS: usize = 48;
 
 static CUE_HARD: LazyLock<Regex> = LazyLock::new(|| pyre::compile(lexicon::CUE_HARD));
 static CUE_EXPERIENCE: LazyLock<Regex> = LazyLock::new(|| pyre::compile(lexicon::CUE_EXPERIENCE));
-static CUE_NICE: LazyLock<Regex> = LazyLock::new(|| pyre::compile(lexicon::CUE_NICE));
 
 /// Kind of a requirement: must or nice-to-have.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -98,7 +101,7 @@ pub(crate) fn classify<'a>(line: &'a str, bullet: bool, next: Option<&str>) -> L
         return Line::Closing;
     }
     if line.trim_end().ends_with(':')
-        && lex::PICK_LIST_COUNTS.iter().any(|w| folded.contains(w))
+        && nice_cues(line).iter().any(|c| c.scope == CueScope::List)
         && lex::PICK_LIST_REFERS.iter().any(|w| folded.contains(w))
     {
         return Line::PickList;
@@ -258,20 +261,48 @@ pub(crate) fn clean_phrase(sentence: &str) -> &str {
     strip(strip_number(text))
 }
 
-/// Python `_cue_kind`: requirement kind of a cue sentence, `None` if it is none.
-pub(crate) fn cue_kind(sentence: &str) -> Option<ReqKind> {
+/// Python `_cue_kind`: does a sentence ask for something (a requirement cue)?
+pub(crate) fn cued(sentence: &str) -> bool {
     if sentence.is_empty() || char_len(sentence) > CUE_MAX_CHARS {
-        return None;
+        return false;
     }
     let view = pyre::view(sentence);
-    if !(CUE_HARD.is_match(&view) || CUE_EXPERIENCE.is_match(&view)) {
-        return None;
+    CUE_HARD.is_match(&view) || CUE_EXPERIENCE.is_match(&view)
+}
+
+/// A nice cue of a text: its scope and byte range.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Cue {
+    pub scope: CueScope,
+    pub at: Range<usize>,
+}
+
+/// The nice cues of a text, left to right, the longest at each word (`lex::NICE_CUES`: whole
+/// words, `Bonussysteme` holds no `bonus`).
+pub(crate) fn nice_cues(text: &str) -> Vec<Cue> {
+    let words = word_spans(text, &[]);
+    let folded: Vec<String> = words.iter().map(|(_, w)| fold(w)).collect();
+    let mut cues = Vec::new();
+    let mut i = 0;
+    while i < words.len() {
+        let found = lex::NICE_CUES
+            .iter()
+            .filter_map(|&(cue, scope)| {
+                phrase_at(&folded, i, cue, lex::DECLENSION_ENDINGS).map(|end| (end, scope))
+            })
+            .max_by_key(|(end, _)| *end);
+        let Some((end, scope)) = found else {
+            i += 1;
+            continue;
+        };
+        let (last_at, last) = words[end - 1];
+        cues.push(Cue {
+            scope,
+            at: words[i].0..last_at + last.len(),
+        });
+        i = end;
     }
-    Some(if CUE_NICE.is_match(&view) {
-        ReqKind::Nice
-    } else {
-        ReqKind::Must
-    })
+    cues
 }
 
 #[cfg(test)]

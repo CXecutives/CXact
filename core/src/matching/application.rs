@@ -13,6 +13,7 @@ use regex::Regex;
 
 use super::atoms::fold;
 use super::lexicon::engine as lex;
+use super::normalize::{phrase_at, word_spans};
 
 /// Longest contact value kept, in characters.
 const MAX_CONTACT_CHARS: usize = 80;
@@ -50,16 +51,6 @@ fn tokens(folded: &str) -> Vec<&str> {
         .collect()
 }
 
-/// Whether the words at `at` are the entry `marker` (one or more words); the index after it.
-fn marker_at(words: &[&str], at: usize, marker: &str) -> Option<usize> {
-    let mut end = at;
-    for part in marker.split(' ') {
-        (*words.get(end)? == part).then_some(())?;
-        end += 1;
-    }
-    Some(end)
-}
-
 /// The index of the first word from `at` that is not one of `fillers`.
 fn past(words: &[&str], mut at: usize, fillers: &[&str]) -> usize {
     while words.get(at).is_some_and(|w| fillers.contains(w)) {
@@ -72,7 +63,7 @@ fn line_deadline(words: &[&str], posted: Option<Date>) -> Option<Date> {
     (0..words.len()).find_map(|at| {
         let named = lex::DEADLINE_MARKERS
             .iter()
-            .find_map(|marker| marker_at(words, at, marker));
+            .find_map(|marker| phrase_at(words, at, marker, &[]));
         let from = match named {
             Some(end) => end,
             None if lex::APPLY_WORDS.contains(&words[at]) => {
@@ -205,38 +196,12 @@ fn kept(value: &str) -> Option<String> {
 
 /// The words of a line with their byte offsets (letters, digits, `-` and `'` inside).
 fn spans(line: &str) -> Vec<(usize, &str)> {
-    let mut out = Vec::new();
-    let mut start: Option<usize> = None;
-    for (at, c) in line.char_indices() {
-        let inside = c.is_alphanumeric() || (start.is_some() && matches!(c, '-' | '\''));
-        match (inside, start) {
-            (true, None) => start = Some(at),
-            (false, Some(from)) => {
-                out.push((from, &line[from..at]));
-                start = None;
-            }
-            _ => {}
-        }
-    }
-    if let Some(from) = start {
-        out.push((from, &line[from..]));
-    }
-    out
+    word_spans(line, &['-', '\''])
 }
 
 /// The folded words of `spans`, for comparing with the lexicon.
 fn folded(words: &[(usize, &str)]) -> Vec<String> {
     words.iter().map(|(_, w)| fold(w)).collect()
-}
-
-/// Whether the folded words at `at` are the entry `marker`; the index after it.
-fn folded_marker(words: &[String], at: usize, marker: &str) -> Option<usize> {
-    let mut end = at;
-    for part in marker.split(' ') {
-        (words.get(end)? == part).then_some(())?;
-        end += 1;
-    }
-    Some(end)
 }
 
 /// The person a line names after a contact word (a label only at the line's start).
@@ -256,13 +221,13 @@ fn person(line: &str) -> Option<String> {
     (0..words.len()).find_map(|at| {
         let after = lex::CONTACT_PERSON_WORDS
             .iter()
-            .find_map(|marker| folded_marker(&folds, at, marker))
+            .find_map(|marker| phrase_at(&folds, at, marker, &[]))
             .or_else(|| {
                 (at == 0)
                     .then(|| {
                         lex::CONTACT_LABELS
                             .iter()
-                            .find_map(|marker| folded_marker(&folds, at, marker))
+                            .find_map(|marker| phrase_at(&folds, at, marker, &[]))
                     })
                     .flatten()
             })?;

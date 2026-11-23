@@ -769,3 +769,77 @@ fn the_line_classifier_keeps_skills_inline_content_and_tasks() {
     );
     assert_eq!(doc.task_lines.len(), 1);
 }
+
+/// Each nice cue marks what its scope covers, in real wordings: a clause cue in brackets only
+/// the bracket, a closing cue its item, a line cue the line up to it; cues are whole words.
+#[test]
+fn nice_cues_mark_their_scope() {
+    assert_eq!(
+        musts("- SAP FI (idealerweise S/4HANA) und Excel"),
+        [
+            ("SAP FI".to_owned(), true),
+            ("idealerweise S/4HANA".to_owned(), false),
+            ("Excel".to_owned(), true)
+        ]
+    );
+    assert_eq!(
+        musts("- Erfahrung mit SAP, gerne auch S/4HANA"),
+        [
+            ("Erfahrung mit SAP".to_owned(), true),
+            ("gerne auch S/4HANA".to_owned(), false)
+        ]
+    );
+    // Held-out set 2, Y05 and Y08: the experience is a must, only the clause after `gerne` is
+    // nice.
+    assert_eq!(
+        musts(
+            "* Erfahrung im Rechnungswesen / Buchhaltung, gerne mit Bilanzbuchhalter-Qualifikation"
+        ),
+        [
+            ("Erfahrung im Rechnungswesen / Buchhaltung".to_owned(), true),
+            ("gerne mit Bilanzbuchhalter-Qualifikation".to_owned(), false)
+        ]
+    );
+    assert_eq!(
+        musts(
+            "Erfahrung in der Leitung von Projekten im Finanz-Bereich, gerne mit IFRS-Erstanwendung"
+        )[0],
+        (
+            "Erfahrung in der Leitung von Projekten im Finanz-Bereich".to_owned(),
+            true
+        )
+    );
+    // A clause cue after a word closes what stands before it.
+    assert_eq!(
+        musts("- SAP-Erfahrung bevorzugt, sicherer Umgang mit Excel"),
+        [
+            ("SAP-Erfahrung bevorzugt".to_owned(), false),
+            ("sicherer Umgang mit Excel".to_owned(), true)
+        ]
+    );
+    assert_eq!(
+        musts("- Erfahrung mit Bonussystemen"),
+        [("Erfahrung mit Bonussystemen".to_owned(), true)]
+    );
+    assert_eq!(
+        musts("- SAP-Kenntnisse erwünscht"),
+        [("SAP-Kenntnisse erwünscht".to_owned(), false)]
+    );
+    assert_eq!(
+        musts("- SAP FI, Power BI (optional)"),
+        [
+            ("SAP FI".to_owned(), true),
+            ("Power BI (optional)".to_owned(), false)
+        ]
+    );
+    assert_eq!(
+        musts("- Power BI von Vorteil, sicherer Umgang mit Excel"),
+        [
+            ("Power BI von Vorteil".to_owned(), false),
+            ("sicherer Umgang mit Excel".to_owned(), true)
+        ]
+    );
+    let picked =
+        musts("- Experience in one or more of the following areas:\n- SAP S/4HANA\n- Salesforce");
+    assert!(picked.iter().all(|(_, must)| !must), "{picked:?}");
+}

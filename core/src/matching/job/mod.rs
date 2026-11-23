@@ -5,8 +5,7 @@
 use super::atoms::{self, Vocab, fold};
 use super::facts::rate_in;
 use super::lexicon::engine::{
-    AND, AND_WORDS, EN_CUES, EXAMPLE_SEPARATORS, EXAMPLES, NICE_CUES, NICE_LEADS, NUMBER_WORDS, OR,
-    YEAR_UNITS,
+    AND, AND_WORDS, CueScope, EN_CUES, EXAMPLE_SEPARATORS, EXAMPLES, NUMBER_WORDS, OR, YEAR_UNITS,
 };
 use super::lexicon::{HeadingKind, engine as lex};
 use super::normalize::{contains_word, sentences, splitlines, strip};
@@ -91,7 +90,7 @@ pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
     if !phrases.iter().any(|(_, kind, _)| *kind == ReqKind::Must) {
         phrases.extend(cued_sentences(text, &read.in_nice));
     }
-    for (phrase, kind, stage) in phrases.into_iter().flat_map(cut_nice_lead) {
+    for (phrase, kind, stage) in phrases.into_iter().flat_map(|p| cue_clauses(p, vocab)) {
         if describes_role(phrase) {
             continue;
         }
@@ -99,7 +98,7 @@ pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
         doc.requirement_lines.push(start..start + phrase.len());
         let level = level_in(phrase);
         if soft_sentence(phrase) {
-            let nice = kind == ReqKind::Nice || nice_cue(phrase);
+            let nice = kind == ReqKind::Nice || !sections::nice_cues(phrase).is_empty();
             doc.items.push(Item {
                 span: Some(start..start + phrase.len()),
                 text: phrase.to_owned(),
@@ -114,13 +113,7 @@ pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
         }
         let parts = split(phrase);
         let tails = shared_objects(phrase, &parts);
-        // `X, idealerweise Y`: nice from the cue on; `X und Y von Vorteil`: a closing cue
-        // makes the whole line nice.
-        let closing = parts.last().is_some_and(|(r, _)| {
-            let folded = fold(&phrase[r.clone()]);
-            lex::NICE_CLOSING.iter().any(|c| folded.contains(c))
-        });
-        let mut nice = kind == ReqKind::Nice || closing;
+        let nice = nice_parts(phrase, &parts);
         // A modifier of a hyphen ellipsis reads as the word it stands for (`Risiko-` of
         // `Risiko- und Qualitätsmanagement` as `Risikomanagement`).
         let texts: Vec<String> = parts
@@ -131,8 +124,12 @@ pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
             })
             .collect();
         let classes = part_classes(&texts, level, vocab);
-        for ((((span, alternatives), class), tail), whole) in
-            parts.into_iter().zip(classes).zip(tails).zip(&texts)
+        for (((((span, alternatives), class), tail), whole), nice) in parts
+            .into_iter()
+            .zip(classes)
+            .zip(tails)
+            .zip(&texts)
+            .zip(nice)
         {
             let whole = whole.as_str();
             if atoms::atoms(whole, vocab).is_empty() || not_needed(whole) || noise_item(whole) {
@@ -142,7 +139,6 @@ pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
                 Some(t) => format!("{text} {}", &phrase[t.clone()]),
                 None => text.to_owned(),
             };
-            nice |= nice_cue(whole);
             let kind = if nice { ReqKind::Nice } else { kind };
             let years = years_in(whole);
             doc.items.push(Item {
@@ -192,15 +188,8 @@ fn cued_sentences<'a>(text: &'a str, in_nice: &[usize]) -> Vec<(&'a str, ReqKind
         for sentence in sentences(stripped) {
             let phrase = sections::clean_phrase(sentence);
             let folded = fold(phrase);
-            let english = EN_CUES.iter().any(|c| folded.contains(c));
-            let kind = sections::cue_kind(phrase).or(english.then_some(ReqKind::Must));
-            if let Some(kind) = kind {
-                let kind = if nice_cue(phrase) {
-                    ReqKind::Nice
-                } else {
-                    kind
-                };
-                phrases.push((phrase, kind, Stage::Sentence));
+            if sections::cued(phrase) || EN_CUES.iter().any(|c| folded.contains(c)) {
+                phrases.push((phrase, ReqKind::Must, Stage::Sentence));
             }
         }
     }

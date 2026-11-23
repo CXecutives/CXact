@@ -210,16 +210,21 @@ impl Phrases {
     }
 }
 
-static LEADS: LazyLock<Phrases> =
-    LazyLock::new(|| Phrases::new(&[words::LEADS, lex::NICE_CUES, lex::MANDATORY_WORDS]));
-static TAILS: LazyLock<Phrases> = LazyLock::new(|| {
-    Phrases::new(&[
-        words::TAILS,
-        lex::NICE_CUES,
-        lex::NICE_CLOSING,
-        lex::MANDATORY_WORDS,
-    ])
+/// The words of the nice cues that are no pick list's count (`lex::NICE_CUES`).
+static CUE_WORDS: LazyLock<&'static [&'static str]> = LazyLock::new(|| {
+    Box::leak(
+        lex::NICE_CUES
+            .iter()
+            .filter(|(_, scope)| *scope != lex::CueScope::List)
+            .map(|(word, _)| *word)
+            .collect::<Vec<_>>()
+            .into_boxed_slice(),
+    )
 });
+static LEADS: LazyLock<Phrases> =
+    LazyLock::new(|| Phrases::new(&[words::LEADS, *CUE_WORDS, lex::MANDATORY_WORDS]));
+static TAILS: LazyLock<Phrases> =
+    LazyLock::new(|| Phrases::new(&[words::TAILS, *CUE_WORDS, lex::MANDATORY_WORDS]));
 static LEVELS: LazyLock<Phrases> = LazyLock::new(|| {
     let levels: &'static [&'static str] = Box::leak(
         lex::LEVEL_WORDS
@@ -281,15 +286,9 @@ fn is_note(inner: &str, before: &str) -> bool {
         && parts
             .iter()
             .all(|p| is_cefr(p) || LEVEL_FILLERS.contains(p));
-    let wish = [
-        words::TAILS,
-        lex::NICE_CUES,
-        lex::NICE_CLOSING,
-        lex::MANDATORY_WORDS,
-        NOTE_WORDS,
-    ]
-    .iter()
-    .any(|table| table.contains(&spaced.as_str()))
+    let wish = [words::TAILS, *CUE_WORDS, lex::MANDATORY_WORDS, NOTE_WORDS]
+        .iter()
+        .any(|table| table.contains(&spaced.as_str()))
         || lex::LEVEL_WORDS.iter().any(|(word, _)| *word == spaced);
     let examples = lex::EXAMPLES
         .iter()

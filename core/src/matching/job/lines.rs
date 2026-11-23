@@ -6,31 +6,115 @@
 )]
 use super::*;
 
-/// A must phrase cut at a nice cue that opens a clause after a comma (`NICE_LEADS`): the head
-/// stays a must, the clause from the cue on is nice, so an `or` inside the clause never makes
-/// the head an alternative of it (`10+ years in finance, ideally in controlling or
-/// accounting`).
-pub(super) fn cut_nice_lead((phrase, kind, stage): Phrase<'_>) -> Vec<Phrase<'_>> {
-    match cut_at_nice_lead(phrase) {
-        Some((head, clause)) if kind == ReqKind::Must => {
-            vec![(head, kind, stage), (clause, ReqKind::Nice, stage)]
-        }
-        _ => vec![(phrase, kind, stage)],
+/// A must phrase cut at the clause cues it holds (`CueScope::Clause`): the head keeps its
+/// kind and the clause from the cue on is nice, so an `or` inside the clause never makes the
+/// head an alternative of it (`10+ years in finance, ideally in controlling or accounting`);
+/// inside brackets the clause ends with them (`SAP FI (idealerweise S/4HANA)`: only S/4HANA is
+/// nice) and what follows them keeps the head's kind. A cue with no head before it makes the
+/// whole phrase nice; one with no words after it closes its item (see [`nice_parts`]).
+pub(super) fn cue_clauses<'a>((phrase, kind, stage): Phrase<'a>, vocab: &Vocab) -> Vec<Phrase<'a>> {
+    let whole = vec![(phrase, kind, stage)];
+    if kind == ReqKind::Nice {
+        return whole;
     }
+    let Some(cue) = sections::nice_cues(phrase)
+        .into_iter()
+        .find(|c| c.scope == CueScope::Clause)
+    else {
+        return whole;
+    };
+    let before = phrase[..cue.at.start].trim_end();
+    let head = trim_joints(before);
+    // A cue opens a clause after a comma, a bracket or a joining word (`SAP, idealerweise
+    // S/4HANA`); after a word it closes what stands before it (`SAP bevorzugt, Excel`).
+    if head.len() == before.len() && !head.is_empty() {
+        return whole;
+    }
+    let bracket = depth(before) > 0;
+    let end = if bracket {
+        phrase[cue.at.end..]
+            .find(')')
+            .map_or(phrase.len(), |c| cue.at.end + c)
+    } else {
+        phrase.len()
+    };
+    if trim_joints(&phrase[cue.at.end..end]).is_empty() {
+        return whole;
+    }
+    if atoms::atoms(head, vocab).is_empty() {
+        return vec![(phrase, ReqKind::Nice, stage)];
+    }
+    let mut cut = vec![
+        (head, kind, stage),
+        (
+            trim_joints(&phrase[cue.at.start..end]),
+            ReqKind::Nice,
+            stage,
+        ),
+    ];
+    let rest = trim_joints(phrase.get(end + 1..).unwrap_or(""));
+    if bracket && !rest.is_empty() {
+        cut.extend(cue_clauses((rest, kind, stage), vocab));
+    }
+    cut
 }
 
-/// Where a phrase splits at a nice lead after a comma: its head and the clause from the cue on.
-pub(super) fn cut_at_nice_lead(phrase: &str) -> Option<(&str, &str)> {
-    phrase.match_indices(", ").find_map(|(at, sep)| {
-        let rest = &phrase[at + sep.len()..];
-        let word = rest
-            .split(|c: char| !c.is_alphabetic())
-            .next()
-            .unwrap_or("");
-        let head = phrase[..at].trim_end();
-        (!head.is_empty() && NICE_LEADS.contains(&word.to_lowercase().as_str()))
-            .then_some((head, rest))
-    })
+/// The parts of a phrase its item and line cues make nice: an item cue its part, a line cue
+/// the parts up to it, or its part and the ones after it when it opens its part (`Von Vorteil
+/// sind ...`), a list cue that refers to the items its part and the ones after it; a clause
+/// cue left in the phrase closes its part (`SAP bevorzugt`).
+pub(super) fn nice_parts(phrase: &str, parts: &[(Range<usize>, Vec<Range<usize>>)]) -> Vec<bool> {
+    let mut nice = vec![false; parts.len()];
+    for cue in sections::nice_cues(phrase) {
+        let Some(i) = parts.iter().rposition(|(r, _)| r.start <= cue.at.start) else {
+            nice.fill(true);
+            continue;
+        };
+        let opens = parts[i].0.start == cue.at.start;
+        let marked = match cue.scope {
+            CueScope::Item | CueScope::Clause => i..i + 1,
+            CueScope::Line if depth(&phrase[..cue.at.start]) > 0 => i..i + 1,
+            CueScope::Line if opens => i..parts.len(),
+            CueScope::Line => 0..i + 1,
+            CueScope::List => {
+                let refers = fold(&phrase[cue.at.end..]);
+                if !lex::PICK_LIST_REFERS.iter().any(|w| refers.contains(w)) {
+                    continue;
+                }
+                i..parts.len()
+            }
+        };
+        nice[marked].fill(true);
+    }
+    nice
+}
+
+/// Open brackets in a text.
+fn depth(text: &str) -> usize {
+    text.matches('(')
+        .count()
+        .saturating_sub(text.matches(')').count())
+}
+
+/// A text without the signs and joining words at its ends (`SAP FI (`, `und Excel`).
+fn trim_joints(text: &str) -> &str {
+    let mut text = text.trim_matches(|c: char| {
+        c.is_whitespace() || matches!(c, ',' | ';' | ':' | '(' | ')' | '-' | '–')
+    });
+    loop {
+        let before = text.len();
+        for joint in lex::ELLIPSIS_JOINERS.iter().chain(["and", "or"].iter()) {
+            if let Some(rest) = text.strip_suffix(joint).filter(|r| r.ends_with(' ')) {
+                text = rest.trim_end_matches(|c: char| c.is_whitespace() || c == ',');
+            }
+            if let Some(rest) = text.strip_prefix(joint).filter(|r| r.starts_with(' ')) {
+                text = rest.trim_start();
+            }
+        }
+        if text.len() == before {
+            return text;
+        }
+    }
 }
 
 /// A stripped line without a leading glyph bullet (`✅`, `👉`, `→`), and whether it had
@@ -50,11 +134,6 @@ pub(crate) fn is_heading_line(line: &str) -> bool {
 
 pub(super) fn offset(text: &str, part: &str) -> usize {
     (part.as_ptr() as usize).saturating_sub(text.as_ptr() as usize)
-}
-
-pub(super) fn nice_cue(line: &str) -> bool {
-    let folded = fold(line);
-    NICE_CUES.iter().any(|c| folded.contains(c))
 }
 
 /// An item about the company or the frame, no requirement: a legal form (`Muster GmbH`), a

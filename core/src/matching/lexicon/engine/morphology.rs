@@ -22,6 +22,10 @@ pub(crate) const ADJECTIVE_ENDINGS: &[&str] = &[
     "isches", "iv", "ive", "iven", "iver", "ives", "lich", "liche", "lichen", "licher", "liches",
 ];
 
+/// Endings of a declined German adjective or participle (`erwünschte`, `großer`, `externen`,
+/// `neues`).
+pub(crate) const DECLENSION_ENDINGS: &[&str] = &["e", "em", "en", "er", "es"];
+
 /// Endings of a declined adjective (`großer`, `externen`, `neues`).
 pub(crate) const DECLINED_ENDINGS: &[&str] = &["er", "en", "es", "em"];
 

@@ -822,7 +822,7 @@ mod tests {
     fn new_nice_cues_make_a_line_nice() {
         use crate::matching::lexicon::engine::NICE_CUES;
         for cue in ["vorzugsweise", "bevorzugt", "desirable", "beneficial"] {
-            assert!(NICE_CUES.contains(&cue), "{cue}");
+            assert!(NICE_CUES.iter().any(|(c, _)| *c == cue), "{cue}");
         }
     }
 }
