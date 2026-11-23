@@ -6,7 +6,7 @@ file: name, lines, purpose (the first sentence of its header comment), main publ
 (Rust `pub`, TS exports, Svelte props; `+n` more). The notes under the headings come from
 docs/ARCHITECTURE.md "Layers".
 
-503 files, 6 of them without a header comment ("(no header)").
+511 files, 14 of them without a header comment ("(no header)").
 
 ## Where a change goes
 
@@ -113,13 +113,13 @@ reads the alert mails (IMAP)
 is the pure integer engine
 - ad_facts.rs 631 · The key facts of an ad, each with the passage that states… · Stated, Duration, AdFacts, read +4
 - application.rs 498 · How to apply to an ad: the application deadline it names… · Contact, deadline, contact
-- atoms.rs 1313 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +10
+- atoms.rs 932 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +10
 - contract.rs 399 · Contract type of an ad: interim, permanent, temporary… · ContractKind, Contract, student_role, infer
-- engine.rs 843 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
-- exclusion.rs 859 · Exclusion words of the profile: a word excludes the ad… · check
-- explain.rs 947 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
-- facts.rs 1824 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +20
-- fit.rs 1138 · The profile the engine matches against, and the match… · Entry, Broad, forget, Skills +11
+- engine.rs 752 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
+- exclusion.rs 614 · Exclusion words of the profile: a word excludes the ad… · check
+- explain.rs 713 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
+- facts.rs 1274 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +20
+- fit.rs 931 · The profile the engine matches against, and the match… · Entry, Broad, forget, Skills +11
 - gaps.rs 193 · The gap finder's view of a job: the words of its… · Gap, JobGaps, vocabulary_gaps
 - layout.rs 116 · The layout of an ad's text for the reader: the lines that… · TextLayout, text_layout
 - limits.rs 573 · The limits of an engagement the profile sets, checked and… · Workload, read, workload, workload_fits +4
@@ -136,12 +136,30 @@ is the pure integer engine
 - scorer.rs 527 · The Passungsgrad: `score = content x frame factor`, then… · FieldClass, class, Percent, percent +3
 - sections.rs 223 · Lines, headings and requirement cues of a job text. · ReqKind, is_bullet, norm_heading, section_kind +4
 - seniority.rs 246 · The level of an ad against the profile's own years of… · experience_years, junior_title, entry_level_must, page_junior_level +1
-- signals.rs 580 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +14
-- terms.rs 993 · The term of a requirement and the profile field it belongs… · is_term, TermField, CoreTerm, term_key +3
+- signals.rs 666 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +14
+- terms.rs 726 · The term of a requirement and the profile field it belongs… · is_term, TermField, CoreTerm, term_key +3
 - title.rs 443 · The frame of a job title: the title without its noise, the… · clean, level_of, engagement, ad_level +5
 - types.rs 459 · Input and output types of the matching engine. · KeyFacts, TextKind, JobInput, Verdict +25
 - vocabulary.rs 576 · The engine's words as a person writes them: the… · Vocabulary, vocabulary
-- wishes.rs 780 · Wishes of the profile: day rate, work mode and regions. · RemoteWish, Wishes, State, WishResult +3
+- wishes.rs 643 · Wishes of the profile: day rate, work mode and regions. · RemoteWish, Wishes, State, WishResult +3
+
+### core/src/matching/atoms
+- tests.rs 380 · (no header)
+
+### core/src/matching/engine
+- tests.rs 90 · (no header)
+
+### core/src/matching/exclusion
+- tests.rs 244 · (no header)
+
+### core/src/matching/explain
+- tests.rs 231 · (no header)
+
+### core/src/matching/facts
+- tests.rs 549 · (no header)
+
+### core/src/matching/fit
+- tests.rs 204 · (no header)
 
 ### core/src/matching/job
 - classify.rs 271 · The kind of every item: skill, language, degree, soft,… · known_skill, language_of, frame_word, names_degree
@@ -194,6 +212,12 @@ is the pure integer engine
 - sections.rs 238 · Section headings, prefixes, listings and closing lines. · TAG_HEADINGS, MUST_PREFIXES, NICE_PREFIXES, OTHER_LISTINGS +8
 - time.rs 460 · Start, duration, deadline and workload words. · DURATION_TERMS, MONTH_UNITS, DURATION_CLAUSE_BREAKS, DURATION_FILLERS +35
 - tokens.rs 336 · Filler words, short tokens and name and gender forms. · FILLERS, NAME_WORDS, GENDER_FORMS, SHORT_TOKENS +13
+
+### core/src/matching/terms
+- tests.rs 266 · (no header)
+
+### core/src/matching/wishes
+- tests.rs 134 · (no header)
 
 ### core/src/pipeline
 runs mail and search, screen, fetch and score
