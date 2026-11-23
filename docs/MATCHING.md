@@ -502,7 +502,7 @@ cue and the field family of ads without musts, which the owner's Treasury ad nee
 an Interim Treasury Manager scores 0 for a CFO) and removed what did not: the cut after
 `, ensuring`, the evidence signal nothing read, fillers that were stopwords already. It added
 three readings: a hyphen ellipsis parts like its written-out form (`Risiko- und
-Qualitätsmanagement` as two requirements, `atoms::complete_ellipsis`); a leading pronoun and its
+Qualitätsmanagement` as two requirements, now `job::coordination`); a leading pronoun and its
 verbs ask for nothing (`You have spent several years in X` reads `X`, `LEAD_VERBS`); an industry
 of the profile meets a requirement through a compound only when the requirement asks for an
 industry (`Kommunikationsfähigkeit` is no `Telekommunikation`). Joining a head of work with its

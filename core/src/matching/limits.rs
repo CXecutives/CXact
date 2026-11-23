@@ -15,7 +15,7 @@ use super::ad_facts::{AdFacts, Duration, Stated};
 use super::contract::ContractKind;
 use super::facts::{Finding, HardCriteria, JobFacts, Segment, fact};
 use super::lexicon::engine as lex;
-use super::normalize::{clauses, contains_word};
+use super::normalize::{clauses, contains_word, number_word};
 use super::types::{CriterionKey, ReasonCode};
 
 /// Share of a week of one day.
@@ -134,12 +134,7 @@ fn tokens(clause: &str) -> Vec<&str> {
 /// A number token (its whole part) or a small number word.
 fn number(token: &str) -> Option<u32> {
     let whole = token.split([',', '.']).next().unwrap_or(token);
-    whole.parse::<u32>().ok().or_else(|| {
-        lex::WORKLOAD_NUMBER_WORDS
-            .iter()
-            .find(|(word, _)| *word == token)
-            .map(|(_, n)| *n)
-    })
+    whole.parse::<u32>().ok().or_else(|| number_word(token))
 }
 
 /// A number at `i`, with the upper end of a range after it (`3-4`, `16 bis 20`); the index

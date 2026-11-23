@@ -996,3 +996,16 @@ fn the_frame_of_a_clause_asks_for_nothing() {
         ]
     );
 }
+
+/// One table per meaning: the number words of years and days, the adjective endings of every
+/// coordination rule.
+#[test]
+fn one_word_table_per_meaning() {
+    assert_eq!(years_in("Mindestens ein Jahr Erfahrung"), Some((1, None)));
+    assert_eq!(years_in("four years of experience"), Some((4, None)));
+    assert_eq!(
+        items("Technical and functional requirements").len(),
+        1,
+        "an English adjective shares the next noun"
+    );
+}

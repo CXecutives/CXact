@@ -358,6 +358,14 @@ pub(crate) fn phrase_at<S: AsRef<str>>(
     Some(at + parts.len())
 }
 
+/// The number a word names (`zwei`, `five`, `NUMBER_WORDS`).
+pub(crate) fn number_word(word: &str) -> Option<u32> {
+    lexicon::engine::NUMBER_WORDS
+        .iter()
+        .find(|(w, _)| *w == word)
+        .map(|&(_, n)| n)
+}
+
 /// The amount written from byte `start` of a digit run, thousands separators included
 /// (`1.200`, `95,000`): its value (saturating) and the byte after it.
 pub(crate) fn amount_at(bytes: &[u8], start: usize) -> (u64, usize) {

@@ -116,10 +116,8 @@ fn shares_noun(before: &[&str], after: &str) -> bool {
     let Some(last) = before.last() else {
         return false;
     };
-    let folded = fold(last);
-    let adjective = folded.chars().all(char::is_alphabetic)
-        && (before.len() == 1 && lex::ADJECTIVE_ENDINGS.iter().any(|e| folded.ends_with(e))
-            || declined_adjective(last));
+    let adjective = fold(last).chars().all(char::is_alphabetic)
+        && (before.len() == 1 && adjective(&fold(last)) || declined_adjective(last));
     let mut next = after.split_whitespace();
     adjective
         && next
@@ -133,10 +131,18 @@ fn shares_noun(before: &[&str], after: &str) -> bool {
 fn declined_adjective(word: &str) -> bool {
     word.chars().next().is_some_and(char::is_lowercase)
         && word.chars().count() >= 5
-        && lex::DECLENSION_ENDINGS.iter().any(|ending| {
-            word.strip_suffix(ending)
-                .is_some_and(|stem| lex::ADJECTIVE_STEMS.iter().any(|s| stem.ends_with(s)))
-        })
+        && lex::DECLENSION_ENDINGS
+            .iter()
+            .any(|ending| word.strip_suffix(ending).is_some_and(adjective))
+}
+
+/// A word that ends like an adjective, declined or not (`klassisch`, `agile`, `technical`).
+fn adjective(word: &str) -> bool {
+    let stem = |w: &str| lex::ADJECTIVE_STEMS.iter().any(|s| w.ends_with(s));
+    stem(word)
+        || lex::DECLENSION_ENDINGS
+            .iter()
+            .any(|e| word.strip_suffix(e).is_some_and(stem))
 }
 
 /// Is `after` a second object of the head noun that starts `before` (`Steuerung großer
@@ -148,7 +154,7 @@ fn coordinated_object(before: &[&str], after: &str) -> bool {
         return false;
     };
     let ending = |w: &str| {
-        lex::DECLINED_ENDINGS
+        lex::DECLENSION_ENDINGS
             .iter()
             .find(|e| w.starts_with(char::is_lowercase) && w.ends_with(*e) && w.chars().count() > 4)
     };

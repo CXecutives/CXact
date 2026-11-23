@@ -5,11 +5,10 @@
 use super::atoms::{self, Vocab, fold};
 use super::facts::rate_in;
 use super::lexicon::engine::{
-    AND, AND_OR, AND_WORDS, CueScope, EN_CUES, EXAMPLE_SEPARATORS, EXAMPLES, NUMBER_WORDS, OR,
-    YEAR_UNITS,
+    AND, AND_OR, AND_WORDS, CueScope, EN_CUES, EXAMPLE_SEPARATORS, EXAMPLES, OR, YEAR_UNITS,
 };
 use super::lexicon::{HeadingKind, engine as lex};
-use super::normalize::{contains_word, find_word, sentences, splitlines, strip};
+use super::normalize::{contains_word, find_word, number_word, sentences, splitlines, strip};
 use super::requirements::extract_job_skills;
 use super::sections::{self, Line, ReqKind};
 use regex::Regex;

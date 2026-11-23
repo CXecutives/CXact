@@ -420,7 +420,7 @@ fn is_number(word: &str) -> bool {
 fn is_german_qualifier(word: &str) -> bool {
     words::GERMAN_QUALIFIERS.iter().any(|stem| {
         word.strip_prefix(stem)
-            .is_some_and(|ending| words::QUALIFIER_ENDINGS.contains(&ending))
+            .is_some_and(|ending| ending.is_empty() || lex::DECLENSION_ENDINGS.contains(&ending))
     })
 }
 
@@ -567,7 +567,7 @@ fn language_of(word: &str) -> Option<&'static str> {
     lex::LANGUAGES.iter().copied().find(|stem| {
         word.strip_prefix(stem).is_some_and(|rest| {
             let rest = rest.trim_start_matches('-');
-            words::QUALIFIER_ENDINGS.contains(&rest)
+            (rest.is_empty() || lex::DECLENSION_ENDINGS.contains(&rest))
                 || lexicon::LANGUAGE_SUFFIXES.contains(&rest)
                 || CLOSED_KNOWLEDGE.contains(&rest)
         })

@@ -390,21 +390,6 @@ pub(crate) const WORKLOAD_CLOCK: &[&str] = &["uhr"];
 /// Hours per week in one word (`20 Wochenstunden`).
 pub(crate) const WORKLOAD_WEEKLY_HOURS: &[&str] = &["wochenstunden", "weekly hours"];
 
-/// Small numbers written as words (days per week).
-pub(crate) const WORKLOAD_NUMBER_WORDS: &[(&str, u32)] = &[
-    ("einen", 1),
-    ("ein", 1),
-    ("one", 1),
-    ("zwei", 2),
-    ("two", 2),
-    ("drei", 3),
-    ("three", 3),
-    ("vier", 4),
-    ("four", 4),
-    ("funf", 5),
-    ("five", 5),
-];
-
 /// Separators of a range of numbers (`3-4`, `3 bis 4`, `16 to 20`).
 pub(crate) const WORKLOAD_RANGE: &[&str] = &["-", "–", "bis", "to", "oder", "or"];
 

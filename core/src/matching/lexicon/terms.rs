@@ -188,9 +188,6 @@ pub(crate) const GERMAN_QUALIFIERS: &[&str] = &[
     "weitreichend",
 ];
 
-/// Endings of a German qualifier.
-pub(crate) const QUALIFIER_ENDINGS: &[&str] = &["", "e", "em", "en", "er", "es"];
-
 /// English qualifiers: stripped only when a lead follows them (`Strong experience in`,
 /// `Working knowledge of`), since they also start terms (`Working Capital`, `Deep
 /// Learning`, `Advanced Analytics`).

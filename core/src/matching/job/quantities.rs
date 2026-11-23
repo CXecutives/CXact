@@ -28,12 +28,7 @@ pub(crate) fn years_in(text: &str) -> Option<(u32, Option<u32>)> {
         let w = w.trim_end_matches('+');
         w.parse::<u32>()
             .ok()
-            .or_else(|| {
-                NUMBER_WORDS
-                    .iter()
-                    .find(|(word, _)| *word == w)
-                    .map(|&(_, n)| n)
-            })
+            .or_else(|| number_word(w))
             .filter(|n| (1..=40).contains(n))
     };
     (1..words.len()).find_map(|i| {
