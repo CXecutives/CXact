@@ -133,8 +133,9 @@ pub(crate) const REMOTE_FULL: u64 = 100;
 pub(crate) const REMOTE_PARTLY: u64 = 20;
 /// `vor_ort`: the largest remote share that still means presence on site.
 pub(crate) const ONSITE_MAX: u64 = 60;
-/// A remote share at most this many points short of the wish is near, not missed.
-pub(crate) const REMOTE_MARGIN: u64 = 30;
+/// A remote share at most this many points short of the wish is near, not missed: hybrid
+/// wording (up to 60 %) is near a fully remote wish.
+pub(crate) const REMOTE_MARGIN: u64 = 40;
 /// Remote share (percent, from-to) of hybrid wording without numbers, and of remote work
 /// named without numbers and without presence on site.
 pub(crate) const HYBRID_SHARE: (u64, u64) = (20, 60);

@@ -133,4 +133,5 @@ Jede Grenze braucht einen klaren Grund in der Anzeige.
 - Eine passende Wunschrolle gehört zu Rolle und Fach. Sie bringt keinen eigenen Bonus und hebt keine
   Grenze auf.
 - Wünsche (tagessatz_wunsch, arbeitsmodell und regionen) schließen nie aus. Sie zählen nur im
-  Rahmen und heben die Zahl nie. Nennt die Anzeige einen Wert nicht, passt der Wunsch.
+  Rahmen und heben die Zahl nie. Nennt die Anzeige einen Wert nicht, passt der Wunsch. Hybrides
+  Arbeiten bei einem Wunsch nach remote ist knapp verfehlt, eine Stelle vor Ort klar verfehlt.

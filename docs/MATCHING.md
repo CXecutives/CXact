@@ -428,7 +428,8 @@ Integer per-mille, parameters in `params.rs`.
   ad's share is an interval (page fact > stated percent or days (`2 Tage vor Ort` = 60 %) > full
   remote wording > `REMOTE_NONE` (0) > hybrid (20-60) > remote named (60-100) > on site only
   (0)); met when the interval's low end reaches the wish, missed when its high end is 0 or more
-  than `REMOTE_MARGIN` 30 below it. Region: the first place of the ad in a wished region = met,
+  than `REMOTE_MARGIN` below it (hybrid wording is near a fully remote wish); `vor_ort` is
+  missed only by a fully remote ad. Region: the first place of the ad in a wished region = met,
   outside with at least `REGION_REMOTE_NEAR` 60 % remote = near, outside = missed, fully remote
   = met.
 

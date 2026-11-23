@@ -265,7 +265,16 @@ fn work_mode_wishes() {
     // Remote: at least fully remote.
     assert_eq!(case(WorkWish::Remote, "Einsatz zu 100 % remote"), "met");
     assert_eq!(case(WorkWish::Remote, "Einsatz zu 80 % remote"), "near");
-    assert_eq!(case(WorkWish::Remote, "Einsatz zu 60 % remote"), "missed");
+    assert_eq!(case(WorkWish::Remote, "Einsatz zu 60 % remote"), "near");
+    assert_eq!(
+        case(WorkWish::Remote, "Hybrides Arbeiten nach Absprache"),
+        "near"
+    );
+    assert_eq!(case(WorkWish::Remote, "Einsatz zu 50 % remote"), "missed");
+    assert_eq!(
+        case(WorkWish::Remote, "Einsatz vor Ort in Hamburg"),
+        "missed"
+    );
     assert_eq!(case(WorkWish::Remote, "Start ab sofort"), "unknown");
     // Hybrid: at least partly remote.
     assert_eq!(case(WorkWish::Hybrid, "Remote-Anteil 40 %"), "met");
