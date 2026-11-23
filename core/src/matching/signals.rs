@@ -24,7 +24,7 @@ use super::types::{JobInput, ReasonCode};
 use super::wishes::{State, WishResult};
 
 /// The number of signals.
-pub const N: usize = 22;
+pub const N: usize = 21;
 
 /// The signals in table order (the index into [`Signals::v`], [`SIGN`], [`NAMES`], [`MAX`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -64,8 +64,6 @@ pub enum Sig {
     Junior,
     /// A permanent role.
     Permanent,
-    /// How much the text allowed to read: 0 full, 1 low, 2 teaser (shown, never counted).
-    Evidence,
     /// Distinct core competences of the profile any requirement meets, without general business
     /// work (`Entry::method`; at most 8).
     CoreHits,
@@ -96,7 +94,6 @@ impl Sig {
         Sig::FormalOpen,
         Sig::Junior,
         Sig::Permanent,
-        Sig::Evidence,
         Sig::CoreHits,
         Sig::Family,
     ];
@@ -104,7 +101,7 @@ impl Sig {
 
 /// The direction of each signal: +1 up, -1 down, 0 either.
 pub const SIGN: [i8; N] = [
-    1, 1, 1, -1, 0, 1, 0, -1, 1, 0, -1, -1, -1, 1, 0, -1, -1, -1, -1, 0, 1, 1,
+    1, 1, 1, -1, 0, 1, 0, -1, 1, 0, -1, -1, -1, 1, 0, -1, -1, -1, -1, 1, 1,
 ];
 
 /// The names of the signals (the fitter's and the dump's).
@@ -128,7 +125,6 @@ pub const NAMES: [&str; N] = [
     "formal_open",
     "junior",
     "permanent",
-    "evidence",
     "core_hits",
     "family",
 ];
@@ -160,7 +156,6 @@ pub const MAX: [u16; N] = [
     1,
     1,
     1,
-    2,
     8,
     3,
 ];
@@ -279,7 +274,6 @@ pub(crate) struct Parts<'a> {
     pub gap: u8,
     pub level_cap: bool,
     pub field: Option<(&'static str, Distance)>,
-    pub evidence: super::types::EvidenceLevel,
     pub findings: &'a [Finding],
     pub wishes: &'a [WishResult],
 }
@@ -408,14 +402,6 @@ pub(crate) fn compute(profile: &EngineProfile, parts: &Parts<'_>) -> Signals {
     let (near, missed) = frame(parts.findings, parts.wishes);
     s.set(Sig::FrameNear, near);
     s.set(Sig::FrameMissed, missed);
-    s.set(
-        Sig::Evidence,
-        match parts.evidence {
-            super::types::EvidenceLevel::Full => 0,
-            super::types::EvidenceLevel::Low => 1,
-            super::types::EvidenceLevel::Teaser => 2,
-        },
-    );
     s
 }
 

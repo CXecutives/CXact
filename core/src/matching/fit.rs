@@ -489,6 +489,18 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
         return NONE;
     }
     let mut best = best_entry(skills, &job, true);
+    // An industry of the profile meets a requirement through a compound only when the
+    // requirement asks for an industry (`Kommunikationsfähigkeit` is no `Telekommunikation`);
+    // its own name it always meets.
+    if best.via != Via::Exact
+        && best
+            .entry
+            .and_then(|e| skills.entries.get(e))
+            .is_some_and(|e| e.path.starts_with(key::INDUSTRIES))
+        && !industry_only(text, &skills.vocab)
+    {
+        best = best_entry(skills, &job, false);
+    }
     // The industry is the setting of a requirement (`Qualitätsmanagement produzierender
     // Unternehmen`): without a fit the function alone is read, the setting costs little
     // (the rubric's rule 5).
@@ -1052,6 +1064,12 @@ mod tests {
         assert_eq!(fit("Vertriebserfahrung im Maschinenbau"), E_NONE);
         assert_eq!(fit("Controlling im Maschinenbau"), E_FULL);
         assert_eq!(fit("Controlling in der Automobilindustrie"), E_HALF);
+        // An industry's name inside a skill's word is no fit; the industry itself is.
+        let data = of_json(&json!({"branchen": ["Telekommunikation"]}));
+        let skills = Skills::new(&core_texts(&data), &data);
+        let fit = |text: &str| skill_fit_in(&skills, text, true).value;
+        assert_eq!(fit("Ausgeprägte Kommunikationsfähigkeit"), E_NONE);
+        assert_eq!(fit("Erfahrung in der Telekommunikation"), E_FULL);
     }
 
     /// A teaser's term met only through a compound of another field is half

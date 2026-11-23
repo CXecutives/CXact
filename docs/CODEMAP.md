@@ -45,7 +45,7 @@ everything the app knows and does, without UI and without…
 - export_gold.rs 365 · Export the app's fetched job texts as the private gold set:
 - live_search.rs 329 · A real search of the sources the app searches itself, run…
 - match_eval.rs 374 · Evaluate the engine against the blind labels of the…
-- vocab_gaps.rs 29 · The gap finder: which words of the ads' requirements and…
+- vocab_gaps.rs 30 · The gap finder: which words of the ads' requirements and…
 
 ### core/examples/common
 - gold.rs 327 · The private gold folder: `jobs.json`, one TXT per job,… · gold_dir, default_profiles, profile_key, profile_stem +17
@@ -54,7 +54,7 @@ everything the app knows and does, without UI and without…
 - mod.rs 11 · Shared parts of the gold-set examples `export_gold` and…
 
 ### core/examples/vocab_gaps
-- finder.rs 232 · The gap finder's run over every ad (`vocab_gaps.rs`). · main
+- finder.rs 234 · The gap finder's run over every ad (`vocab_gaps.rs`). · main
 
 ### core/src
 - ai.rs 489 · The client of the CV worker: it sends a CV read by… · CvAnswer, CvClient, note_tries, tries_until +4
@@ -113,15 +113,15 @@ reads the alert mails (IMAP)
 is the pure integer engine
 - ad_facts.rs 631 · The key facts of an ad, each with the passage that states… · Stated, Duration, AdFacts, read +4
 - application.rs 498 · How to apply to an ad: the application deadline it names… · Contact, deadline, contact
-- atoms.rs 1223 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +9
+- atoms.rs 1313 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +10
 - contract.rs 399 · Contract type of an ad: interim, permanent, temporary… · ContractKind, Contract, student_role, infer
-- engine.rs 844 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
+- engine.rs 843 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
 - exclusion.rs 859 · Exclusion words of the profile: a word excludes the ad… · check
 - explain.rs 947 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
 - facts.rs 1825 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +20
-- fit.rs 1119 · The profile the engine matches against, and the match… · Entry, Broad, forget, Skills +11
+- fit.rs 1137 · The profile the engine matches against, and the match… · Entry, Broad, forget, Skills +11
 - gaps.rs 193 · The gap finder's view of a job: the words of its… · Gap, JobGaps, vocabulary_gaps
-- job.rs 1978 · A job text as the engine reads it: sections with inline… · Stage, Class, Item, JobDoc +12
+- job.rs 1969 · A job text as the engine reads it: sections with inline… · Stage, Class, Item, JobDoc +12
 - layout.rs 116 · The layout of an ad's text for the reader: the lines that… · TextLayout, text_layout
 - limits.rs 573 · The limits of an engagement the profile sets, checked and… · Workload, read, workload, workload_fits +4
 - mod.rs 467 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +19
@@ -134,10 +134,10 @@ is the pure integer engine
 - requirements.rs 52 · Vocabulary terms of a job text, independent of the profile. · extract_job_skills
 - roles.rs 442 · Target roles: job titles the consultant wants. · Role, read, RoleFit, title_core +2
 - score.rs 27 · Integer rounding of the scores. · div_round_half_even
-- scorer.rs 527 · The Passungsgrad: `score = content x frame factor`, then… · FieldClass, class, Percent, percent +3
+- scorer.rs 514 · The Passungsgrad: `score = content x frame factor`, then… · FieldClass, class, Percent, percent +3
 - sections.rs 223 · Lines, headings and requirement cues of a job text. · ReqKind, is_bullet, norm_heading, section_kind +4
 - seniority.rs 245 · The level of an ad against the profile's own years of… · experience_years, junior_title, entry_level_must, page_junior_level +1
-- signals.rs 594 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +14
+- signals.rs 565 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +14
 - terms.rs 993 · The term of a requirement and the profile field it belongs… · is_term, TermField, CoreTerm, term_key +3
 - title.rs 443 · The frame of a job title: the title without its noise, the… · clean, level_of, engagement, ad_level +5
 - types.rs 459 · Input and output types of the matching engine. · KeyFacts, TextKind, JobInput, Verdict +25
@@ -145,7 +145,7 @@ is the pure integer engine
 - wishes.rs 780 · Wishes of the profile: day rate, work mode and regions. · RemoteWish, Wishes, State, WishResult +3
 
 ### core/src/matching/lexicon
-- engine.rs 3691 · Word lists of the engine. · FILLERS, GENERIC_ATOMS, FIELD_ATOMS, LIGHT_MODIFIERS +242
+- engine.rs 3694 · Word lists of the engine. · FILLERS, GENERIC_ATOMS, FIELD_ATOMS, LIGHT_MODIFIERS +243
 - esco.rs 859 · ESCO, the European Commission's classification of skills,… · Kind, Concept, Lang, Hit +6
 - mod.rs 79 · Words and patterns the engine looks for in job ads and… · HeadingKind, contains, synonym, synonym_pair +7
 - tables.rs 1037 · Word lists of the matching engine. · STOPWORDS, SYNONYM_WORDS, SYNONYM_PAIRS, MUST_HEADINGS +6
@@ -518,7 +518,7 @@ beside the app.
 - build.py 544 · ESCO vocabulary of the matching engine:…
 
 ### tools/scorer
-- train.py 326 · Fits the free value of the Passungsgrad on teacher labels…
+- train.py 324 · Fits the free value of the Passungsgrad on teacher labels…
 
 ### tools/ui-harness
 - playwright.config.ts 81 · UI harness: the harness build served by `vite preview`… · default

@@ -709,7 +709,6 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
             gap: frame.gap,
             level_cap: frame.caps(profile),
             field: frame.field,
-            evidence,
             findings: &findings,
             wishes: &wishes,
         },

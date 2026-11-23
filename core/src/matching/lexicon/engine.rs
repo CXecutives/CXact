@@ -6,7 +6,6 @@
 
 /// Words that carry no skill on top of the old stopwords (sorted).
 pub(crate) const FILLERS: &[&str] = &[
-    "ability",
     "about",
     "abstimmung",
     "accept",
@@ -58,13 +57,11 @@ pub(crate) const FILLERS: &[&str] = &[
     "eigenen",
     "eigener",
     "eigenes",
-    "einem",
     "einen",
     "ensure",
     "entsprechende",
     "erfahren",
     "erfahrene",
-    "erfahrungen",
     "erfolgt",
     "erst",
     "etwa",
@@ -94,7 +91,6 @@ pub(crate) const FILLERS: &[&str] = &[
     "hilfreich",
     "hohe",
     "hoher",
-    "idealerweise",
     "ideally",
     "inkl",
     "insbesondere",
@@ -119,7 +115,6 @@ pub(crate) const FILLERS: &[&str] = &[
     "moderne",
     "moglich",
     "moglichkeit",
-    "more",
     "nachweisbare",
     "nachweislich",
     "need",
@@ -138,7 +133,6 @@ pub(crate) const FILLERS: &[&str] = &[
     "possible",
     "preferred",
     "pro",
-    "proven",
     "record",
     "related",
     "schnell",
@@ -147,12 +141,10 @@ pub(crate) const FILLERS: &[&str] = &[
     "several",
     "sicher",
     "since",
-    "solid",
     "some",
     "sound",
     "sowohl",
     "starke",
-    "strong",
     "successful",
     "such",
     "tatigkeit",
@@ -161,7 +153,6 @@ pub(crate) const FILLERS: &[&str] = &[
     "track",
     "uberwiegend",
     "umfeld",
-    "umgang",
     "understanding",
     "uns",
     "unser",
@@ -170,7 +161,6 @@ pub(crate) const FILLERS: &[&str] = &[
     "unseren",
     "unserer",
     "unternehmensumfeld",
-    "usw",
     "vergleichbare",
     "vergleichbaren",
     "vertiefte",
@@ -188,9 +178,7 @@ pub(crate) const FILLERS: &[&str] = &[
     "wichtige",
     "wichtiger",
     "willing",
-    "within",
     "worked",
-    "working",
     "wunschenswert",
     "year",
     "zahlreiche",
@@ -1522,19 +1510,6 @@ pub(crate) const NICE_LEADS: &[&str] = &[
     "preferably",
     "vorzugsweise",
 ];
-/// Words that open an elaboration after a comma (`Proven leadership experience, with the ability
-/// to develop teams`): the clause explains the requirement before it, it asks nothing of its own
-/// and is dropped.
-pub(crate) const ELABORATION_LEADS: &[&str] = &[
-    "ensuring",
-    "in order to",
-    "to ensure",
-    "um",
-    "using",
-    "while",
-    "wobei",
-    "with the ability",
-];
 /// A line that opens a pick list (`Kenntnisse in mindestens zwei der folgenden Bereiche:`): it
 /// names a count of the items below and refers to them. The items it opens are a choice, no
 /// duty (the rubric's rule 1): they count as nice-to-haves.
@@ -1610,6 +1585,34 @@ pub(crate) const EXAMPLE_SEPARATORS: &[&str] = &[", ", " und ", " oder ", " or "
 pub(crate) const ABBREVIATIONS: &[&str] = &[
     "approx", "bzw", "ca", "dr", "evtl", "ggf", "inkl", "max", "min", "mind", "nr", "vgl", "zzgl",
 ];
+/// Verbs that lead a requirement after its pronoun (`You have spent several years in X`,
+/// `Sie bringen Erfahrung in X mit`, `Du verfügst über X`): they ask for nothing themselves
+/// (sorted).
+pub(crate) const LEAD_VERBS: &[&str] = &[
+    "acquired",
+    "bring",
+    "bringen",
+    "bringst",
+    "bringt",
+    "gained",
+    "gesammelt",
+    "haben",
+    "had",
+    "has",
+    "hast",
+    "have",
+    "led",
+    "mitbringen",
+    "mitbringst",
+    "possess",
+    "spent",
+    "verfugen",
+    "verfugst",
+    "verfugt",
+];
+/// The joining words between the modifiers of a leading ellipsis and its head
+/// (`Risiko-, Qualitäts- und Abhängigkeitsmanagement`).
+pub(crate) const ELLIPSIS_JOINERS: &[&str] = &["&", "bzw", "bzw.", "oder", "sowie", "und"];
 /// AND separators of requirement items.
 pub(crate) const AND: &[&str] = &[
     ", ",

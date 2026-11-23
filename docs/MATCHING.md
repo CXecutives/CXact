@@ -491,16 +491,44 @@ a compound of another field (`Personalcontrolling`) fits a title word in half, a
 requirement. Before the round: gold tune 0.788, the 154 0.665, teacher test 0.725, gold locked
 0.862; the refit printed `PARTIAL` 950, which lowered all three check sets, so it stays 900.
 
-Known limits: the note-3 mean of gold tune (3 pairs) stays below 85, one of them a permanent
-role with a frame step; AI roles lean on project and stakeholder hits the field no longer counts
-(two note-3 jobs of the 154 sit at 50 and 59: governance, portfolio steering and vendor selection
-are open words there; closing them from those jobs would tune on a check set); an English verb
-before a skill (`You have spent several years in group accounting`) leaves the skill open, since a
-filler `spent` would break ESCO keys (`spent acid`).
-
 A must that only names a field (`10+ years in finance`) is met by a profile of that field
 (`FIELD_ATOMS` name the family); the steps of a consolidation (intercompany eliminations,
 currency translation) are met in half by consolidation. Held-out set 1 0.930 -> 0.948.
+
+The final round (2026-11-23) measured every rule of the reading batch by switching it off, kept
+what moved a number or keeps a clear misreading of a real ad away (pick lists, results headings,
+role descriptions, open teaser terms, the vendor, M&A and consolidation words; "helps" as a nice
+cue and the field family of ads without musts, which the owner's Treasury ad needs: without them
+an Interim Treasury Manager scores 0 for a CFO) and removed what did not: the cut after
+`, ensuring`, the evidence signal nothing read, fillers that were stopwords already. It added
+three readings: a hyphen ellipsis parts like its written-out form (`Risiko- und
+Qualitätsmanagement` as two requirements, `atoms::complete_ellipsis`); a leading pronoun and its
+verbs ask for nothing (`You have spent several years in X` reads `X`, `LEAD_VERBS`); an industry
+of the profile meets a requirement through a compound only when the requirement asks for an
+industry (`Kommunikationsfähigkeit` is no `Telekommunikation`). Joining a head of work with its
+object (`Leitung von Projekten` as `Projektleitung`) reads right but lifted general project jobs
+of other fields in the 154 (NDCG@10 -0.05), so it is not in.
+
+| Set | Before the round | After |
+|---|---|---|
+| Gold 1+2 tune (201 pairs), NDCG@10 / Spearman | 0.832 / 0.734 | 0.829 / 0.716 |
+| Gold 1+2 locked (198 pairs, read once per change) | 0.801 / 0.658 | 0.809 / 0.663 |
+| The owner's 154, NDCG@10 / Spearman | 0.692 / 0.646 | 0.692 / 0.648 |
+| Teacher test split | 0.720 | 0.739 |
+| Held-out sets 1 / 5 / 9 | 0.940 / 0.850 / 0.902 | 0.953 / 0.858 / 0.896 |
+
+The industry rule costs gold tune Spearman 0.015: every pair it moves is a false friend that
+falls (`Industrie` for `Logistikindustrie`, `Energie` for `Hays-Energiewelt`), only notes 1
+and 0 drop. Against the bar of an AI (NDCG@10 0.80, Spearman 0.65, note 3 mean 80 and none
+below 40, note 0 at most 25) the locked half meets NDCG@10 (0.809), Spearman (0.663), note 0
+(20) and no note 3 below 40 (min 47); it misses the note-3 mean (64, 4 pairs).
+
+Known limits: strong fits stay lower than the gold where the profile lacks the ad's words and a
+consultant would infer them (a CFO and `Rechnungswesen`, a PMO and `Governance` or
+`Programmplanung`): the engine counts what the profile names, never guesses. The two note-3 AI
+roles of the 154 (48 and 57) ask for governance, portfolio steering and vendor selection the CX
+profile does not name. General project work meets requirements of any field, so a project job of
+another field can rank high on skills alone.
 
 Refit (private data; from the repo root):
 

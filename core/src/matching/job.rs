@@ -73,28 +73,12 @@ use super::lexicon::engine::{
 /// the head an alternative of it (`10+ years in finance, ideally in controlling or
 /// accounting`).
 fn cut_nice_lead((phrase, kind, stage): Phrase<'_>) -> Vec<Phrase<'_>> {
-    let phrase = without_elaboration(phrase);
     match cut_at_nice_lead(phrase) {
         Some((head, clause)) if kind == ReqKind::Must => {
             vec![(head, kind, stage), (clause, ReqKind::Nice, stage)]
         }
         _ => vec![(phrase, kind, stage)],
     }
-}
-
-/// A phrase without the elaboration that follows a comma (`ELABORATION_LEADS`: `…, with the
-/// ability to develop and motivate teams`): the clause explains the head, its words would
-/// otherwise become requirements of their own.
-fn without_elaboration(phrase: &str) -> &str {
-    phrase
-        .match_indices(", ")
-        .find(|(at, sep)| {
-            let rest = phrase[at + sep.len()..].to_lowercase();
-            lex::ELABORATION_LEADS
-                .iter()
-                .any(|lead| rest.starts_with(lead) && rest[lead.len()..].starts_with([' ', ',']))
-        })
-        .map_or(phrase, |(at, _)| phrase[..at].trim_end())
 }
 
 /// Where a phrase splits at a nice lead after a comma: its head and the clause from the cue on.
@@ -398,9 +382,20 @@ pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
             lex::NICE_CLOSING.iter().any(|c| folded.contains(c))
         });
         let mut nice = kind == ReqKind::Nice || closing;
-        let classes = part_classes(phrase, &parts, level, vocab);
-        for (((span, alternatives), class), tail) in parts.into_iter().zip(classes).zip(tails) {
-            let whole = &phrase[span.clone()];
+        // A modifier of a hyphen ellipsis reads as the word it stands for (`Risiko-` of
+        // `Risiko- und Qualitätsmanagement` as `Risikomanagement`).
+        let texts: Vec<String> = parts
+            .iter()
+            .map(|(r, _)| {
+                let part = &phrase[r.clone()];
+                atoms::complete_ellipsis(part, &phrase[r.end..]).unwrap_or_else(|| part.to_owned())
+            })
+            .collect();
+        let classes = part_classes(&texts, level, vocab);
+        for ((((span, alternatives), class), tail), whole) in
+            parts.into_iter().zip(classes).zip(tails).zip(&texts)
+        {
+            let whole = whole.as_str();
             if atoms::atoms(whole, vocab).is_empty() || not_needed(whole) || noise_item(whole) {
                 continue;
             }
@@ -546,7 +541,11 @@ fn separators(text: &str, words: &[&str]) -> Vec<Range<usize>> {
             b')' | b']' => depth -= 1,
             _ => {}
         }
-        let after_hyphen = i > 0 && bytes[i - 1] == b'-';
+        // `Risiko- und Qualitätsmanagement` parts like the written-out form when the head of
+        // the word after it is known; any other word ending in a hyphen keeps its part.
+        let after_hyphen = i > 0
+            && bytes[i - 1] == b'-'
+            && atoms::complete_ellipsis(&text[..i], &text[i..]).is_none();
         if depth == 0
             && !after_hyphen
             && let Some(word) = words.iter().find(|w| {
@@ -668,21 +667,13 @@ fn joined(phrase: &str, seps: &[Range<usize>]) -> Vec<Range<usize>> {
 
 /// The class of each part of a line, classified once: one soft part among parts without a
 /// known skill makes all of them soft (`verbindlich, pragmatisch und mit Freude am Detail`).
-fn part_classes(
-    phrase: &str,
-    parts: &[(Range<usize>, Vec<Range<usize>>)],
-    level: Option<u8>,
-    vocab: &Vocab,
-) -> Vec<Class> {
-    let classes: Vec<Class> = parts
-        .iter()
-        .map(|(r, _)| classify(&phrase[r.clone()], level, vocab))
-        .collect();
+fn part_classes(texts: &[String], level: Option<u8>, vocab: &Vocab) -> Vec<Class> {
+    let classes: Vec<Class> = texts.iter().map(|t| classify(t, level, vocab)).collect();
     let soft_line = classes.contains(&Class::Soft)
-        && parts
+        && texts
             .iter()
             .zip(&classes)
-            .all(|((r, _), class)| *class == Class::Soft || !known_skill(&phrase[r.clone()]));
+            .all(|(t, class)| *class == Class::Soft || !known_skill(t));
     classes
         .into_iter()
         .map(|class| match class {
@@ -1651,16 +1642,7 @@ SAP FI, DATEV, HGB, IFRS, Konzernabschluss
             !picked.iter().any(|(x, _)| x.contains("folgenden")),
             "{picked:?}"
         );
-        // An elaboration after a comma is no requirement of its own; a results section is no
-        // requirement section.
-        let led = musts(
-            "- Proven people leadership experience, with the ability to develop and              motivate high-performing teams",
-        );
-        assert_eq!(
-            led,
-            [("Proven people leadership experience".to_owned(), true)],
-            "{led:?}"
-        );
+        // A results section is no requirement section.
         let results = read(
             "Ihr Profil
 - Erfahrung in IT-Transformationen
@@ -1692,9 +1674,18 @@ Erfolgskriterien
         );
         assert_eq!(musts("- Keine SAP-Kenntnisse erforderlich").len(), 0);
         assert_eq!(
-            musts("- Sehr gute Deutsch- und Englischkenntnisse").len(),
+            musts("- Sehr gute Deutsch- und Englischkenntnisse"),
+            musts("- Sehr gute Deutschkenntnisse und Englischkenntnisse"),
+            "a hyphen ellipsis parts like the written-out form"
+        );
+        assert_eq!(
+            musts("- Erfahrung im Risiko- und Qualitätsmanagement"),
+            musts("- Erfahrung im Risikomanagement und Qualitätsmanagement")
+        );
+        assert_eq!(
+            musts("- Ein- und Verkauf").len(),
             1,
-            "a hyphenated shared ending is one item"
+            "an unknown head keeps the line"
         );
         // A frame block ends the requirements.
         let frame = musts(
