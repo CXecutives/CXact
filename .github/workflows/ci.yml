@@ -320,6 +320,13 @@ jobs:
           if (-not $alive) { throw "the release app exited early (exit code $($p.ExitCode))." }
           Write-Host "release app was up after 12 s"
 
+      # The engine's speed budget holds in release builds only (`engine_is_fast_enough` in
+      # core/tests/matching_corpus.rs, on held-out ads of real length); the tests above run
+      # debug and skip it. After the release probe, so a slow engine skips none of the probes.
+      - name: Engine speed (Windows, release)
+        if: runner.os == 'Windows'
+        run: cargo test -p jobalert-core --release --test matching_corpus -- engine_is_fast_enough --exact --nocapture
+
       # Install probe: mount the dmg like a user, copy the .app into an Applications folder,
       # start the release binary from there, take a screenshot, check that it stays up.
       - name: dmg install probe (macOS)
