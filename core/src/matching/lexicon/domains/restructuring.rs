@@ -74,7 +74,8 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("liquiditatsvorschau", "liquiditatsplanung"),
         ("liquiditatsstatus", "liquiditatsplanung"),
     ],
-    half: &[],
+    covers: &[],
+    near: &[],
 };
 
 #[cfg(test)]

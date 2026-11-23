@@ -427,16 +427,17 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("service organization", "serviceorganisation"),
         ("service strategy", "servicestrategie"),
     ],
-    half: &[
-        ("kundenservice", NARROWER),
+    covers: &[
         ("contact-center", NARROWER),
         ("customer-experience", NARROWER),
+        ("kundenservice", NARROWER),
     ],
+    near: &[],
 };
 
-/// The narrower work of customer service and customer experience: a profile that names the
-/// field (`Customer Service Management`, `Contact Center`, `Customer Experience`) meets it in
-/// half (`Beschwerdemanagement`, `Customer Journeys`, `NPS`), it has done it without naming it.
+/// The narrower work of customer service and customer experience (`Beschwerdemanagement`,
+/// `Customer Journeys`, `NPS`), covered by the field (`Customer Service Management`, `Contact
+/// Center`, `Customer Experience`).
 const NARROWER: &[&str] = &[
     "customer-journey",
     "eskalationsmanagement",
@@ -462,7 +463,8 @@ const NARROWER: &[&str] = &[
 #[cfg(test)]
 mod tests {
     use super::super::testing::{assert_apart, assert_same, full, vocab};
-    use crate::matching::atoms::{Fit, Vocab, atoms, fit};
+    use crate::matching::atoms::{Fit, Vocab, atoms};
+    use crate::matching::graph::fit;
 
     fn service() -> Vocab {
         let v = vocab(&[
@@ -528,12 +530,12 @@ mod tests {
         );
     }
 
-    /// A profile that names the field meets its narrower work in half, never the other way
-    /// and never a word of another field.
+    /// A profile that names the field meets its narrower work in half, the narrower work
+    /// the field in full but not its lead, never a word of another field.
     #[test]
     fn the_field_meets_its_narrower_work_in_half() {
         let v = vocab(&["Kundenservice", "Contact Center Management", "Zendesk"]);
-        let one = |text: &str| atoms(text, &v).pop().expect("one atom");
+        let one = |text: &str| atoms(text, &v).last().cloned().expect("one atom");
         let profile = one("Customer Service Management");
         for job in [
             "Beschwerdemanagement",
@@ -544,6 +546,10 @@ mod tests {
         ] {
             assert_eq!(fit(&one(job), &profile), Fit::General, "{job}");
         }
+        assert_eq!(
+            fit(&one("Kundenservice"), &one("Beschwerdemanagement")),
+            Fit::Covered
+        );
         assert_eq!(fit(&profile, &one("Beschwerdemanagement")), Fit::None);
         assert_eq!(fit(&one("Projektcontrolling"), &profile), Fit::None);
     }

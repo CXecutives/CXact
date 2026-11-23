@@ -5,8 +5,8 @@ use crate::matching::profile::core_texts;
 use crate::profile::of_json;
 
 /// A head of customer service as a CV names it: the field written apart meets the
-/// profile's compound, an abbreviation its compound, a ticket system its name, and
-/// leadership a competence of leadership in half; a tool name is no compound of a word.
+/// profile's compound, an abbreviation its compound, a ticket system its name; a tool name is
+/// no compound of a word.
 #[test]
 fn a_service_lead_meets_the_words_of_service_ads() {
     let data = of_json(&json!({
@@ -31,7 +31,6 @@ fn a_service_lead_meets_the_words_of_service_ads() {
     ] {
         assert_eq!(value(met), E_FULL, "{met}");
     }
-    assert_eq!(value("Leadership"), E_HALF);
     assert_eq!(value("Erfahrung im Service Desk"), E_NONE);
     // A code a number completes is no abbreviation of a compound.
     assert_eq!(value("DIN 1946"), E_NONE);
@@ -53,11 +52,7 @@ fn a_family_is_met_by_its_products() {
         E_NONE
     );
     assert_eq!(skill_fit_in(&skills, "SAP", true).value, E_NONE);
-    // Leadership alone is met half by a leading role; inside another skill it is not.
-    assert_eq!(
-        skill_fit_in(&skills, "Führungserfahrung", true).value,
-        E_HALF
-    );
+    // Another field with leadership stays open.
     assert_eq!(
         skill_fit_in(
             &skills,
@@ -140,30 +135,6 @@ fn an_industry_is_the_setting_not_the_function() {
     assert_eq!(fit("Erfahrung in der Telekommunikation"), E_FULL);
 }
 
-/// A teaser's term met only through a compound of another field is half
-/// (`Personalcontrolling` for `Controlling`); a compound of its own field stays full.
-#[test]
-fn a_teaser_term_in_another_field_is_half() {
-    let term = |profile: &str| {
-        let data = of_json(&json!({"kernkompetenzen": [{"kompetenz": profile}]}));
-        let skills = Skills::new(&core_texts(&data), &data);
-        let item = Item {
-            span: None,
-            text: "controlling".to_owned(),
-            alternatives: vec!["controlling".to_owned()],
-            kind: crate::matching::sections::ReqKind::Must,
-            class: Class::Skill,
-            years: None,
-            years_max: None,
-            stage: Stage::Vocabulary,
-        };
-        item_fit(&skills, &item).value
-    };
-    assert_eq!(term("Personalcontrolling"), E_HALF);
-    assert_eq!(term("Konzerncontrolling"), E_FULL);
-    assert_eq!(term("Controlling"), E_FULL);
-}
-
 /// ESCO, the broad layer: a requirement and a profile entry the engine's own words do not
 /// relate meet through a concept both name, when the profile names it by its preferred
 /// label: in full when the ad does too and asks nothing else, else half.
@@ -201,4 +172,33 @@ fn esco_relates_what_the_own_words_do_not() {
     );
     // A soft skill is no concept to match.
     assert_eq!(fit("Kommunikation", "Gesprächsführung").0, E_NONE);
+}
+
+/// A kind of tool asked for is met by a tool of it the profile names (`Salesforce` for a
+/// CRM); a tool asked for in part by another tool of its kind or by the kind alone.
+#[test]
+fn a_kind_of_tool_is_met_by_its_tools() {
+    let data = of_json(&json!({
+        "kernkompetenzen": [{"kompetenz": "Controlling"}],
+        "methoden_tools": ["Salesforce", "SAP S/4HANA", "Power BI"]
+    }));
+    let skills = Skills::new(&core_texts(&data), &data);
+    let fit = |text: &str| skill_fit_in(&skills, text, true);
+    for met in [
+        "Erfahrung mit CRM-Systemen",
+        "Sicherer Umgang mit ERP-Systemen",
+        "Kenntnisse in Business Intelligence",
+    ] {
+        assert_eq!(fit(met).value, E_FULL, "{met}");
+        assert_eq!(fit(met).via, Via::Specific, "{met}");
+    }
+    assert_eq!(fit("Erfahrung mit HubSpot").value, E_HALF);
+    assert_eq!(fit("Kenntnisse in Tableau").value, E_HALF);
+    assert_eq!(fit("Erfahrung mit Jira").value, E_NONE);
+    let data = of_json(&json!({"kernkompetenzen": [{"kompetenz": "CRM-Einführung"}]}));
+    let skills = Skills::new(&core_texts(&data), &data);
+    assert_eq!(
+        skill_fit_in(&skills, "Erfahrung mit Salesforce", true).value,
+        E_HALF
+    );
 }

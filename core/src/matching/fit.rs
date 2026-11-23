@@ -1,11 +1,15 @@
 //! The profile the engine matches against, and the match ladder for one item:
-//! exact/stem/synonym = 1.0, profile more specific = 1.0, profile more general = 0.5,
-//! two thirds of a long phrase = 0.5, generic atoms never alone (V1-V4, V15), language
+//! exact/stem/synonym = 1.0, profile more specific or covered (`graph`) = 1.0, profile more
+//! general or near = 0.5, generic atoms never alone (V1-V4, V15), kinds of tool, language
 //! levels (V9), years (V8), degrees (field, relatedness, level) and licences.
 
-use super::atoms::{self, Fit, Vocab, fold};
-use super::job::{Class, Item, Stage, language_of, names_degree};
-use super::lexicon::domains::DOMAINS;
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::sync::LazyLock;
+
+use super::atoms::{self, Fit, Memo, Vocab, fold};
+use super::graph::{self, Known, Row};
+use super::job::{Class, Item, language_of, names_degree};
 use super::lexicon::engine as lex;
 use super::lexicon::esco::{self, Kind};
 use super::normalize::contains_word;
@@ -20,12 +24,19 @@ pub(crate) struct Entry {
     pub text: String,
     pub path: String,
     pub atoms: Vec<String>,
+    /// The index of each atom in `Skills::known`.
+    pub ids: Vec<usize>,
     pub years: Option<u32>,
     /// What ESCO names in it (competences, tools and certificates only).
     pub broad: Broad,
     /// General business work any field does (`Projektmanagement`, `Stakeholder Management`;
     /// `atoms::general_work`): it meets requirements, but it shows no field.
     pub method: bool,
+    /// The kinds of tool it names, each with whether it names a tool of the kind
+    /// (`graph::tool_kinds`).
+    pub tools: Vec<(usize, bool)>,
+    /// An industry of the profile (`branchen`): a setting, no skill.
+    pub industry: bool,
 }
 
 /// What ESCO, the broad layer under the engine's own words, names in a text
@@ -80,9 +91,15 @@ impl Broad {
         Self { terms }
     }
 
-    /// The skills and knowledge of a requirement or a profile entry.
+    /// The skills and knowledge of a requirement or a profile entry, read once per text,
+    /// vocabulary and thread.
     pub(crate) fn skills(text: &str, vocab: &Vocab) -> Self {
-        Self::of(text, vocab, &[Kind::Skill, Kind::Knowledge])
+        if let Some(found) = SKILLS.with(|read| read.borrow().get(vocab.id(), text)) {
+            return found;
+        }
+        let found = Self::of(text, vocab, &[Kind::Skill, Kind::Knowledge]);
+        SKILLS.with(|read| read.borrow_mut().put(vocab.id(), text, found.clone()));
+        found
     }
 
     /// The pairs of a term of `self` (the ad's side) and a term of `profile` that name one
@@ -127,9 +144,9 @@ impl Broad {
     }
 }
 
-/// Forgets the texts read on this thread (a new job): their atoms.
-pub(crate) fn forget() {
-    atoms::forget_atoms();
+thread_local! {
+    /// The skills and knowledge of the texts read so far ([`Broad::skills`]).
+    static SKILLS: RefCell<Memo<Broad>> = const { RefCell::new(Memo::new(1 << 14)) };
 }
 
 /// What the engine uses from the profile.
@@ -152,6 +169,8 @@ pub(crate) struct Skills {
     /// The parts of the profile's hyphenated atoms (`contact`, `cent`, `leitung`): the words
     /// of an ad that one of them joins are read as one atom ([`joined`]).
     pub joins: Vec<Vec<String>>,
+    /// The entries' atoms, numbered (`Entry::ids`).
+    pub known: Known,
 }
 
 /// The same text once stripped as the core texts are.
@@ -243,20 +262,34 @@ impl Skills {
         };
         let mut entries: Vec<Entry> = core
             .iter()
-            .map(|entry| Entry {
-                atoms: atoms::atoms(&entry.text, &vocab),
-                years: years(&entry.text),
-                broad: if skill(&entry.path) {
-                    Broad::skills(&entry.text, &vocab)
-                } else {
-                    Broad::default()
-                },
-                method: atoms::general_work(&entry.text),
-                text: entry.text.clone(),
-                path: entry.path.clone(),
+            .map(|entry| {
+                let atoms = atoms::atoms(&entry.text, &vocab).to_vec();
+                Entry {
+                    years: years(&entry.text),
+                    broad: if skill(&entry.path) {
+                        Broad::skills(&entry.text, &vocab)
+                    } else {
+                        Broad::default()
+                    },
+                    method: atoms::general_work(&entry.text),
+                    tools: graph::tool_kinds(&entry.text).to_vec(),
+                    industry: entry.path.starts_with(key::INDUSTRIES),
+                    ids: Vec::new(),
+                    atoms,
+                    text: entry.text.clone(),
+                    path: entry.path.clone(),
+                }
             })
             .collect();
         entries.retain(|e| !e.atoms.is_empty());
+        let mut distinct: Vec<String> = entries.iter().flat_map(|e| e.atoms.clone()).collect();
+        distinct.sort();
+        distinct.dedup();
+        let known = Known::new(distinct);
+        for entry in &mut entries {
+            let index = |a: &String| known.atoms().binary_search(a).ok();
+            entry.ids = entry.atoms.iter().filter_map(index).collect();
+        }
         let languages = languages_of(form);
         let mut degree_fields: Option<Vec<&'static str>> = None;
         let (mut degree_level, mut degrees) = (0, Vec::new());
@@ -293,6 +326,7 @@ impl Skills {
             total_years,
             vocab,
             joins,
+            known,
         }
     }
 }
@@ -350,33 +384,85 @@ const NONE: ItemFit = ItemFit {
     via: Via::Exact,
 };
 
-/// Job atoms plus the parts of hyphenated compounds.
-fn expand(atoms: &[String]) -> Vec<String> {
-    let mut out = atoms.to_vec();
-    for atom in atoms {
-        if atom.contains('-') {
-            out.extend(atom.split('-').filter(|p| p.len() >= 2).map(str::to_owned));
-        }
-    }
-    out
+/// An atom of an ad with its row against the profile's atoms.
+struct Asked {
+    atom: String,
+    row: Rc<Row>,
+    /// The profile atoms it meets as an abbreviation ([`Asked::fit`]).
+    abbreviates: Vec<usize>,
 }
 
-/// A job atom against a profile atom ([`atoms::fit`]); an abbreviation the ad asks for is
-/// also met by a compound the profile names with it before a hyphen (`CRM` by
-/// `CRM-Einführung`, `KPI` by `KPI-Reporting`; `DIN` is no part of `DIN 276`, a code).
-fn atom_fit(job: &str, profile: &str) -> Fit {
-    match atoms::fit(job, profile) {
-        Fit::None
-            if job.len() == 3
-                && !atoms::is_generic(job)
-                && profile
-                    .strip_prefix(job)
+impl Asked {
+    /// An abbreviation the ad asks for is also met by a compound the profile names with it
+    /// before a hyphen (`CRM` by `CRM-Einführung`, `KPI` by `KPI-Reporting`; `DIN` is no part
+    /// of `DIN 276`, a code).
+    fn new(skills: &Skills, atom: &str) -> Self {
+        let row = skills.known.row(atom);
+        let abbreviates = if atom.len() == 3 && !atoms::is_generic(atom) {
+            let compound = |p: &String| {
+                p.strip_prefix(atom)
                     .and_then(|head| head.strip_prefix('-'))
-                    .is_some_and(|head| head.starts_with(|c: char| c.is_ascii_alphabetic())) =>
-        {
-            Fit::Specific
+                    .is_some_and(|head| head.starts_with(|c: char| c.is_ascii_alphabetic()))
+            };
+            let known = skills.known.atoms();
+            (0..known.len())
+                .filter(|&i| row.fits[i] == Fit::None && compound(&known[i]))
+                .collect()
+        } else {
+            Vec::new()
+        };
+        Self {
+            row,
+            abbreviates,
+            atom: atom.to_owned(),
         }
-        fit => fit,
+    }
+
+    /// The ad atom against the profile atom `i` ([`graph::fit`], abbreviations too).
+    fn fit(&self, i: usize) -> Fit {
+        match self.row.fits[i] {
+            Fit::None if self.abbreviates.contains(&i) => Fit::Specific,
+            fit => fit,
+        }
+    }
+
+    /// Does any profile atom relate to it, either way?
+    fn related(&self, known: &Known) -> bool {
+        !self.abbreviates.is_empty()
+            || self.row.fits.iter().any(|f| *f != Fit::None)
+            || known.back(&self.row, &self.atom)
+    }
+}
+
+/// The atoms of an alternative and, for the entries' side, the parts of its hyphenated
+/// compounds too.
+struct Alternative {
+    atoms: Vec<Asked>,
+    /// The best fit of the atoms and the parts for each profile atom.
+    best: Vec<Fit>,
+}
+
+impl Alternative {
+    fn new(skills: &Skills, job: &[String]) -> Self {
+        let atoms: Vec<Asked> = job.iter().map(|a| Asked::new(skills, a)).collect();
+        let parts: Vec<Asked> = job
+            .iter()
+            .filter(|a| a.contains('-'))
+            .flat_map(|a| a.split('-').filter(|p| p.len() >= 2))
+            .map(|p| Asked::new(skills, p))
+            .collect();
+        let best = (0..skills.known.atoms().len())
+            .map(|i| {
+                let all = atoms.iter().chain(&parts);
+                all.map(|j| j.fit(i)).max().unwrap_or(Fit::None)
+            })
+            .collect();
+        Self { atoms, best }
+    }
+
+    /// Does it meet the entry through an umbrella the entry's narrower work covers?
+    fn covered(&self, entry: &Entry) -> bool {
+        entry.ids.iter().any(|&i| self.best[i] == Fit::Covered)
     }
 }
 
@@ -387,29 +473,27 @@ fn sentence_like(entry: &Entry) -> bool {
 }
 
 /// One entry against the atoms of one alternative.
-fn entry_fit(job: &[String], expanded: &[String], whole: &Entry) -> (u16, Via) {
+fn entry_fit(job: &Alternative, whole: &Entry) -> (u16, Via) {
     let entry = &whole.atoms;
-    let best = |p: &String| {
-        expanded
-            .iter()
-            .map(|j| atom_fit(j, p))
-            .max()
-            .unwrap_or(Fit::None)
-    };
-    let fits: Vec<Fit> = entry.iter().map(best).collect();
+    let fits: Vec<Fit> = whole.ids.iter().map(|&i| job.best[i]).collect();
     let matched = fits.iter().filter(|f| **f != Fit::None).count();
+    // Nothing of the entry is asked for (most entries for most items).
+    if matched == 0 {
+        return (E_NONE, Via::Exact);
+    }
     let generic_only = entry
         .iter()
         .zip(&fits)
         .filter(|(_, f)| **f != Fit::None)
         .all(|(p, _)| atoms::is_generic(p));
     let whole_item = job
+        .atoms
         .iter()
-        .all(|j| entry.iter().any(|p| atom_fit(j, p) != Fit::None));
+        .all(|j| whole.ids.iter().any(|&i| j.fit(i) != Fit::None));
     if matched == entry.len() && (!generic_only || whole_item) {
         return if fits.contains(&Fit::General) {
             (E_HALF, Via::General)
-        } else if fits.contains(&Fit::Specific) {
+        } else if fits.contains(&Fit::Specific) || fits.contains(&Fit::Covered) {
             (E_FULL, Via::Specific)
         } else {
             (E_FULL, Via::Exact)
@@ -417,17 +501,22 @@ fn entry_fit(job: &[String], expanded: &[String], whole: &Entry) -> (u16, Via) {
     }
     // The item lies inside the entry: the profile is more specific. A common word of a name
     // of several words is no part of it (`Services` of `Amazon Web Services`).
-    let content: Vec<&String> = job.iter().filter(|j| !atoms::is_generic(j)).collect();
+    let content: Vec<&Asked> = job
+        .atoms
+        .iter()
+        .filter(|j| !atoms::is_generic(&j.atom))
+        .collect();
     let name_words_only = entry.len() >= 2
         && content
             .iter()
-            .all(|j| lex::NAME_WORDS.contains(&j.as_str()));
+            .all(|j| lex::NAME_WORDS.contains(&j.atom.as_str()));
     if !content.is_empty()
         && !name_words_only
         && content.iter().all(|j| {
-            entry
+            whole
+                .ids
                 .iter()
-                .any(|p| matches!(atom_fit(j, p), Fit::Equal | Fit::Specific))
+                .any(|&i| matches!(j.fit(i), Fit::Equal | Fit::Covered | Fit::Specific))
         })
     {
         // Free text that mentions a skill (a USP sentence, a long description such as
@@ -438,40 +527,39 @@ fn entry_fit(job: &[String], expanded: &[String], whole: &Entry) -> (u16, Via) {
             (E_FULL, Via::Specific)
         };
     }
-    if entry.len() >= 3 && 3 * matched >= 2 * entry.len() && !generic_only {
-        return (E_HALF, Via::General);
-    }
     (E_NONE, Via::Exact)
 }
 
 /// Does any profile atom relate to this job atom (a hyphenated atom through its parts)?
-fn covered(skills: &Skills, atom: &str) -> bool {
-    let related = |a: &str| {
-        skills
-            .entries
-            .iter()
-            .flat_map(|e| &e.atoms)
-            .any(|p| atom_fit(a, p) != Fit::None || atoms::fit(p, a) != Fit::None)
-    };
-    related(atom)
-        || (atom.contains('-')
+fn covered(skills: &Skills, atom: &Asked) -> bool {
+    let known = &skills.known;
+    atom.related(known)
+        || (atom.atom.contains('-')
             && atom
+                .atom
                 .split('-')
                 .filter(|p| p.len() >= 3 && !atoms::is_generic(p))
-                .all(related))
+                .all(|p| Asked::new(skills, p).related(known)))
 }
 
-/// The best entry on the ladder for the atoms of a requirement (`industries`: the profile's
-/// industries count too), the first of equals.
-fn best_entry(skills: &Skills, job: &[String], industries: bool) -> ItemFit {
-    let expanded = expand(job);
+/// The best entry on the ladder for the atoms of a requirement, the first of equals. An
+/// industry of the profile meets a requirement through a compound only when the requirement
+/// asks for an industry (`industry`; `Kommunikationsfähigkeit` is no `Telekommunikation`);
+/// its own name it always meets.
+fn best_entry(skills: &Skills, job: &Alternative, industry: impl Fn() -> bool) -> ItemFit {
     let mut best = NONE;
+    let mut best_rank = (E_NONE, false);
+    let industry = std::cell::LazyCell::new(industry);
     for (index, entry) in skills.entries.iter().enumerate() {
-        if !industries && entry.path.starts_with(key::INDUSTRIES) {
+        let (value, via) = entry_fit(job, entry);
+        if entry.industry && via != Via::Exact && !*industry {
             continue;
         }
-        let (value, via) = entry_fit(job, &expanded, entry);
-        if value > best.value {
+        // What the entry names itself beats what it covers (`Projektmanagement` before
+        // `Programmmanagement` for project management asked).
+        let rank = (value, !job.covered(entry));
+        if value > E_NONE && rank > best_rank {
+            best_rank = rank;
             best = ItemFit {
                 value,
                 entry: Some(index),
@@ -485,32 +573,12 @@ fn best_entry(skills: &Skills, job: &[String], industries: bool) -> ItemFit {
 /// The ladder over all entries; `broad`: ESCO too (not for a soft skill, which counts half
 /// unproven anyway).
 fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
-    let job = joined(atoms::atoms(text, &skills.vocab), &skills.joins);
+    let job = joined(atoms::atoms(text, &skills.vocab).to_vec(), &skills.joins);
     if job.is_empty() {
         return NONE;
     }
-    let mut best = best_entry(skills, &job, true);
-    // An industry of the profile meets a requirement through a compound only when the
-    // requirement asks for an industry (`Kommunikationsfähigkeit` is no `Telekommunikation`);
-    // its own name it always meets.
-    if best.via != Via::Exact
-        && best
-            .entry
-            .and_then(|e| skills.entries.get(e))
-            .is_some_and(|e| e.path.starts_with(key::INDUSTRIES))
-        && !industry_only(text, &skills.vocab)
-    {
-        best = best_entry(skills, &job, false);
-    }
-    // The industry is the setting of a requirement (`Qualitätsmanagement produzierender
-    // Unternehmen`): without a fit the function alone is read, the setting costs little
-    // (the rubric's rule 5).
-    if best.value == E_NONE && job.iter().any(|a| industry_atom(a)) {
-        let function: Vec<String> = job.iter().filter(|a| !industry_atom(a)).cloned().collect();
-        if function.iter().any(|a| !atoms::is_generic(a)) {
-            best = best_entry(skills, &function, false);
-        }
-    }
+    let asked = Alternative::new(skills, &job);
+    let mut best = best_entry(skills, &asked, || industry_only(text, &skills.vocab));
     // A generic family asked for alone (`SAP-Kenntnisse`) is met by an entry that names a
     // product of it (`SAP S/4HANA`).
     if best.value == E_NONE
@@ -529,58 +597,37 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
             via: Via::Specific,
         };
     }
-    // Leadership asked for is met at least half by a leading role or a competence of
-    // leadership in the profile (`Führung` for `Leadership`; only an item about leadership
-    // alone, not `8 Jahre Controlling, davon 3 mit Führung`). Leadership names no field: it
-    // never counts in full on its own.
-    if best.value < E_HALF
-        && leadership_only(&job)
-        && let Some(index) = skills.entries.iter().position(|e| {
-            let folded = fold(&e.text);
-            atoms::raw_tokens(&folded).any(|t| lex::PROFILE_LEAD_WORDS.contains(&t))
-                || (e.path.starts_with(key::COMPETENCES)
-                    && e.atoms.iter().all(|a| leadership_atom(a)))
-        })
-    {
-        best = ItemFit {
-            value: E_HALF,
-            entry: Some(index),
-            via: Via::General,
-        };
-    }
     // The ad asks for more than the profile names (`Tableau im Reporting` against
     // `Reporting`): the profile is more general, half.
     // Words of experience (`Berufserfahrung`, `Projekterfahrung`, `Praxis`) ask for nothing
     // more: what the profile names literally stays met (engine 22).
     if best.value == E_FULL
-        && job
-            .iter()
-            .any(|j| !atoms::is_generic(j) && !experience_atom(j) && !covered(skills, j))
+        && asked.atoms.iter().any(|j| {
+            !atoms::is_generic(&j.atom) && !experience_atom(&j.atom) && !covered(skills, j)
+        })
     {
         // An industry is the setting of a requirement, never its function
-        // (`Vertriebserfahrung im Maschinenbau` is not half met by `Maschinenbau`).
-        let industry = best
+        // (`Vertriebserfahrung im Maschinenbau` is not half met by `Maschinenbau`); so is an
+        // umbrella the entry's narrower work covers (`Datenmigration im Finanzwesen` is not
+        // half met by `Monatsabschlüsse`).
+        let setting = best
             .entry
             .and_then(|e| skills.entries.get(e))
-            .is_some_and(|e| e.path.starts_with(key::INDUSTRIES));
-        if industry {
+            .is_some_and(|e| e.industry || asked.covered(e));
+        if setting {
             best = NONE;
         } else {
             best.value = E_HALF;
             best.via = Via::General;
         }
     }
-    // Another tool of the same kind (`HubSpot` for `Salesforce`, both CRM) is similar:
-    // partly met, never open (the rubric's rule 3).
-    if broad
-        && best.value < E_HALF
-        && let Some(index) = same_kind(skills, text)
-    {
-        best = ItemFit {
-            value: E_HALF,
-            entry: Some(index),
-            via: Via::General,
-        };
+    // A kind of tool and its tools (`kind_fit`), for what the entries leave open: a half
+    // fit through a competence shows more than a tool does.
+    if broad && best.value < E_HALF {
+        let kind = kind_fit(skills, text);
+        if kind.value > best.value {
+            best = kind;
+        }
     }
     // ESCO, the broad layer: a concept the item and an entry both name.
     if broad && best.value < E_FULL && skills.entries.iter().any(|e| !e.broad.terms.is_empty()) {
@@ -605,10 +652,10 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
 /// generic or experience words.
 pub(crate) fn industry_only(text: &str, vocab: &Vocab) -> bool {
     let mut any = false;
-    for atom in atoms::atoms(text, vocab) {
-        if industry_atom(&atom) {
+    for atom in atoms::atoms(text, vocab).iter() {
+        if industry_atom(atom) {
             any = true;
-        } else if !(atoms::is_generic(&atom) || experience_atom(&atom)) {
+        } else if !(atoms::is_generic(atom) || experience_atom(atom)) {
             return false;
         }
     }
@@ -617,7 +664,7 @@ pub(crate) fn industry_only(text: &str, vocab: &Vocab) -> bool {
 
 /// Does an atom name an industry or a setting (`pharmaindustri`, `banken`, `produzierend`)?
 fn industry_atom(atom: &str) -> bool {
-    use super::lexicon::{terms, wishes};
+    use super::lexicon::wishes;
     wishes::INDUSTRIES
         .iter()
         .chain(wishes::INDUSTRY_WORDS)
@@ -628,69 +675,65 @@ fn industry_atom(atom: &str) -> bool {
                 || (w.len() >= 6
                     && (atom.starts_with(w) || (w.starts_with(atom) && !atoms::is_generic(atom))))
         })
-        || terms::INDUSTRY_ENDINGS
+        || INDUSTRY_STEMS.0.iter().any(|e| atom.ends_with(e.as_str()))
+        || INDUSTRY_STEMS
+            .1
             .iter()
-            .chain(terms::INDUSTRY_TAILS)
-            .any(|e| atom.ends_with(atoms::stem(e).as_str()))
-        || terms::INDUSTRY_NOUNS
-            .iter()
-            .any(|n| atom.starts_with(atoms::stem(n).as_str()))
+            .any(|n| atom.starts_with(n.as_str()))
         || lex::SETTING_WORDS.iter().any(|w| atom.starts_with(w))
 }
 
-/// The kinds of tool a text names (`TOOL_KINDS`).
-fn tool_kinds(text: &str) -> Vec<&'static str> {
-    let folded = fold(text).replace('-', " ");
-    super::lexicon::TOOL_KINDS
-        .iter()
-        .filter(|(_, names)| names.iter().any(|n| contains_word(&folded, n)))
-        .map(|(kind, _)| *kind)
-        .collect()
-}
+/// The stems of the industry endings and tails, and of the industry nouns.
+static INDUSTRY_STEMS: LazyLock<(Vec<String>, Vec<String>)> = LazyLock::new(|| {
+    use super::lexicon::terms;
+    let endings = terms::INDUSTRY_ENDINGS.iter().chain(terms::INDUSTRY_TAILS);
+    (
+        endings.map(|e| atoms::stem(e)).collect(),
+        terms::INDUSTRY_NOUNS
+            .iter()
+            .map(|n| atoms::stem(n))
+            .collect(),
+    )
+});
 
-/// The first profile entry that names a tool of a kind the text names.
-fn same_kind(skills: &Skills, text: &str) -> Option<usize> {
-    let kinds = tool_kinds(text);
-    if kinds.is_empty() {
-        return None;
-    }
-    skills
-        .entries
+/// The stems of the words of experience (`GENERAL_EXPERIENCE`, `EXPERIENCE_WORDS`).
+static EXPERIENCE_STEMS: LazyLock<Vec<String>> = LazyLock::new(|| {
+    lex::GENERAL_EXPERIENCE
         .iter()
-        .position(|e| tool_kinds(&e.text).iter().any(|k| kinds.contains(k)))
+        .chain(lex::EXPERIENCE_WORDS)
+        .map(|w| atoms::stem(w))
+        .collect()
+});
+
+/// A kind of tool asked for (`CRM-System`) is met by an entry naming a tool of the kind
+/// (`Salesforce`, the profile more specific); a tool asked for is met in part by an entry
+/// naming another tool of its kind or the kind alone (`HubSpot` for `Salesforce`, the
+/// rubric's rule 3). The first entry of a kind the text names.
+fn kind_fit(skills: &Skills, text: &str) -> ItemFit {
+    let asked = graph::tool_kinds(text);
+    for (index, entry) in skills.entries.iter().enumerate() {
+        let shared = entry.tools.iter().filter_map(|&(kind, named)| {
+            let &(_, tool) = asked.iter().find(|(k, _)| *k == kind)?;
+            Some(named && !tool)
+        });
+        if let Some(full) = shared.max() {
+            return ItemFit {
+                value: if full { E_FULL } else { E_HALF },
+                entry: Some(index),
+                via: if full { Via::Specific } else { Via::General },
+            };
+        }
+    }
+    NONE
 }
 
 /// An atom that only says experience (`berufserfahr`, `projekterfahr`, `praxis`), not
 /// the experience of a function (`Vertriebserfahrung`).
 fn experience_atom(atom: &str) -> bool {
-    lex::GENERAL_EXPERIENCE
+    EXPERIENCE_STEMS
         .iter()
-        .chain(lex::EXPERIENCE_WORDS)
-        .map(|w| atoms::stem(w))
-        .any(|w| atom.starts_with(&w))
-        || atom == atoms::stem("projekterfahrung")
-}
-
-/// Does a requirement ask only for what a role at `level` brings (`ROLE_BRINGS`:
-/// `Führungserfahrung`, `Budgetverantwortung`, `Stakeholder-Management` for a head of)?
-pub(crate) fn role_brings(level: u8, text: &str, vocab: &Vocab) -> bool {
-    let brought: Vec<&str> = lex::ROLE_BRINGS
-        .iter()
-        .filter(|(from, _)| *from <= level)
-        .flat_map(|(_, words)| words.iter().copied())
-        .collect();
-    let named = |a: &str| brought.iter().any(|w| a.starts_with(w));
-    let filler = |a: &str| atoms::is_generic(a) || experience_atom(a);
-    let mut any = false;
-    for atom in atoms::atoms(text, vocab) {
-        let parts: Vec<&str> = atom.split('-').filter(|p| !p.is_empty()).collect();
-        if parts.iter().any(|p| named(p)) && parts.iter().all(|p| named(p) || filler(p)) {
-            any = true;
-        } else if !filler(&atom) {
-            return false;
-        }
-    }
-    any
+        .any(|w| atom.starts_with(w.as_str()))
+        || atom == "projekterfahrung"
 }
 
 /// An atom of leadership (`fuhrung`, `personalverantwortung`).
@@ -698,15 +741,6 @@ pub(crate) fn leadership_atom(atom: &str) -> bool {
     lex::LEADERSHIP_ATOMS
         .iter()
         .any(|l| atom == *l || atom.starts_with(l))
-}
-
-/// Does a requirement ask for leadership alone (`Erste Führungserfahrung`)? Its atoms are
-/// leadership atoms and generic ones only.
-fn leadership_only(atoms: &[String]) -> bool {
-    atoms.iter().any(|a| leadership_atom(a))
-        && atoms
-            .iter()
-            .all(|a| leadership_atom(a) || atoms::is_generic(a))
 }
 
 fn language_fit(skills: &Skills, language: &str, level: Option<u8>) -> ItemFit {
@@ -800,37 +834,15 @@ fn alternatives(item: &Item) -> Vec<&str> {
     alternatives
 }
 
-/// The packs whose triggers an atom starts with.
-fn packs_of(atom: &str) -> Vec<&'static str> {
-    DOMAINS
-        .iter()
-        .filter(|d| d.triggers.iter().any(|t| atom.starts_with(t)))
-        .map(|d| d.name)
-        .collect()
-}
-
-/// Is a profile atom a compound of another field than the job atom it narrows
-/// (`Personalcontrolling`, an HR word, for `Controlling`)?
-pub(crate) fn other_field(job: &str, profile: &str) -> bool {
-    let own = packs_of(job);
-    let theirs = packs_of(profile);
-    !theirs.is_empty() && theirs.iter().all(|p| !own.contains(p))
-}
-
 /// Is an item general professional experience (`10 Jahre Berufserfahrung`, `8 years of
 /// experience`), not experience in a topic (`3-5 Jahre Berufserfahrung im Controlling`)? Its
 /// years are judged against the profile's own years (`berufserfahrung_jahre`).
 pub(crate) fn general_experience(text: &str, vocab: &Vocab) -> bool {
     let folded = fold(text);
-    let experience = |a: &str| {
-        lex::GENERAL_EXPERIENCE
-            .iter()
-            .chain(lex::EXPERIENCE_WORDS)
-            .any(|w| a.starts_with(&atoms::stem(w)))
-    };
+    let experience = |a: &str| EXPERIENCE_STEMS.iter().any(|w| a.starts_with(w.as_str()));
     let topic = atoms::atoms(text, vocab)
-        .into_iter()
-        .any(|a| !atoms::is_generic(&a) && !experience(&a));
+        .iter()
+        .any(|a| !atoms::is_generic(a) && !experience(a));
     !topic
         && lex::GENERAL_EXPERIENCE
             .iter()
@@ -876,25 +888,6 @@ pub(crate) fn item_fit(skills: &Skills, item: &Item) -> ItemFit {
             .max_by_key(|f| f.value)
             .unwrap_or(NONE),
     };
-    // A teaser's term met only through a compound of another field is half: the profile
-    // names the skill as part of other work (`Personalcontrolling` for `Controlling`).
-    if item.stage == Stage::Vocabulary
-        && fit.value == E_FULL
-        && fit.via == Via::Specific
-        && let Some(entry) = fit.entry.and_then(|e| skills.entries.get(e))
-    {
-        let job = atoms::atoms(&item.text, &skills.vocab);
-        let narrowed = job.iter().any(|j| {
-            entry
-                .atoms
-                .iter()
-                .any(|p| atoms::fit(j, p) == Fit::Specific && other_field(j, p))
-        });
-        if narrowed {
-            fit.value = E_HALF;
-            fit.via = Via::General;
-        }
-    }
     if let Some(needed) = item.years {
         let general = general_experience(&item.text, &skills.vocab);
         let have =

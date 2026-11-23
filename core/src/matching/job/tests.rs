@@ -19,7 +19,7 @@ Ihr Profil:
 ";
     let vocab = Vocab::all();
     let doc = read(text, &vocab);
-    let tasks: Vec<(&str, &Vec<String>)> = doc
+    let tasks: Vec<(&str, &std::rc::Rc<[String]>)> = doc
         .tasks
         .iter()
         .map(|t| (&text[t.span.clone()], &t.atoms))

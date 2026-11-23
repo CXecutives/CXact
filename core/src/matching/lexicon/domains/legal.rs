@@ -181,7 +181,8 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("revisionssicher", "archivierung"),
         ("revisionssicherheit", "archivierung"),
     ],
-    half: &[],
+    covers: &[],
+    near: &[],
 };
 
 #[cfg(test)]

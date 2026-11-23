@@ -16,6 +16,7 @@ use super::contract::{self, Contract, ContractKind};
 use super::exclusion;
 use super::facts::{self, Finding, HardCriteria, JobFacts, Segment};
 use super::fit::{self, ItemFit, Skills};
+use super::graph;
 use super::job::{self, Class, Item, Stage};
 use super::lexicon::engine as lex;
 use super::limits;
@@ -26,7 +27,7 @@ use super::params::{
 };
 use super::permanent;
 use super::profile::{self, CoreText};
-use super::relevance;
+use super::relevance::{self, Query};
 use super::roles::{self, Role, RoleFit};
 use super::scorer::{self, Percent};
 use super::sections::ReqKind;
@@ -43,18 +44,17 @@ pub(crate) struct EngineProfile {
     pub core: Vec<CoreText>,
     pub skills: Skills,
     pub criteria: HardCriteria,
-    pub query: Vec<(String, u64)>,
+    pub query: Query,
     /// The query plus the topics of the target roles: what the title may name.
-    pub title_query: Vec<(String, u64)>,
+    pub title_query: Query,
     pub roles: Vec<Role>,
     pub wishes: Wishes,
     /// The levels of the target roles and the profile's highest (engine 23).
     pub level: ProfileLevel,
     /// The field families of the profile's packs (engine 23).
     pub fields: Vec<&'static str>,
-    /// The level of the profile's own roles: its target roles and the roles its competences
-    /// name, never its years (what its role brings, `fit::role_brings`).
-    pub brings: u8,
+    /// What a title says beside its core (`roles::shape`).
+    pub shape: Vec<String>,
 }
 
 impl EngineProfile {
@@ -68,18 +68,8 @@ impl EngineProfile {
         let wishes = Wishes::new(form);
         let level = ProfileLevel::new(form.roles.iter().map(String::as_str), skills.total_years);
         let fields = title::profile_fields(skills.vocab.packs());
-        let brings = level
-            .wished
-            .iter()
-            .copied()
-            .chain(
-                form.competences
-                    .iter()
-                    .filter_map(|c| title::level_of(&c.name)),
-            )
-            .max()
-            .unwrap_or(0);
         Self {
+            shape: roles::shape(&skills.vocab),
             core,
             skills,
             criteria,
@@ -89,7 +79,6 @@ impl EngineProfile {
             wishes,
             level,
             fields,
-            brings,
         }
     }
 }
@@ -408,17 +397,6 @@ fn scored(profile: &EngineProfile, items: Vec<Item>, title: &str, far: bool) -> 
                     via: Via::Exact,
                 };
             }
-            // What follows from the profile's role counts as shown (the rubric's rule 2).
-            if fit.value < E_FULL
-                && matches!(item.class, Class::Skill | Class::Soft)
-                && fit::role_brings(profile.brings, &item.text, &profile.skills.vocab)
-            {
-                fit = ItemFit {
-                    value: E_FULL,
-                    entry: None,
-                    via: Via::Exact,
-                };
-            }
             if item.kind == ReqKind::Must
                 && let Some(entry) = fit.entry.and_then(|e| profile.skills.entries.get(e))
                 && entry.path.starts_with(key::TOOLS)
@@ -426,7 +404,7 @@ fn scored(profile: &EngineProfile, items: Vec<Item>, title: &str, far: bool) -> 
                     .atoms
                     .iter()
                     .filter(|a| !atoms::is_generic(a))
-                    .any(|a| title_atoms.iter().any(|t| atoms::fit(t, a) == Fit::Equal))
+                    .any(|a| title_atoms.iter().any(|t| graph::fit(t, a) == Fit::Equal))
             {
                 fit.value /= 2;
             }
@@ -747,12 +725,10 @@ fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluation {
     }
 }
 
-/// Reads one job as the app does and returns the text it read: a new job (the texts the last
-/// one read are not read again), a page's placeholders masked (no word of the ad; the masked
+/// Reads one job as the app does and returns the text it read: a page's placeholders masked (no word of the ad; the masked
 /// text keeps every byte offset, so the passages are counted in the text as the reader shows
 /// it).
 pub(crate) fn read(profile: &EngineProfile, job: &JobInput<'_>) -> (String, Evaluation) {
-    fit::forget();
     let masked = normalize::mask_placeholders(job.text).into_owned();
     let evaluation = evaluate(
         profile,

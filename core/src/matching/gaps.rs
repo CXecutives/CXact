@@ -58,7 +58,6 @@ static KNOWN: LazyLock<BTreeSet<String>> = LazyLock::new(|| {
         .chain(wishes::ROLE_CONTRACT_WORDS.iter().copied())
         .chain(lex::TITLE_CONTRACT_WORDS.iter().copied())
         .chain(lex::JUNIOR_TITLES.iter().copied())
-        .chain(lex::PROFILE_LEAD_WORDS.iter().copied())
         .chain(lex::GENERAL_EXPERIENCE.iter().copied())
         .chain(lex::EXPERIENCE_WORDS.iter().copied())
         .chain(lex::KNOWLEDGE_WORDS.iter().copied())

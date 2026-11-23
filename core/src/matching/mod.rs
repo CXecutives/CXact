@@ -16,6 +16,7 @@ mod fit;
 /// the shipped app carries the fixed vocabulary alone.
 #[cfg(debug_assertions)]
 mod gaps;
+mod graph;
 mod job;
 mod layout;
 pub(crate) mod lexicon;

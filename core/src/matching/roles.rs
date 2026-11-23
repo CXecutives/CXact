@@ -23,6 +23,7 @@ use std::sync::LazyLock;
 use super::atoms::{self, Fit, Vocab, fold, raw_tokens};
 use super::contract::ContractKind;
 use super::fit::Broad;
+use super::graph;
 use super::lexicon::esco::Kind;
 use super::lexicon::{self, wishes as lex};
 use super::normalize::contains_word;
@@ -136,7 +137,7 @@ fn parts(text: &str, vocab: &Vocab) -> Parts {
         .copied()
         .collect();
     Parts {
-        topic: atoms::atoms(&rest.join(" "), vocab),
+        topic: atoms::atoms(&rest.join(" "), vocab).to_vec(),
         contract,
         lead,
     }
@@ -196,12 +197,12 @@ fn role_fit(
         let best = title
             .topic
             .iter()
-            .map(|t| atoms::fit(t, atom))
+            .map(|t| graph::fit(t, atom))
             .max()
             .unwrap_or(Fit::None);
         match best {
             Fit::Equal => {}
-            Fit::General | Fit::Specific => full = false,
+            Fit::General | Fit::Covered | Fit::Specific => full = false,
             Fit::None => return None,
         }
     }
@@ -224,7 +225,7 @@ fn role_fit(
     // A role of generic words only (`Head of Finance`) is another role when the title
     // names a specific topic of its own (`S/4HANA Finance Lead`, `FP&A`).
     let extra = title.topic.iter().any(|t| {
-        !atoms::is_generic(t) && !role.topic.iter().any(|r| atoms::fit(t, r) != Fit::None)
+        !atoms::is_generic(t) && !role.topic.iter().any(|r| graph::fit(t, r) != Fit::None)
     });
     if !role.specific && extra {
         return None;
@@ -232,20 +233,29 @@ fn role_fit(
     Some(full)
 }
 
-/// The core of a title (engine 24): its specific atoms without the words of lead, level,
-/// contract, junior roles and the role's shape. An open must on them is an open core.
-pub(crate) fn title_core(title: &str, vocab: &Vocab) -> Vec<String> {
-    let shape: Vec<String> = lex::LEAD_WORDS
+/// The atoms of the words of lead, level, contract, junior roles and the role's shape,
+/// sorted: what a title says beside its core ([`title_core`]).
+pub(crate) fn shape(vocab: &Vocab) -> Vec<String> {
+    let mut shape: Vec<String> = lex::LEAD_WORDS
         .iter()
         .chain(lex::LEVEL_WORDS)
         .chain(lex::ROLE_CONTRACT_WORDS)
         .chain(lex::ROLE_SHAPE_WORDS)
         .chain(lexicon::engine::JUNIOR_TITLES)
-        .flat_map(|w| atoms::atoms(w, vocab))
+        .flat_map(|w| atoms::atoms(w, vocab).to_vec())
         .collect();
+    shape.sort();
+    shape.dedup();
+    shape
+}
+
+/// The core of a title (engine 24): its specific atoms without the words of its `shape`
+/// ([`shape`]). An open must on them is an open core.
+pub(crate) fn title_core(title: &str, vocab: &Vocab, shape: &[String]) -> Vec<String> {
     atoms::atoms(title, vocab)
-        .into_iter()
-        .filter(|a| !atoms::is_generic(a) && !shape.contains(a))
+        .iter()
+        .filter(|a| !atoms::is_generic(a) && shape.binary_search(a).is_err())
+        .cloned()
         .collect()
 }
 

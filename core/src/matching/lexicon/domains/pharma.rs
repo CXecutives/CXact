@@ -186,7 +186,8 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("pharmacist", "apotheker"),
         ("apothekerin", "apotheker"),
     ],
-    half: &[],
+    covers: &[],
+    near: &[],
 };
 
 #[cfg(test)]

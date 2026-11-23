@@ -154,7 +154,8 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("negotiation", "verhandlung"),
         ("sales operations planning", "s&op"),
     ],
-    half: &[],
+    covers: &[],
+    near: &[],
 };
 
 #[cfg(test)]

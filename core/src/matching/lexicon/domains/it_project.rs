@@ -50,5 +50,6 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("skalierten agilen", "safe"),
         ("safe operating area", "safe-operating-area"),
     ],
-    half: &[],
+    covers: &[],
+    near: &[],
 };

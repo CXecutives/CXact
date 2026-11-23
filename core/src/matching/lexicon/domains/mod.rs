@@ -43,9 +43,11 @@ pub(crate) struct Domain {
     pub generic: &'static [&'static str],
     /// Phrase -> concept.
     pub concepts: &'static [(&'static str, &'static str)],
-    /// A concept of a profile entry and the concepts of an ad it meets in half: the narrower
-    /// work of a broader field (`kundenservice` meets `reklamationsmanagement`).
-    pub half: &'static [(&'static str, &'static [&'static str])],
+    /// Umbrella concepts and the narrower concepts of the field they cover (`rechnungswesen`
+    /// covers `jahresabschluss`), the edges of the knowledge graph (`graph`).
+    pub covers: &'static [(&'static str, &'static [&'static str])],
+    /// Concepts of the field close to each other, met in half both ways.
+    pub near: &'static [(&'static str, &'static [&'static str])],
 }
 
 /// All packs, in a fixed order.
@@ -72,7 +74,8 @@ pub(crate) const DOMAINS: &[&Domain] = &[
 /// Helpers for the pack tests: atoms and fits under the packs a profile switches on.
 #[cfg(test)]
 pub(crate) mod testing {
-    use crate::matching::atoms::{Fit, Vocab, atoms, fit};
+    use crate::matching::atoms::{Fit, Vocab, atoms};
+    use crate::matching::graph::fit;
 
     /// The vocabulary of a profile with these competences.
     pub(crate) fn vocab(profile: &[&str]) -> Vocab {
@@ -93,7 +96,7 @@ pub(crate) mod testing {
         atoms(job, vocab).iter().any(|j| {
             profile
                 .iter()
-                .any(|p| matches!(fit(j, p), Fit::Equal | Fit::Specific))
+                .any(|p| matches!(fit(j, p), Fit::Equal | Fit::Covered | Fit::Specific))
         })
     }
 

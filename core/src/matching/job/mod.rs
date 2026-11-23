@@ -79,7 +79,7 @@ pub(crate) struct Task {
     /// Byte range of the task in the text.
     pub span: Range<usize>,
     /// The task's atoms under the reader's vocabulary (none for a task of fillers only).
-    pub atoms: Vec<String>,
+    pub atoms: std::rc::Rc<[String]>,
 }
 
 /// The requirements of a job.

@@ -12,6 +12,7 @@ use super::CompiledProfile;
 use super::atoms::{self, Fit, Vocab};
 use super::engine::{self, EngineProfile, Scored};
 use super::facts::Finding;
+use super::graph;
 use super::job::Class;
 use super::normalize;
 use super::params::{E_FULL, E_NONE};
@@ -273,8 +274,8 @@ pub(crate) fn is_hygiene(text: &str) -> bool {
 }
 
 fn related(a: &str, b: &str) -> bool {
-    matches!(atoms::fit(a, b), Fit::Equal | Fit::Specific)
-        || matches!(atoms::fit(b, a), Fit::Equal | Fit::Specific)
+    matches!(graph::fit(a, b), Fit::Equal | Fit::Covered | Fit::Specific)
+        || matches!(graph::fit(b, a), Fit::Equal | Fit::Covered | Fit::Specific)
 }
 
 /// Which musts stand on the core of the role: a skill that names what the title names (also
@@ -311,7 +312,7 @@ impl<'a> CoreTest<'a> {
     ) -> Self {
         let vocab = &profile.skills.vocab;
         Self {
-            title_atoms: roles::title_core(title, vocab),
+            title_atoms: roles::title_core(title, vocab, &profile.shape),
             title_fields: field_words(&atoms::atoms(title, vocab)).collect(),
             field,
             vocab,

@@ -4,9 +4,11 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 use std::sync::LazyLock;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use super::graph;
 use super::lexicon::domains::{DOMAINS, Domain};
 use super::lexicon::{self, engine as lex};
 use super::normalize::casefold;
@@ -128,6 +130,11 @@ impl Vocab {
     /// Every pack (the gap finder, tests).
     pub(crate) fn all() -> Self {
         Self::with(DOMAINS)
+    }
+
+    /// Its number ([`Vocab::id`]): the key of what is read with it.
+    pub(crate) fn id(&self) -> u64 {
+        self.id
     }
 
     /// Names of the switched-on packs.
@@ -344,38 +351,58 @@ fn kept(token: &str) -> Option<String> {
 /// Atoms of a text: tokens without fillers, stemmed, concepts of `vocab` applied. A
 /// concept whose words include a filler, a stopword or a short word (`US GAAP`, `Order to
 /// Cash`, `Year End Closing`) is found before those words go.
-pub(crate) fn atoms(text: &str, vocab: &Vocab) -> Vec<String> {
+pub(crate) fn atoms(text: &str, vocab: &Vocab) -> Atoms {
     // One job reads its title, items and lines many times (the ladder, the caps, the
-    // relevance): each text once per vocabulary and thread.
-
-    let key = (vocab.id, text.to_owned());
-    if let Some(found) = READ_ATOMS.with(|read| read.borrow().get(&key).cloned()) {
+    // relevance), the signals and the assessment read it twice, and every job the profile's
+    // own words: each text once per vocabulary and thread.
+    if let Some(found) = READ_ATOMS.with(|read| read.borrow().get(vocab.id, text)) {
         return found;
     }
-    let found = read_atoms(text, vocab);
-    READ_ATOMS.with(|read| {
-        let mut read = read.borrow_mut();
-        if read.len() >= ATOMS_KEPT {
-            read.clear();
-        }
-        read.insert(key, found.clone());
-    });
+    let found: Atoms = read_atoms(text, vocab).into();
+    READ_ATOMS.with(|read| read.borrow_mut().put(vocab.id, text, found.clone()));
     found
 }
 
-/// Forgets the texts [`atoms`] read on this thread (a new job: one job's texts are read
-/// again, another job's hardly).
-pub(crate) fn forget_atoms() {
-    READ_ATOMS.with(|read| read.borrow_mut().clear());
-}
+/// The atoms of a text as [`atoms`] hands them out: one read shared by every caller.
+pub(crate) type Atoms = Rc<[String]>;
 
 thread_local! {
     /// The texts [`atoms`] read, by vocabulary.
-    static READ_ATOMS: RefCell<HashMap<(u64, String), Vec<String>>> = RefCell::new(HashMap::new());
+    static READ_ATOMS: RefCell<Memo<Atoms>> = const { RefCell::new(Memo::new(1 << 14)) };
 }
 
-/// So many texts [`atoms`] keeps per thread before it starts anew.
-const ATOMS_KEPT: usize = 4096;
+/// What a pure function read from a text, by the table it read it with (a vocabulary, the
+/// profile's atoms), kept per thread up to `kept` texts in all before it starts anew.
+pub(crate) struct Memo<V> {
+    tables: Vec<(u64, HashMap<Box<str>, V>)>,
+    kept: usize,
+}
+
+impl<V: Clone> Memo<V> {
+    pub(crate) const fn new(kept: usize) -> Self {
+        Self {
+            tables: Vec::new(),
+            kept,
+        }
+    }
+
+    pub(crate) fn get(&self, table: u64, text: &str) -> Option<V> {
+        let (_, texts) = self.tables.iter().find(|(id, _)| *id == table)?;
+        texts.get(text).cloned()
+    }
+
+    pub(crate) fn put(&mut self, table: u64, text: &str, value: V) {
+        if self.tables.iter().map(|(_, t)| t.len()).sum::<usize>() >= self.kept {
+            self.tables.clear();
+        }
+        if !self.tables.iter().any(|(id, _)| *id == table) {
+            self.tables.push((table, HashMap::new()));
+        }
+        if let Some((_, texts)) = self.tables.iter_mut().find(|(id, _)| *id == table) {
+            texts.insert(text.into(), value);
+        }
+    }
+}
 
 /// A German hyphen ellipsis: modifiers that share the head of the word after them
 /// (`projekt- und programmmanagement`, `risiko-, issue- und eskalationsmanagement`,
@@ -579,14 +606,13 @@ static ALL_PACKS: LazyLock<Vocab> = LazyLock::new(Vocab::all);
 
 /// Is a term too broad to be searched for on its own (`Projektmanagement`,
 /// `Personalführung`, `Generative KI`, `SAP`)? It is when every atom of it is a word the
-/// engine finds generic, a concept of general business work (`lex::CORE_CONCEPTS`),
+/// engine finds generic, general business work (`lex::METHODS`),
 /// leadership, a soft skill or a word too broad for a search (`lex::SEARCH_BROAD_ATOMS`); a
 /// term without an atom is too.
 pub(crate) fn broad_search_term(term: &str) -> bool {
-    let general: Vec<&str> = lex::CORE_CONCEPTS.iter().map(|&(_, to)| to).collect();
     atoms(term, &ALL_PACKS).iter().all(|atom| {
         is_generic(atom)
-            || general.contains(&atom.as_str())
+            || lex::METHODS.contains(&atom.as_str())
             || lex::LEADERSHIP_ATOMS.contains(&atom.as_str())
             || lex::SOFT_SKILLS.iter().any(|soft| atom.starts_with(soft))
             || lex::SEARCH_BROAD_ATOMS
@@ -597,14 +623,13 @@ pub(crate) fn broad_search_term(term: &str) -> bool {
 
 /// Is a text general business work any field does (`Projektmanagement`, `Stakeholder
 /// Management`, leadership)? Every atom of it is generic, a concept of general business work
-/// (`lex::CORE_CONCEPTS`) or leadership: it meets requirements, but shows no field.
+/// (`lex::METHODS`) or leadership: it meets requirements, but shows no field.
 pub(crate) fn general_work(text: &str) -> bool {
-    let general: Vec<&str> = lex::CORE_CONCEPTS.iter().map(|&(_, to)| to).collect();
     let atoms = atoms(text, &ALL_PACKS);
     !atoms.is_empty()
         && atoms.iter().all(|atom| {
             is_generic(atom)
-                || general.contains(&atom.as_str())
+                || lex::METHODS.contains(&atom.as_str())
                 || lex::LEADERSHIP_ATOMS.contains(&atom.as_str())
         })
 }
@@ -617,7 +642,7 @@ static PACK_NAMES: LazyLock<Vec<Vec<String>>> = LazyLock::new(|| {
             let mut names: Vec<String> = d
                 .search
                 .iter()
-                .flat_map(|term| atoms(term, &ALL_PACKS))
+                .flat_map(|term| atoms(term, &ALL_PACKS).to_vec())
                 .filter(|a| !is_generic(a))
                 .collect();
             names.sort();
@@ -669,7 +694,7 @@ fn field_shares<'a>(texts: impl IntoIterator<Item = &'a str>) -> Vec<usize> {
             for ((share, names), concept) in shares.iter_mut().zip(PACK_NAMES.iter()).zip(concept) {
                 if names
                     .iter()
-                    .any(|n| fit(atom, n) != Fit::None || fit(n, atom) != Fit::None)
+                    .any(|n| graph::fit(atom, n) != Fit::None || graph::fit(n, atom) != Fit::None)
                 {
                     *share += SHARE;
                 }
@@ -715,6 +740,9 @@ pub(crate) enum Fit {
     None,
     /// The job atom narrows the profile atom (`Finanzcontrolling` vs `Controlling`).
     General,
+    /// The profile atom is narrower work the job atom covers (`Jahresabschluss` for
+    /// `Rechnungswesen`, `graph`): it meets a requirement, but the ad does not name it.
+    Covered,
     /// The profile atom narrows the job atom (`SAP-Projektleitung` vs `Projektleitung`).
     Specific,
     /// Same skill, also through a light compound part (`Konzernkonsolidierung`).
@@ -734,51 +762,6 @@ fn light(part: &str, table: &[&str]) -> bool {
             .iter()
             .any(|p| lexicon::contains(table, p) || lexicon::contains(table, &stem(p)))
 }
-
-/// How a job atom relates to a profile atom (V2 compounds, V4 specific/general). A head
-/// the lexicon treats as a near equivalent (`Projektleitung` for `Projektmanagement`, also
-/// in `Projektleitungserfahrung`) meets it in half: close, but leading a project and
-/// managing projects are not always the same skill.
-pub(crate) fn fit(job: &str, profile: &str) -> Fit {
-    let direct = fit_direct(job, profile);
-    if direct != Fit::None {
-        return direct;
-    }
-    for &(a, b) in lex::EQUIVALENT_HEADS {
-        for (from, to) in [(a, b), (b, a)] {
-            if let Some(rest) = job.strip_prefix(from)
-                && fit_direct(&format!("{to}{rest}"), profile) != Fit::None
-            {
-                return Fit::General;
-            }
-        }
-    }
-    // The narrower work of a broader field the profile names (`Beschwerdemanagement` for
-    // `Customer Service Management`), an AI tool for AI: half.
-    if HALF.get(job).is_some_and(|broader| {
-        broader
-            .iter()
-            .any(|b| matches!(fit_direct(b, profile), Fit::Equal | Fit::Specific))
-    }) {
-        return Fit::General;
-    }
-    Fit::None
-}
-
-/// The concepts of an ad and the profile concepts that meet them in half
-/// (`lexicon::engine::CORE_HALF`, `Domain::half`), stemmed.
-static HALF: LazyLock<HashMap<String, Vec<String>>> = LazyLock::new(|| {
-    let mut half: HashMap<String, Vec<String>> = HashMap::new();
-    for (profile, jobs) in lex::CORE_HALF
-        .iter()
-        .chain(DOMAINS.iter().flat_map(|d| d.half.iter()))
-    {
-        for job in *jobs {
-            half.entry(stem(job)).or_default().push(stem(profile));
-        }
-    }
-    half
-});
 
 /// The same compound with and without the linking `s` (`Werksleiter`, `Werkleiter`): one
 /// atom is the other with an `s` after a modifier of four letters or more and before a head
@@ -800,7 +783,10 @@ fn linking_s(a: &str, b: &str) -> bool {
         && long.get(at + 1..) == short.get(at..)
 }
 
-fn fit_direct(job: &str, profile: &str) -> Fit {
+/// How a job atom relates to a profile atom by their words (V2 compounds, V4
+/// specific/general): equal, one a compound of the other, a linking `s`. The knowledge graph
+/// adds what the words do not say (`graph::fit`).
+pub(crate) fn fit_direct(job: &str, profile: &str) -> Fit {
     if job == profile {
         return Fit::Equal;
     }
