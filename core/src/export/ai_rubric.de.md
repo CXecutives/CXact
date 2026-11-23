@@ -84,7 +84,7 @@ Ab {HIGH_FROM} Punkten ist die Übereinstimmung hoch, ab {MID_FROM} mittel, daru
   Vertragsform, keine Ebene. Disziplinarische Führung in der Anzeige macht eine Rolle zur
   Führungsrolle, ohne Personalverantwortung ist sie keine.
 - Nennt eine Wunschrolle die Ebene der Anzeige, passt die Ebene voll.
-- Eine Ebene über oder unter dem Profil kostet wenig (Rolle und Fach zählen zu {LEVEL_ONE}).
+- Eine Ebene über oder unter dem Profil kostet kaum etwas (Rolle und Fach zählen zu {LEVEL_ONE}).
 - Zwei Ebenen über dem Profil halbieren Rolle und Fach.
 - Zwei oder mehr Ebenen unter dem Profil heißen höchstens {LEVEL_CAP}, außer eine Wunschrolle nennt diese
   Ebene. Das ist nie ein Ausschluss.
