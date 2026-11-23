@@ -118,7 +118,7 @@ reads the alert mails (IMAP)
 is the pure integer engine
 - ad_facts.rs 614 · The key facts of an ad, each with the passage that states… · Stated, Duration, AdFacts, read +4
 - application.rs 456 · How to apply to an ad: the application deadline it names… · Contact, deadline, contact
-- atoms.rs 867 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +11
+- atoms.rs 877 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +11
 - contract.rs 399 · Contract type of an ad: interim, permanent, temporary… · ContractKind, Contract, student_role, infer
 - engine.rs 744 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
 - exclusion.rs 648 · Exclusion words of the profile: a word excludes the ad… · check
@@ -126,7 +126,7 @@ is the pure integer engine
 - facts.rs 1139 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +19
 - fit.rs 957 · The profile the engine matches against, and the match… · Entry, Broad, Skills, degree_fields_in +8
 - gaps.rs 192 · The gap finder's view of a job: the words of its… · Gap, JobGaps, vocabulary_gaps
-- graph.rs 346 · The engine's knowledge graph: how the atoms of an ad… · fit, packs, other_field, tool_kinds +3
+- graph.rs 382 · The engine's knowledge graph: how the atoms of an ad… · fit, packs, other_field, tool_kinds +3
 - layout.rs 104 · The layout of an ad's text for the reader: the lines that… · TextLayout, text_layout
 - limits.rs 548 · The limits of an engagement the profile sets, checked and… · Workload, read, workload, workload_fits +4
 - mod.rs 462 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +21
@@ -150,7 +150,7 @@ is the pure integer engine
 - wishes.rs 713 · Wishes of the profile: day rate, work mode and regions. · RemoteWish, Wishes, State, WishResult +3
 
 ### core/src/matching/atoms
-- tests.rs 362 · (no header)
+- tests.rs 385 · (no header)
 
 ### core/src/matching/engine
 - tests.rs 165 · (no header)
@@ -165,7 +165,7 @@ is the pure integer engine
 - tests.rs 549 · (no header)
 
 ### core/src/matching/fit
-- tests.rs 327 · (no header)
+- tests.rs 329 · (no header)
 
 ### core/src/matching/job
 - classify.rs 265 · The kind of every item: skill, language, degree, soft,… · known_skill, language_of, frame_word, names_degree
@@ -206,12 +206,12 @@ is the pure integer engine
 
 ### core/src/matching/lexicon/engine
 - classes.rs 576 · Word classes: languages, soft skills, frames, degrees,… · LANGUAGES, LANGUAGE_NAMES, LEVEL_WORDS, SOFT_SKILLS +24
-- concepts.rs 544 · Concepts, atoms, title heads and field relations. · GENERIC_ATOMS, FIELD_ATOMS, LIGHT_MODIFIERS, ELLIPSIS_HEADS +21
+- concepts.rs 545 · Concepts, atoms, title heads and field relations. · GENERIC_ATOMS, FIELD_ATOMS, LIGHT_MODIFIERS, ELLIPSIS_HEADS +21
 - contact.rs 85 · Contact person, name and phone words. · CONTACT_PERSON_WORDS, CONTACT_LABELS, CONTACT_FILLERS, HONORIFICS +4
 - contract.rs 356 · Contract kinds: agency work (ANUE), interim and permanent. · CONTRACT_DENIED, ANUE_WORDS, ANUE_PARTS, ANUE_HIDDEN +20
 - cues.rs 305 · Nice and must cues, separators, examples, lead verbs and… · CueScope, SOFT_ALONE, PRONOUN_STARTS, DESCRIPTION_STARTS +20
 - exclusion.rs 259 · Exclusion roles, mentions and denials. · EXCLUSION_WORD_FAMILIES, EXCLUSION_ROLE_WORDS, EXCLUSION_ROLE_ENDINGS, EXCLUSION_ROLE_HEADS +14
-- graph.rs 277 · Relations of the knowledge graph for every profile:… · CORE_COVERS, CORE_NEAR, PARTS, METHODS +1
+- graph.rs 283 · Relations of the knowledge graph for every profile:… · CORE_COVERS, CORE_NEAR, PARTS, PROJECT_HEADS +2
 - level.rs 93 · Seniority and role levels. · ENTRY_LEVEL_VALUES, LOW_LEVEL_VALUES, ENTRY_LEVEL_MUSTS, LEVEL_CODES +1
 - mod.rs 34 · Word lists of the engine, split by topic.
 - morphology.rs 65 · Word endings, linkers, adjective stems and particles. · WORD_ENDINGS, LINKERS, DECLENSION_ENDINGS, ADJECTIVE_STEMS +6

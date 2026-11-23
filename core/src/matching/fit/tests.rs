@@ -268,6 +268,7 @@ fn a_programme_manager_meets_the_parts_and_comparable_methods() {
     let skills = Skills::new(&core_texts(&data), &data);
     let value = |text: &str| skill_fit_in(&skills, text, true).value;
     for met in [
+        "Erfahrung in internationalen Großprogrammen",
         "Sehr gute Kenntnisse in Programmplanung",
         "Ressourcenmanagement",
         "Abhängigkeitsmanagement",
@@ -281,6 +282,7 @@ fn a_programme_manager_meets_the_parts_and_comparable_methods() {
     );
     for open in [
         "Risikomanagement",
+        "Erfahrung mit Bonusprogrammen",
         "Erfahrung mit SAP Ariba oder vergleichbaren Tools",
         "Produktionsplanung",
     ] {

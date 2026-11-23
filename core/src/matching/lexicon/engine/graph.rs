@@ -48,6 +48,12 @@ pub(crate) const PARTS: &[(&str, &[&str])] = &[
     ),
 ];
 
+/// Heads of a compound that names an undertaking (stems): the compound
+/// (`Transformationsvorhaben`) is near project management, the work that runs it. `Projekt`
+/// is none of them: `IT-Projekte` near project management lifts the project jobs of other
+/// fields (measured on the 154 graded jobs and the held-out sets).
+pub(crate) const PROJECT_HEADS: &[&str] = &["vorhab"];
+
 /// AI tools a profile names.
 const AI_TOOLS: &[&str] = &["chatgpt", "claude", "copilot"];
 

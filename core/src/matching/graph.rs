@@ -48,22 +48,31 @@ fn fit_with(job: &str, edges: &[&(String, Fit)], profile: &str) -> Fit {
         .unwrap_or(Fit::None)
 }
 
-/// The edges of an ad atom: those of the node it is, and the half ones of every node of ten
+/// The edges of an ad atom: those of the node it is, the half ones of every node of ten
 /// letters or more it starts with (`Projektleitungskompetenz` is near `Projektmanagement`;
-/// `Projektmanagement-Methoden` ask no programme the umbrella covers).
+/// `Projektmanagement-Methoden` ask no programme the umbrella covers), and for a compound
+/// that names an undertaking (`lex::PROJECT_HEADS`) the half one to project management.
 fn edges(job: &str) -> Vec<&'static (String, Fit)> {
     let starts = (COMPOUND_NODE..job.len()).filter(|&at| job.is_char_boundary(at));
     let compounds = starts
         .filter_map(|at| EDGES.get(&job[..at]))
         .flatten()
         .filter(|(_, edge)| *edge == Fit::General);
+    let project = lex::PROJECT_HEADS
+        .iter()
+        .any(|head| job.len() > head.len() && job.ends_with(head));
     EDGES
         .get(job)
         .into_iter()
         .flatten()
         .chain(compounds)
+        .chain(project.then_some(&*PROJECT))
         .collect()
 }
+
+/// The edge of a compound that names an undertaking: near project management.
+static PROJECT: LazyLock<(String, Fit)> =
+    LazyLock::new(|| (stem("projektmanagement"), Fit::General));
 
 /// A node relates its compounds when it has this many letters or more.
 const COMPOUND_NODE: usize = 10;
@@ -342,5 +351,32 @@ mod tests {
         assert_eq!(fits("rechnungswesen", "hauptbuchhaltung"), Fit::None);
         assert_eq!(fits("programmplanung", "projektmanagement"), Fit::None);
         assert_eq!(fits("risikomanagement", "programmmanagement"), Fit::None);
+    }
+
+    /// An undertaking of something is near project management (the wording of real ads), no
+    /// proof of it; the word alone and the projects of a field are not (measured: `IT-Projekte`
+    /// near project management lifts project jobs of other fields).
+    #[test]
+    fn an_undertaking_is_near_project_management() {
+        let vocab = Vocab::core();
+        let near = |job: &str| {
+            let job = atoms(job, &vocab);
+            job.iter().map(|j| fit(j, "projektmanagement")).max()
+        };
+        for job in [
+            "Fundierte Erfahrung in SAP-Transformationsvorhaben",
+            "Fundierte Kenntnisse von SAP S/4HANA Transformationsvorhaben",
+            "komplexer Systemintegrationsvorhaben",
+        ] {
+            assert_eq!(near(job), Some(Fit::General), "{job}");
+        }
+        for job in [
+            "Vorhaben",
+            "Realisierung von IT-Projekten",
+            "Abwicklung von Bauprojekten",
+        ] {
+            assert_eq!(near(job), Some(Fit::None), "{job}");
+        }
+        assert_eq!(fit("it-projekt", "qualitatsmanagement"), Fit::None);
     }
 }
