@@ -294,24 +294,22 @@ pub(crate) fn sentences(line: &str) -> Vec<&str> {
 
 /// Whole-word (or whole-phrase) containment in a folded text.
 pub(crate) fn contains_word(folded: &str, word: &str) -> bool {
-    let mut from = 0;
-    while let Some(at) = folded[from..].find(word) {
-        let start = from + at;
-        let end = start + word.len();
-        let before = folded[..start]
-            .chars()
-            .next_back()
-            .is_none_or(|c| !c.is_alphanumeric());
-        let after = folded[end..]
-            .chars()
-            .next()
-            .is_none_or(|c| !c.is_alphanumeric());
-        if before && after {
-            return true;
-        }
-        from = end;
-    }
-    false
+    find_word(folded, word).is_some()
+}
+
+/// The first whole-word (or whole-phrase) occurrence of `word` in a text: no letter or digit
+/// right before or after it.
+pub(crate) fn find_word(text: &str, word: &str) -> Option<usize> {
+    text.match_indices(word)
+        .map(|(at, _)| at)
+        .find(|&at| word_bounded(text, at, at + word.len()))
+}
+
+/// Is `text[start..end]` bounded as a word (no letter or digit right before or after it)?
+pub(crate) fn word_bounded(text: &str, start: usize, end: usize) -> bool {
+    let before = text[..start].chars().next_back();
+    let after = text[end..].chars().next();
+    before.is_none_or(|c| !c.is_alphanumeric()) && after.is_none_or(|c| !c.is_alphanumeric())
 }
 
 /// The words of a text with their byte offsets: runs of letters and digits, with `inner` signs

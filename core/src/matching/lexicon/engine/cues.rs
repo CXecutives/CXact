@@ -159,6 +159,7 @@ pub(crate) const EXAMPLES: &[&str] = &[
     "such as",
     "etwa",
     "beispielsweise",
+    "bspw.",
 ];
 
 /// Separators inside an example list.
@@ -212,6 +213,24 @@ pub(crate) const AND_WORDS: &[&str] = &[" und ", " sowie ", " and ", " & "];
 
 /// OR separators: alternatives inside an item.
 pub(crate) const OR: &[&str] = &[" oder ", " bzw. ", " beziehungsweise ", " or ", " / "];
+
+/// OR separators between two neighbours only (`Excel und/oder Power BI`): they make no phrase
+/// a list of alternatives.
+pub(crate) const AND_OR: &[&str] = &[" und/oder ", " and/or "];
+
+/// Words that open a relative clause after a comma (`, welche ...`, `, in denen ...`, `, which
+/// ...`): the clause belongs to what stands before it, no requirement of its own. An article
+/// opens one before a word in lower case (`, die die Zusammenarbeit fördern`).
+pub(crate) const RELATIVE_WORDS: &[&str] = &[
+    "denen", "deren", "dessen", "welche", "welchem", "welchen", "welcher", "welches", "where",
+    "which", "who", "whom", "whose", "wo", "wobei", "wodurch", "womit",
+];
+
+/// Prepositions before a relative word (`, in denen`, `, mit der Sie`, `, in which`).
+pub(crate) const CLAUSE_PREPOSITIONS: &[&str] = &[
+    "an", "auf", "aus", "bei", "by", "durch", "for", "from", "fur", "in", "mit", "nach", "of",
+    "on", "uber", "unter", "von", "with", "zu",
+];
 
 /// Phrases that make an item soft (`Freude an Zahlen`, `Leadership style`, `build teams`).
 pub(crate) const SOFT_PHRASES: &[&str] = &[

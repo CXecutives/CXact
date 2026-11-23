@@ -171,7 +171,7 @@ static SKILL_TERMS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
 
 /// Is a heading one skill term of several words, as written or without its fillers (concept
 /// keys have none)?
-fn skill_term(norm: &str) -> bool {
+pub(crate) fn skill_term(norm: &str) -> bool {
     let words: Vec<&str> = atoms::raw_tokens(norm).collect();
     let content: Vec<&str> = words
         .iter()

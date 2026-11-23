@@ -90,14 +90,14 @@ pub(super) fn nice_parts(phrase: &str, parts: &[(Range<usize>, Vec<Range<usize>>
 }
 
 /// Open brackets in a text.
-fn depth(text: &str) -> usize {
+pub(super) fn depth(text: &str) -> usize {
     text.matches('(')
         .count()
         .saturating_sub(text.matches(')').count())
 }
 
 /// A text without the signs and joining words at its ends (`SAP FI (`, `und Excel`).
-fn trim_joints(text: &str) -> &str {
+pub(super) fn trim_joints(text: &str) -> &str {
     let mut text = text.trim_matches(|c: char| {
         c.is_whitespace() || matches!(c, ',' | ';' | ':' | '(' | ')' | '-' | '–')
     });

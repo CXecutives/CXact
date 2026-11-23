@@ -500,40 +500,26 @@ fn and_or_and_examples() {
     assert!(got[0].1.contains(&"Power BI".to_owned()), "{got:?}");
 }
 
-/// A lone adjective shares the next part's noun and is no item of its own.
+/// An adjective that ends a part shares the noun of the next one: one requirement (as in
+/// `Classic and agile project management` or `klassischen und agilen Methoden`).
 #[test]
-fn lone_adjectives_are_no_items() {
+fn adjectives_share_the_next_noun() {
     let texts =
         |phrase: &str| -> Vec<String> { items(phrase).into_iter().map(|(t, _)| t).collect() };
-    assert_eq!(
-        texts("Classic and agile project management"),
-        ["agile project management"]
-    );
-    assert_eq!(texts("Klassische und agile Methoden"), ["agile Methoden"]);
+    for one in [
+        "Classic and agile project management",
+        "Klassische und agile Methoden",
+        "Kenntnisse in klassischen und agilen Projektmanagement-Methoden",
+        "Sehr gute organisatorische und kommunikative Fähigkeiten",
+        "Durchführung qualitativer und quantitativer Nutzerforschung",
+    ] {
+        assert_eq!(texts(one), [one], "{one}");
+    }
     assert_eq!(
         texts("Controlling und Reporting"),
         ["Controlling", "Reporting"]
     );
     assert_eq!(texts("Excel und Power BI"), ["Excel", "Power BI"]);
-}
-
-/// A declined adjective that ends a part shares the noun of the next one, a head after
-/// `und -` the word before it, two activities the object of the second: one requirement
-/// each.
-#[test]
-fn shared_nouns_and_heads_keep_one_item() {
-    let texts =
-        |phrase: &str| -> Vec<String> { items(phrase).into_iter().map(|(t, _)| t).collect() };
-    for one in [
-        "Kenntnisse in klassischen und agilen Projektmanagement-Methoden",
-        "Sehr gute organisatorische und kommunikative Fähigkeiten",
-        "Durchführung qualitativer und quantitativer Nutzerforschung",
-        "Methodenkompetenz in Projektplanung und -controlling",
-        "Kenntnisse in der Erstellung und Anwendung von Personas",
-        "Sicherer Umgang mit der Analyse und Interpretation von Kundendaten",
-    ] {
-        assert_eq!(texts(one), [one], "{one}");
-    }
     assert_eq!(
         texts("Erfahrung im Controlling und Reporting"),
         ["Erfahrung im Controlling", "Reporting"]
@@ -544,6 +530,80 @@ fn shared_nouns_and_heads_keep_one_item() {
             "Erfahrung im Controlling",
             "Konzernrechnungslegung nach IFRS"
         ]
+    );
+}
+
+/// Every conjunct written out in full: a trailing ellipsis takes the modifier of the word
+/// before it, a bare activity the object of the next one; a skill term, a relative clause and
+/// the parts of `und/oder` or of a slash between words stay one requirement.
+#[test]
+fn conjuncts_are_written_out_in_full() {
+    let texts = |section: &str| -> Vec<String> {
+        read(
+            &format!(
+                "Ihr Profil
+- {section}
+"
+            ),
+            &Vocab::all(),
+        )
+        .items
+        .into_iter()
+        .map(|i| i.text)
+        .collect()
+    };
+    assert_eq!(
+        texts("Methodenkompetenz in Projektplanung und -controlling"),
+        ["Methodenkompetenz in Projektplanung", "Projektcontrolling"]
+    );
+    for one in [
+        "Kenntnisse in der Erstellung und Anwendung von Personas",
+        "Sicherer Umgang mit der Analyse und Interpretation von Kundendaten",
+    ] {
+        assert_eq!(texts(one), [one], "{one}");
+    }
+    // A part that ends in no activity shares no object.
+    assert_eq!(
+        texts("Erfahrung im Vertrieb und in der Führung von Teams"),
+        ["Erfahrung im Vertrieb", "in der Führung von Teams"]
+    );
+    assert_eq!(
+        texts("Erfahrung in Compensation & Benefits"),
+        ["Erfahrung in Compensation & Benefits"]
+    );
+    assert_eq!(
+        texts("Erfahrung mit Tools, die die Zusammenarbeit im Team fördern"),
+        ["Erfahrung mit Tools, die die Zusammenarbeit im Team fördern"]
+    );
+    assert_eq!(
+        texts("Erfahrung im Controlling, die Fähigkeit zur Analyse"),
+        ["Erfahrung im Controlling", "die Fähigkeit zur Analyse"]
+    );
+    let alternatives =
+        |phrase: &str| -> Vec<Vec<String>> { items(phrase).into_iter().map(|(_, a)| a).collect() };
+    assert_eq!(
+        alternatives("Excel und/oder Power BI"),
+        [["Excel", "Power BI"]]
+    );
+    assert_eq!(
+        alternatives("Sicherer Umgang mit Power BI/Tableau"),
+        [["Sicherer Umgang mit Power BI", "Tableau"]]
+    );
+    for one in [
+        "SAP S/4HANA",
+        "SAP FI/CO",
+        "Leiter/in Controlling",
+        "HGB/IFRS",
+    ] {
+        assert_eq!(alternatives(one), [[one]], "{one}");
+    }
+    assert_eq!(
+        alternatives("Erfahrung mit ERP-Systemen, bspw. SAP oder Oracle"),
+        [["Erfahrung mit ERP-Systemen", "SAP", "Oracle"]]
+    );
+    assert_eq!(
+        alternatives("Etwas Erfahrung mit SAP"),
+        [["Etwas Erfahrung mit SAP"]]
     );
 }
 
@@ -842,4 +902,23 @@ fn nice_cues_mark_their_scope() {
     let picked =
         musts("- Experience in one or more of the following areas:\n- SAP S/4HANA\n- Salesforce");
     assert!(picked.iter().all(|(_, must)| !must), "{picked:?}");
+}
+
+/// The modifier of a hyphen ellipsis takes the head of the word it shares.
+#[test]
+fn ellipsis_modifiers_complete() {
+    assert_eq!(
+        leading_ellipsis("Erfahrung im Risiko-", " und Qualitätsmanagement").as_deref(),
+        Some("Erfahrung im Risikomanagement")
+    );
+    assert_eq!(
+        leading_ellipsis("Risiko-", ", Qualitäts- und Abhängigkeitsmanagement").as_deref(),
+        Some("Risikomanagement")
+    );
+    assert_eq!(
+        leading_ellipsis("HW-", " und SW-Entwicklung").as_deref(),
+        Some("HW-Entwicklung")
+    );
+    assert_eq!(leading_ellipsis("Risiko", " und Qualität"), None);
+    assert_eq!(leading_ellipsis("Ein-", " und Verkauf"), None);
 }

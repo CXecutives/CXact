@@ -94,25 +94,6 @@ fn leads_ask_for_nothing() {
     assert_eq!(all("Spent fuel handling"), all("spent fuel handling"));
 }
 
-/// The modifier of a hyphen ellipsis takes the head of the word it shares.
-#[test]
-fn ellipsis_modifiers_complete() {
-    assert_eq!(
-        complete_ellipsis("Erfahrung im Risiko-", " und Qualitätsmanagement").as_deref(),
-        Some("Erfahrung im Risikomanagement")
-    );
-    assert_eq!(
-        complete_ellipsis("Risiko-", ", Qualitäts- und Abhängigkeitsmanagement").as_deref(),
-        Some("Risikomanagement")
-    );
-    assert_eq!(
-        complete_ellipsis("HW-", " und SW-Entwicklung").as_deref(),
-        Some("HW-Entwicklung")
-    );
-    assert_eq!(complete_ellipsis("Risiko", " und Qualität"), None);
-    assert_eq!(complete_ellipsis("Ein-", " und Verkauf"), None);
-}
-
 #[test]
 fn stemming_and_concepts() {
     assert_eq!(all("Mehrjährige Erfahrung im Controlling"), ["controll"]);

@@ -60,15 +60,6 @@ pub(super) fn soft_sentence(phrase: &str) -> bool {
     lex::PRONOUN_STARTS.contains(&first) && !known_skill(phrase)
 }
 
-/// A part that is one adjective (`Classic`, `klassische`, `strategic`).
-pub(super) fn lone_adjective(text: &str) -> bool {
-    let word = fold(text.trim());
-    !word.is_empty()
-        && !word.contains(char::is_whitespace)
-        && word.chars().all(char::is_alphabetic)
-        && lex::ADJECTIVE_ENDINGS.iter().any(|e| word.ends_with(e))
-}
-
 pub(super) fn starts_with_any(atom: &str, stems: &[&str]) -> bool {
     stems.iter().any(|s| atom.starts_with(s))
 }

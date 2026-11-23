@@ -303,7 +303,8 @@ pub(crate) const QUERY_NOISE: &[&str] = &["davon", "elf", "interimmanagement", "
 
 /// Abbreviations that end with a dot but not a sentence.
 pub(crate) const ABBREVIATIONS: &[&str] = &[
-    "approx", "bzw", "ca", "dr", "evtl", "ggf", "inkl", "max", "min", "mind", "nr", "vgl", "zzgl",
+    "approx", "bspw", "bzw", "ca", "dr", "evtl", "ggf", "inkl", "max", "min", "mind", "nr", "vgl",
+    "zzgl",
 ];
 
 /// What a page shows in place of a hidden address (Cloudflare's email protection, as the
