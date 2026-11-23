@@ -345,8 +345,11 @@ and profiles: an external contract, never translated):
   (`cues.rs`: `NICE_CUES`). Sorted tables stay sorted (`binary_search`).
 - `domains/<field>.rs`: a domain pack. `triggers` switch it on from the profile's
   competences, `concepts` map a phrase to a concept, `generic` holds words too broad to meet
-  a requirement alone. The head of `domains/mod.rs` says how a key is written (folded words,
-  single spaces).
+  a requirement alone, `covers` and `near` are the pack's edges of the knowledge graph. The
+  head of `domains/mod.rs` says how a key is written (folded words, single spaces).
+- `engine/graph.rs`: the core's edges for every profile (`CORE_COVERS`, `CORE_NEAR`, `PARTS`),
+  the kinds of tools (`TOOL_KINDS`), the methods and the heads that read as a project. The
+  graph itself is `core/src/matching/graph.rs`.
 - `wishes.rs`: the wishes and industries.
 - `tables.rs`: stopwords, word synonyms, the job vocabulary and the profile keys of the
   competence walk.
@@ -363,6 +366,12 @@ a word that occurs nowhere stays out.
 1. **A term or synonym**: one `(phrase, concept)` pair in the pack of its field, or in
    `CORE_CONCEPTS` when every field uses it. A false friend gets a concept of its own. The
    pack's unit tests get a paraphrase that meets it and a false friend that does not.
+   **A relation between two concepts** is one edge, never a rule in code: an umbrella and the
+   narrower work it covers (`covers`: the umbrella asked is met in full by the narrower work
+   the profile names, the narrower asked is met in half by the umbrella), two concepts close
+   to each other (`near`: half both ways), a whole and its parts (`PARTS`: who does the whole
+   meets its parts in full), a kind of tool and its tools (`TOOL_KINDS`). Add an edge only for
+   wording a real ad uses, with a test that shows it and a false friend that stays apart.
 2. **A pack**: a file in `domains/` and one line in `DOMAINS`. Its keys become suggestions
    of the Profil (`matching/vocabulary.rs`); read them in `vocabulary_report` and hide or
    spell there what a person would not write so.

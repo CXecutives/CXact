@@ -71,6 +71,7 @@ A decision is written once; everything else reads it or is generated from it.
 | Defaults of the settings (the portal switches) | `Settings::default()` in `core/src/settings.rs` | Einstellungen, the stub |
 | Error codes | `ErrorKind` in `core/src/error.rs` | `ErrorKind.ts`, `t.error` |
 | Engine words | `core/src/matching/lexicon/` | the engine |
+| How two concepts relate (umbrella, near, part of a whole, kind of tool) | the edges in `core/src/matching/lexicon/engine/graph.rs` and each pack's `covers` and `near` | `core/src/matching/graph.rs` (the one place that relates an ad's word to a profile's) |
 
 ## Data flow
 

@@ -83,6 +83,21 @@ fn the_cap_holds_the_score_and_the_rank_keeps_the_points() {
     assert_eq!(final_score(&percent, cap, true), (0, 0, None));
 }
 
+/// A short ad's open term that is too broad to ask for anything costs nothing: `Transformation`
+/// is broad (`atoms::broad_search_term`) though no generic atom, so the check reads the broad
+/// words, not only the generic ones.
+#[test]
+fn a_broad_word_is_more_than_a_generic_one() {
+    let vocab = crate::matching::atoms::Vocab::all();
+    assert!(atoms::broad_search_term("Transformation"));
+    assert!(
+        !atoms::atoms("Transformation", &vocab)
+            .iter()
+            .all(|a| atoms::is_generic(a))
+    );
+    assert!(!atoms::broad_search_term("Konzernrechnungslegung"));
+}
+
 /// Calibration on the owner's scale: a strong fit (role and field met, the core met, most musts
 /// met, the frame fits) scores at least `STRONG_FROM`, an ad of another field with no must met
 /// stays under the cap of a foreign field, a partial fit lands between.

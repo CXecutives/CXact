@@ -454,7 +454,7 @@ fn scored(profile: &EngineProfile, items: Vec<Item>, title: &str, far: bool) -> 
             // counts, open it is unclear and never costs.
             let broad_open = item.stage == Stage::Vocabulary && fit.value == E_NONE && {
                 let found = atoms::atoms(&item.text, &profile.skills.vocab);
-                !found.is_empty() && found.iter().all(|a| atoms::is_generic(a))
+                !found.is_empty() && atoms::broad_search_term(&item.text)
             };
             Scored {
                 weight: if unjudged || hygiene || broad_open {
