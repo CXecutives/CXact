@@ -82,7 +82,7 @@ writes the AI prompts, the generated colours of the window…
 
 ### core/src/export/ai_prompt
 - de.rs 902 · The German prompts: external contract - do not translate.
-- rubric.rs 181 · The numbers of the rubric: the text names each one only as…
+- rubric.rs 185 · The numbers of the rubric: the text names each one only as…
 - tests.rs 1364 · Tests of the AI prompts: every section of the prompt, the…
 
 ### core/src/fetch
@@ -117,17 +117,17 @@ is the pure integer engine
 - application.rs 498 · How to apply to an ad: the application deadline it names… · Contact, deadline, contact
 - atoms.rs 932 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +10
 - contract.rs 399 · Contract type of an ad: interim, permanent, temporary… · ContractKind, Contract, student_role, infer
-- engine.rs 752 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
+- engine.rs 768 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
 - exclusion.rs 614 · Exclusion words of the profile: a word excludes the ad… · check
-- explain.rs 713 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
+- explain.rs 684 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
 - facts.rs 1274 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +20
 - fit.rs 931 · The profile the engine matches against, and the match… · Entry, Broad, forget, Skills +11
 - gaps.rs 193 · The gap finder's view of a job: the words of its… · Gap, JobGaps, vocabulary_gaps
 - layout.rs 116 · The layout of an ad's text for the reader: the lines that… · TextLayout, text_layout
 - limits.rs 573 · The limits of an engagement the profile sets, checked and… · Workload, read, workload, workload_fits +4
-- mod.rs 468 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +21
+- mod.rs 459 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +21
 - normalize.rs 370 · Text primitives with Python semantics: case folding,… · is_space, is_word, decimal, digit_class_body +10
-- params.rs 142 · Frozen parameters of the engine. · E_FULL, E_HALF, E_NONE, W_MUST +57
+- params.rs 146 · Frozen parameters of the engine. · E_FULL, E_HALF, E_NONE, W_MUST +58
 - permanent.rs 496 · The rule for permanent roles: the minimum annual salary. · Salary, with_bonus, parse_salary, salary +3
 - profile.rs 54 · The profile entries the engine matches against, with their… · CoreText, core_texts
 - pyre.rs 109 · Python `re` semantics on top of the `regex` crate. · compile, view, original_range
@@ -135,27 +135,27 @@ is the pure integer engine
 - requirements.rs 52 · Vocabulary terms of a job text, independent of the profile. · extract_job_skills
 - roles.rs 442 · Target roles: job titles the consultant wants. · Role, read, RoleFit, title_core +2
 - score.rs 27 · Integer rounding of the scores. · div_round_half_even
-- scorer.rs 605 · The Passungsgrad: `score = content x frame factor`, then… · FieldClass, class, ScoreParams, Percent +4
+- scorer.rs 636 · The Passungsgrad: `score = content x frame factor`, then… · FieldClass, class, ScoreParams, Percent +4
 - sections.rs 223 · Lines, headings and requirement cues of a job text. · ReqKind, is_bullet, norm_heading, section_kind +4
 - seniority.rs 246 · The level of an ad against the profile's own years of… · experience_years, junior_title, entry_level_must, page_junior_level +1
-- signals.rs 666 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +14
+- signals.rs 560 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +16
 - terms.rs 726 · The term of a requirement and the profile field it belongs… · is_term, TermField, CoreTerm, term_key +3
 - title.rs 443 · The frame of a job title: the title without its noise, the… · clean, level_of, engagement, ad_level +5
 - types.rs 459 · Input and output types of the matching engine. · KeyFacts, TextKind, JobInput, Verdict +25
 - vocabulary.rs 576 · The engine's words as a person writes them: the… · Vocabulary, vocabulary
-- wishes.rs 643 · Wishes of the profile: day rate, work mode and regions. · RemoteWish, Wishes, State, WishResult +3
+- wishes.rs 644 · Wishes of the profile: day rate, work mode and regions. · RemoteWish, Wishes, State, WishResult +3
 
 ### core/src/matching/atoms
 - tests.rs 380 · (no header)
 
 ### core/src/matching/engine
-- tests.rs 90 · (no header)
+- tests.rs 165 · (no header)
 
 ### core/src/matching/exclusion
 - tests.rs 244 · (no header)
 
 ### core/src/matching/explain
-- tests.rs 231 · (no header)
+- tests.rs 259 · (no header)
 
 ### core/src/matching/facts
 - tests.rs 549 · (no header)
@@ -308,8 +308,8 @@ shape what the UI sees.
 - matching_generalisation.rs 364 · Rules found on the unseen held-out sets 3 to 6, checked on…
 - matching_heldout.rs 631 · Held-out regression corpora: invented ads with blind…
 - matching_page_facts.rs 112 · A page's structured criteria reach the engine: an…
-- matching_profiles.rs 346 · Profiles beyond the corpus: a field without any domain…
-- matching_wishes.rs 450 · The target roles and wishes of the profile, one test per…
+- matching_profiles.rs 353 · Profiles beyond the corpus: a field without any domain…
+- matching_wishes.rs 466 · The target roles and wishes of the profile, one test per…
 - notices.rs 124 · `src-tauri/resources/THIRD-PARTY.txt` must match the…
 - palette.rs 270 · `ui/src/styles/tokens.css` is the one place a colour of…
 - rubric.rs 100 · The scoring rubric of the AI prompts:…
