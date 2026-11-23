@@ -55,6 +55,9 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("month-end close", "monatsabschluss"),
         ("monthly closing", "monatsabschluss"),
         ("monthly close", "monatsabschluss"),
+        // Being firm in the closings (`abschlusssicher nach HGB`) is closing experience.
+        ("abschlusssicherheit", "jahresabschluss"),
+        ("abschlusssicher", "jahresabschluss"),
         ("consolidated financial statement", "konzernabschluss"),
         ("group financial statement", "konzernabschluss"),
         // Group accounting and reporting.
@@ -183,8 +186,8 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("shared service center", "shared-service-cent"),
     ],
     // Planning, analysis and the P&L are the work of controlling, controlling and planning
-    // steer the company, cash management is treasury's, the balance sheet, the closings and
-    // group accounting are accounting (bookkeeping and a consolidation alone are no proof:
+    // steer the company, cash management is treasury's, the balance sheet, the closings,
+    // financial reporting and group accounting are accounting (bookkeeping and a consolidation alone are no proof:
     // the held-out labels), the eliminations steps of a consolidation, due diligence a step
     // of M&A.
     covers: &[
@@ -201,6 +204,7 @@ pub(crate) const DOMAIN: Domain = Domain {
                 "jahresabschluss",
                 "konzernrechnungslegung",
                 "monatsabschluss",
+                "rechnungslegung",
             ],
         ),
         ("treasury", &["cash-management"]),
@@ -320,5 +324,41 @@ mod tests {
             "Erfahrung im Key Account Management",
             "Konsolidierung"
         ));
+    }
+
+    /// The general ledger closes the books: closings, the balance sheet and financial
+    /// reporting asked for are met in full by general ledger accounting, it only in half by a
+    /// closing; accounting as a whole is not met by the ledger, a closed contract is no closing.
+    #[test]
+    fn the_general_ledger_comprises_the_closings() {
+        let v = vocab(&["Hauptbuchhaltung", "Buchhaltung", "SAP FI"]);
+        assert!(v.packs().contains(&"finance"), "{:?}", v.packs());
+        for job in [
+            "Umfangreiche praktische Erfahrung in Monats- und Jahresabschlüssen",
+            "Fundierte Erfahrung in der Bilanzierung",
+            "Sehr gute Kenntnisse der Rechnungslegung nach HGB",
+        ] {
+            assert!(full(&v, job, "Hauptbuchhaltung"), "{job}");
+        }
+        assert_eq!(
+            *atoms("Erfahrung in Monats- und Jahresabschlüssen", &v),
+            ["monatsabschluss", "jahresabschluss"]
+        );
+        for (job, profile) in [
+            ("Hauptbuchhaltung", "Monatsabschlüsse"),
+            ("Erfahrung im Rechnungswesen", "Hauptbuchhaltung"),
+            ("Erfahrung mit Vertragsabschlüssen", "Hauptbuchhaltung"),
+        ] {
+            assert!(!full(&v, job, profile), "{job} / {profile}");
+        }
+        // Being firm in the closings is closing experience; closing a sale is not.
+        assert_same(
+            &v,
+            &[
+                ("Abschlusssicherheit nach HGB", "Jahresabschluss nach HGB"),
+                ("abschlusssicher nach HGB", "Jahresabschluss nach HGB"),
+            ],
+        );
+        assert!(!full(&v, "Abschlussstärke im Vertrieb", "Jahresabschluss"));
     }
 }

@@ -199,7 +199,14 @@ pub(crate) const DOMAIN: Domain = Domain {
     ],
     // A management system is the narrower work of quality management; audits and
     // certifications are close to the system and to a process audit.
-    covers: &[("qualitatsmanagement", &["qualitatsmanagementsystem"])],
+    // IATF 16949 holds all of ISO 9001, the standard of quality management.
+    covers: &[
+        ("iso-9001", &["iatf"]),
+        (
+            "qualitatsmanagement",
+            &["iso-9001", "qualitatsmanagementsystem"],
+        ),
+    ],
     near: &[
         ("prozessaudit", &["audit", "zertifizierung"]),
         ("qualitatsmanagementsystem", &["audit", "zertifizierung"]),
@@ -209,12 +216,34 @@ pub(crate) const DOMAIN: Domain = Domain {
 #[cfg(test)]
 mod tests {
     use super::super::testing::{assert_apart, assert_same, vocab};
-    use crate::matching::atoms::{Vocab, atoms};
+    use crate::matching::atoms::{Fit, Vocab, atoms};
+    use crate::matching::graph::fit;
 
     fn operations() -> Vocab {
         let v = vocab(&["Lean Management", "Werksleitung", "Instandhaltung"]);
         assert_eq!(v.packs(), ["operations"]);
         v
+    }
+
+    /// IATF 16949 holds all of ISO 9001, quality management names it in part; another ISO
+    /// standard is none of the two.
+    #[test]
+    fn iso_9001_is_held_by_iatf_and_quality_management() {
+        let v = operations();
+        let one = |text: &str| atoms(text, &v).last().cloned().expect("one atom");
+        let iso = one("Tiefgehende Kenntnisse der ISO 9001");
+        assert_eq!(fit(&iso, &one("IATF 16949")), Fit::Covered);
+        assert_eq!(fit(&iso, &one("Qualitätsmanagement")), Fit::General);
+        assert_eq!(fit(&one("IATF 16949"), &iso), Fit::General);
+        assert_eq!(
+            fit(&one("Qualitätsmanagement"), &one("IATF 16949")),
+            Fit::Covered
+        );
+        assert_eq!(fit(&one("ISO 27001"), &one("IATF 16949")), Fit::None);
+        assert_eq!(
+            fit(&one("ISO 14001"), &one("Qualitätsmanagement")),
+            Fit::None
+        );
     }
 
     #[test]

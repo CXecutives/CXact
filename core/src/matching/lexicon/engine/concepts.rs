@@ -103,8 +103,11 @@ pub(crate) const LIGHT_MODIFIERS: &[&str] = &[
 
 /// Heads of a closed compound that a German hyphen ellipsis shares: the longest one the
 /// compound ends in is the head.
-/// (`Projekt- und Programmmanagement`, `Projektplanung und -controlling`)
+/// (`Projekt- und Programmmanagement`, `Projektplanung und -controlling`, the closings of a
+/// month and of a year in `Monats- und Jahresabschlüsse`)
 pub(crate) const ELLIPSIS_HEADS: &[&str] = &[
+    "abschlusse",
+    "abschlussen",
     "abwicklung",
     "analyse",
     "analysen",

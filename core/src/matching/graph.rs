@@ -3,8 +3,9 @@
 //! The nodes are the stemmed atoms and concepts the vocabulary reads; synonyms are one node
 //! already (`Vocab`). The edges say what the words do not: an umbrella covers narrower
 //! concepts (`Rechnungswesen` covers `Jahresabschluss`, also through a chain), and two
-//! concepts are near each other (`Projektleitung`, `Projektmanagement`); the tables are the
-//! core's (`lexicon::engine::CORE_COVERS`, `CORE_NEAR`) and the packs' (`Domain::covers`,
+//! concepts are near each other (`Projektleitung`, `Projektmanagement`), and work comprises
+//! its parts (`Hauptbuchhaltung`, `Monatsabschluss`); the tables are the core's
+//! (`lexicon::engine::CORE_COVERS`, `CORE_NEAR`, `PARTS`) and the packs' (`Domain::covers`,
 //! `Domain::near`), for every profile. [`fit`] relates two atoms by their words first
 //! (`atoms::fit_direct`), then by the edges.
 //!
@@ -70,7 +71,8 @@ const COMPOUND_NODE: usize = 10;
 /// Every node with the nodes it relates to and how an ad asking for it is met by a profile
 /// naming the other: an umbrella in full by a narrower node it covers (the profile is more
 /// specific), a narrower node in half by its umbrellas (more general), a node in half by its
-/// near ones.
+/// near ones, a part in full by the whole that comprises it (the profile does more), the whole
+/// in half by a part.
 static EDGES: LazyLock<HashMap<String, Vec<(String, Fit)>>> = LazyLock::new(|| {
     let covers = DOMAINS
         .iter()
@@ -102,6 +104,12 @@ static EDGES: LazyLock<HashMap<String, Vec<(String, Fit)>>> = LazyLock::new(|| {
         for b in *others {
             add(&stem(a), &stem(b), Fit::General);
             add(&stem(b), &stem(a), Fit::General);
+        }
+    }
+    for (whole, parts) in lex::PARTS {
+        for part in *parts {
+            add(&stem(part), &stem(whole), Fit::Specific);
+            add(&stem(whole), &stem(part), Fit::General);
         }
     }
     edges
@@ -266,7 +274,8 @@ mod tests {
             .iter()
             .flat_map(|d| d.covers.iter().chain(d.near))
             .chain(lex::CORE_COVERS)
-            .chain(lex::CORE_NEAR);
+            .chain(lex::CORE_NEAR)
+            .chain(lex::PARTS);
         tables.flat_map(|(a, bs)| bs.iter().map(move |b| (*a, *b)))
     }
 
@@ -320,5 +329,18 @@ mod tests {
             Fit::General
         );
         assert_eq!(fits("rechnungswesen", "konsolidierung"), Fit::None);
+    }
+
+    /// A part asked for is met in full by the whole, the whole in half by a part; a part
+    /// chains into no umbrella (bookkeeping alone is no accounting).
+    #[test]
+    fn work_comprises_its_parts() {
+        let fits = |job: &str, profile: &str| fit(&stem(job), &stem(profile));
+        assert_eq!(fits("monatsabschluss", "hauptbuchhaltung"), Fit::Specific);
+        assert_eq!(fits("hauptbuchhaltung", "monatsabschluss"), Fit::General);
+        assert_eq!(fits("programmplanung", "programmmanagement"), Fit::Specific);
+        assert_eq!(fits("rechnungswesen", "hauptbuchhaltung"), Fit::None);
+        assert_eq!(fits("programmplanung", "projektmanagement"), Fit::None);
+        assert_eq!(fits("risikomanagement", "programmmanagement"), Fit::None);
     }
 }

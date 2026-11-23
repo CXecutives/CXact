@@ -31,7 +31,8 @@ fn a_service_lead_meets_the_words_of_service_ads() {
     ] {
         assert_eq!(value(met), E_FULL, "{met}");
     }
-    assert_eq!(value("Erfahrung im Service Desk"), E_NONE);
+    // An IT service desk is near a contact center, no proof of one.
+    assert_eq!(value("Erfahrung im Service Desk"), E_HALF);
     // A code a number completes is no abbreviation of a compound.
     assert_eq!(value("DIN 1946"), E_NONE);
 }
@@ -201,4 +202,66 @@ fn a_kind_of_tool_is_met_by_its_tools() {
         skill_fit_in(&skills, "Erfahrung mit Salesforce", true).value,
         E_HALF
     );
+}
+/// The first part of a hyphen ellipsis is matched as it is written out: `Risiko-` before
+/// the quality management it shares its head with asks for risk management.
+#[test]
+fn an_ellipsis_part_is_matched_written_out() {
+    let data = of_json(&json!({"kernkompetenzen": [
+        {"kompetenz": "Risikomanagement"},
+        {"kompetenz": "Controlling"}
+    ]}));
+    let skills = Skills::new(&core_texts(&data), &data);
+    let values = |line: &str| -> Vec<u16> {
+        let text = format!("Anforderungen:\n- {line}\n");
+        let doc = crate::matching::job::read(&text, &skills.vocab);
+        doc.items
+            .iter()
+            .map(|i| item_fit(&skills, i).value)
+            .collect()
+    };
+    assert_eq!(
+        values("Erfahrung im Risiko- und Qualitätsmanagement"),
+        [E_FULL, E_NONE]
+    );
+    assert_eq!(
+        values("Erfahrung im Qualitäts- und Risikomanagement"),
+        [E_NONE, E_FULL]
+    );
+}
+
+/// The parts of a programme are met by programme management (the wording of a real ad), a
+/// method the ad accepts a comparable one for by another method of its kind, `Mehr als` asks
+/// for nothing more; risk management is no part of a programme alone, a procurement tool is
+/// no method.
+#[test]
+fn a_programme_manager_meets_the_parts_and_comparable_methods() {
+    let data = of_json(&json!({
+        "kernkompetenzen": [
+            {"kompetenz": "Programmmanagement"},
+            {"kompetenz": "Stakeholdermanagement"}
+        ],
+        "methoden_tools": ["PRINCE2", "Scrum"]
+    }));
+    let skills = Skills::new(&core_texts(&data), &data);
+    let value = |text: &str| skill_fit_in(&skills, text, true).value;
+    for met in [
+        "Sehr gute Kenntnisse in Programmplanung",
+        "Ressourcenmanagement",
+        "Abhängigkeitsmanagement",
+        "Mehr als 5 Jahre Erfahrung im Stakeholdermanagement",
+    ] {
+        assert_eq!(value(met), E_FULL, "{met}");
+    }
+    assert_eq!(
+        value("Erfahrung mit SAP Activate oder vergleichbaren Transformationsmethoden"),
+        E_HALF
+    );
+    for open in [
+        "Risikomanagement",
+        "Erfahrung mit SAP Ariba oder vergleichbaren Tools",
+        "Produktionsplanung",
+    ] {
+        assert_eq!(value(open), E_NONE, "{open}");
+    }
 }

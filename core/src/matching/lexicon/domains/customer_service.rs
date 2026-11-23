@@ -363,6 +363,11 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("service provider management", "dienstleistersteuerung"),
         ("provider management", "dienstleistersteuerung"),
         ("steuerung externer dienstleister", "dienstleistersteuerung"),
+        // IT service management and the service desk, the service of the IT for its users
+        // (the keys of `it_service`): near, no proof (`near`).
+        ("it service management", "itsm"),
+        ("it servicemanagement", "itsm"),
+        ("service desk", "service-desk"),
         ("business process outsourcing", "bpo"),
         ("auslagerung", "outsourcing"),
         ("outsourcing management", "outsourcing"),
@@ -432,7 +437,12 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("customer-experience", NARROWER),
         ("kundenservice", NARROWER),
     ],
-    near: &[],
+    // Who leads customer service knows the service desk and the management of IT services
+    // from the other side of the desk: tickets, service levels, staffing.
+    near: &[
+        ("itsm", &["kundenservice"]),
+        ("service-desk", &["contact-center", "kundenservice"]),
+    ],
 };
 
 /// The narrower work of customer service and customer experience (`Beschwerdemanagement`,
@@ -475,6 +485,42 @@ mod tests {
         ]);
         assert_eq!(v.packs(), ["customerService"]);
         v
+    }
+
+    /// IT service management and the service desk are near customer service and its
+    /// leadership, both ways and in half only; IT security and a service design are not.
+    #[test]
+    fn it_service_is_near_customer_service() {
+        let v = service();
+        let best = |job: &str, profile: &str| {
+            let profile = atoms(profile, &v);
+            let job = atoms(job, &v);
+            let fits = job
+                .iter()
+                .flat_map(|j| profile.iter().map(move |p| fit(j, p)));
+            fits.max().unwrap_or(Fit::None)
+        };
+        for (job, profile) in [
+            (
+                "Fundierte Kenntnisse in ITIL / IT-Service-Management",
+                "Customer Service Management",
+            ),
+            (
+                "Mind. 7 Jahre Erfahrung in IT Operations / Service Desk",
+                "Call Center Management",
+            ),
+            ("ITSM", "Kundenservice"),
+            ("Leitung Kundenservice", "IT Service Management"),
+        ] {
+            assert_eq!(best(job, profile), Fit::General, "{job} / {profile}");
+        }
+        for (job, profile) in [
+            ("Erfahrung in IT-Sicherheit", "Customer Service Management"),
+            ("Service Design", "Service Desk"),
+            ("Erfahrung im Field Service", "IT Service Management"),
+        ] {
+            assert_eq!(best(job, profile), Fit::None, "{job} / {profile}");
+        }
     }
 
     #[test]

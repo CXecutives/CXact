@@ -825,13 +825,14 @@ fn licence_fit(skills: &Skills, word: &str) -> ItemFit {
     }
 }
 
-/// The alternatives of a skill item (the item itself when it has none).
+/// The alternatives of a skill item; the item itself when it names no other: its text is the
+/// part written out in full (`Erfahrung im Risikomanagement` for `Erfahrung im Risiko-` before
+/// `und Qualitätsmanagement`).
 fn alternatives(item: &Item) -> Vec<&str> {
-    let mut alternatives: Vec<&str> = item.alternatives.iter().map(String::as_str).collect();
-    if alternatives.is_empty() {
-        alternatives.push(&item.text);
+    if item.alternatives.len() < 2 {
+        return vec![&item.text];
     }
-    alternatives
+    item.alternatives.iter().map(String::as_str).collect()
 }
 
 /// Is an item general professional experience (`10 Jahre Berufserfahrung`, `8 years of
