@@ -133,7 +133,9 @@ def rust_synonyms(source: str) -> dict[str, str | None]:
 
 
 TABLES = (LEXICON / "tables.rs").read_text(encoding="utf-8")
-ENGINE = (LEXICON / "engine.rs").read_text(encoding="utf-8")
+ENGINE = "\n".join(
+    f.read_text(encoding="utf-8") for f in sorted((LEXICON / "engine").glob("*.rs"))
+)
 STOPWORDS = rust_list(TABLES, "STOPWORDS")
 SYNONYMS = rust_synonyms(TABLES)
 FILLERS = rust_list(ENGINE, "FILLERS")

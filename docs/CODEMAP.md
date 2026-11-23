@@ -6,7 +6,7 @@ file: name, lines, purpose (the first sentence of its header comment), main publ
 (Rust `pub`, TS exports, Svelte props; `+n` more). The notes under the headings come from
 docs/ARCHITECTURE.md "Layers".
 
-484 files, 5 of them without a header comment ("(no header)").
+503 files, 6 of them without a header comment ("(no header)").
 
 ## Where a change goes
 
@@ -134,18 +134,25 @@ is the pure integer engine
 - requirements.rs 52 · Vocabulary terms of a job text, independent of the profile. · extract_job_skills
 - roles.rs 442 · Target roles: job titles the consultant wants. · Role, read, RoleFit, title_core +2
 - score.rs 27 · Integer rounding of the scores. · div_round_half_even
-- scorer.rs 514 · The Passungsgrad: `score = content x frame factor`, then… · FieldClass, class, Percent, percent +3
+- scorer.rs 527 · The Passungsgrad: `score = content x frame factor`, then… · FieldClass, class, Percent, percent +3
 - sections.rs 223 · Lines, headings and requirement cues of a job text. · ReqKind, is_bullet, norm_heading, section_kind +4
 - seniority.rs 245 · The level of an ad against the profile's own years of… · experience_years, junior_title, entry_level_must, page_junior_level +1
-- signals.rs 565 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +14
+- signals.rs 580 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +14
 - terms.rs 993 · The term of a requirement and the profile field it belongs… · is_term, TermField, CoreTerm, term_key +3
 - title.rs 443 · The frame of a job title: the title without its noise, the… · clean, level_of, engagement, ad_level +5
 - types.rs 459 · Input and output types of the matching engine. · KeyFacts, TextKind, JobInput, Verdict +25
 - vocabulary.rs 576 · The engine's words as a person writes them: the… · Vocabulary, vocabulary
 - wishes.rs 780 · Wishes of the profile: day rate, work mode and regions. · RemoteWish, Wishes, State, WishResult +3
 
+### core/src/matching/job
+- classify.rs 267 · The kind of every item: skill, language, degree, soft,… · known_skill, language_of, frame_word, names_degree
+- coordination.rs 127 · Coordinated items: parts that share an object or an…
+- lines.rs 284 · Lines of a job text: headings, bullets, closing blocks and… · is_heading_line, heading_kind
+- quantities.rs 54 · Numbers in an item: language level and required years. · level_in, years_in
+- split.rs 231 · Cutting a requirement phrase into items, AND parts, OR… · split
+- tests.rs 742 · (no header)
+
 ### core/src/matching/lexicon
-- engine.rs 3694 · Word lists of the engine. · FILLERS, GENERIC_ATOMS, FIELD_ATOMS, LIGHT_MODIFIERS +243
 - esco.rs 859 · ESCO, the European Commission's classification of skills,… · Kind, Concept, Lang, Hit +6
 - mod.rs 79 · Words and patterns the engine looks for in job ads and… · HeadingKind, contains, synonym, synonym_pair +7
 - tables.rs 1037 · Word lists of the matching engine. · STOPWORDS, SYNONYM_WORDS, SYNONYM_PAIRS, MUST_HEADINGS +6
@@ -171,6 +178,22 @@ is the pure integer engine
 - sales.rs 220 · Sales and marketing: sales leadership, key account… · DOMAIN
 - sap.rs 26 · SAP and ERP: products, modules and process names. · DOMAIN
 - software.rs 217 · Software and cloud: software development and languages,… · DOMAIN
+
+### core/src/matching/lexicon/engine
+- classes.rs 574 · Word classes: languages, soft skills, frames, degrees,… · LANGUAGES, LANGUAGE_NAMES, LEVEL_WORDS, SOFT_SKILLS +24
+- concepts.rs 581 · Concepts, atoms, title heads and field relations. · GENERIC_ATOMS, FIELD_ATOMS, LIGHT_MODIFIERS, ELLIPSIS_HEADS +24
+- contact.rs 85 · Contact person, name and phone words. · CONTACT_PERSON_WORDS, CONTACT_LABELS, CONTACT_FILLERS, HONORIFICS +4
+- contract.rs 356 · Contract kinds: agency work (ANUE), interim and permanent. · CONTRACT_DENIED, ANUE_WORDS, ANUE_PARTS, ANUE_HIDDEN +20
+- cues.rs 255 · Nice and must cues, separators, examples, lead verbs and… · SOFT_ALONE, PRONOUN_STARTS, DESCRIPTION_STARTS, MANDATORY_WORDS +17
+- exclusion.rs 259 · Exclusion roles, mentions and denials. · EXCLUSION_WORD_FAMILIES, EXCLUSION_ROLE_WORDS, EXCLUSION_ROLE_ENDINGS, EXCLUSION_ROLE_HEADS +14
+- level.rs 127 · Seniority and role levels. · ROLE_BRINGS, ENTRY_LEVEL_VALUES, LOW_LEVEL_VALUES, ENTRY_LEVEL_MUSTS +2
+- mod.rs 32 · Word lists of the engine, split by topic.
+- morphology.rs 67 · Word endings, linkers, adjective stems and particles. · WORD_ENDINGS, LINKERS, ADJECTIVE_ENDINGS, DECLINED_ENDINGS +7
+- pay.rs 219 · Pay, rate and salary words. · RATE_WORDS, WAGE_PHRASES, WAGE_WORDS_WHOLE, WAGE_HEADS +19
+- places.rs 404 · Places, countries, cities and remote words. · DAY_WORDS_ONSITE, PLACE_LABELS, LOCATION_ONSITE, COUNTRIES +8
+- sections.rs 238 · Section headings, prefixes, listings and closing lines. · TAG_HEADINGS, MUST_PREFIXES, NICE_PREFIXES, OTHER_LISTINGS +8
+- time.rs 460 · Start, duration, deadline and workload words. · DURATION_TERMS, MONTH_UNITS, DURATION_CLAUSE_BREAKS, DURATION_FILLERS +35
+- tokens.rs 336 · Filler words, short tokens and name and gender forms. · FILLERS, NAME_WORDS, GENDER_FORMS, SHORT_TOKENS +13
 
 ### core/src/pipeline
 runs mail and search, screen, fetch and score
@@ -515,10 +538,10 @@ beside the app.
 - ui-preview.cmd 10 · The live preview: the new UI with the stub's demo data in…
 
 ### tools/esco
-- build.py 544 · ESCO vocabulary of the matching engine:…
+- build.py 546 · ESCO vocabulary of the matching engine:…
 
 ### tools/scorer
-- train.py 324 · Fits the free value of the Passungsgrad on teacher labels…
+- train.py 326 · Fits the free value of the Passungsgrad on teacher labels…
 
 ### tools/ui-harness
 - playwright.config.ts 81 · UI harness: the harness build served by `vite preview`… · default

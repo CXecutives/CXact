@@ -330,7 +330,7 @@ name their types and are unchanged.
 
 Integer-only, per-mille throughout; `core/src/matching/{job,atoms,fit,facts,contract,permanent,
 seniority,limits,exclusion,relevance,wishes,engine,explain}.rs`, parameters in `params.rs`.
-Word lists: the general core in `lexicon/engine.rs` and one file per domain pack in
+Word lists: the general core in `lexicon/engine/` (one file per topic) and one file per domain pack in
 `lexicon/domains/` (external contract). Nothing person-specific is in code: every threshold
 comes from the profile.
 

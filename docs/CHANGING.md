@@ -338,7 +338,7 @@ score, a reason or a prompt into the stub by hand.
 The engine's words live in `core/src/matching/lexicon/` (German and English wording of ads
 and profiles: an external contract, never translated):
 
-- `engine.rs`: the core's lists for every profile: fillers, generic words, `CORE_CONCEPTS`
+- `engine/` (one file per topic): the core's lists for every profile: fillers, generic words, `CORE_CONCEPTS`
   (phrase to concept: the synonyms), soft skills, language names and levels. Sorted tables
   stay sorted (`binary_search`).
 - `domains/<field>.rs`: a domain pack. `triggers` switch it on from the profile's
