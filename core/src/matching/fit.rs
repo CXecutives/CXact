@@ -458,6 +458,11 @@ impl Alternative {
             .collect();
         Self { atoms, best }
     }
+
+    /// Does it meet the entry through an umbrella the entry's narrower work covers?
+    fn covered(&self, entry: &Entry) -> bool {
+        entry.ids.iter().any(|&i| self.best[i] == Fit::Covered)
+    }
 }
 
 /// A free-text entry (a long description): containing a requirement is weaker evidence than
@@ -540,12 +545,17 @@ fn covered(skills: &Skills, atom: &Asked) -> bool {
 /// industries count too), the first of equals.
 fn best_entry(skills: &Skills, job: &Alternative, industries: bool) -> ItemFit {
     let mut best = NONE;
+    let mut best_rank = (E_NONE, false);
     for (index, entry) in skills.entries.iter().enumerate() {
         if !industries && entry.industry {
             continue;
         }
         let (value, via) = entry_fit(job, entry);
-        if value > best.value {
+        // What the entry names itself beats what it covers (`Projektmanagement` before
+        // `Programmmanagement` for project management asked).
+        let rank = (value, !job.covered(entry));
+        if value > E_NONE && rank > best_rank {
+            best_rank = rank;
             best = ItemFit {
                 value,
                 entry: Some(index),
@@ -611,7 +621,7 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
         let setting = best
             .entry
             .and_then(|e| skills.entries.get(e))
-            .is_some_and(|e| e.industry || e.ids.iter().any(|&i| asked.best[i] == Fit::Covered));
+            .is_some_and(|e| e.industry || asked.covered(e));
         if setting {
             best = NONE;
         } else {

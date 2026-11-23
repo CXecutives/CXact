@@ -47,14 +47,20 @@ fn fit_with(job: &str, edges: &[&(String, Fit)], profile: &str) -> Fit {
         .unwrap_or(Fit::None)
 }
 
-/// The edges of an ad atom: those of the node it is, and of every node of ten letters or
-/// more it starts with (`Projektleitungskompetenz` is near `Projektmanagement`).
+/// The edges of an ad atom: those of the node it is, and the half ones of every node of ten
+/// letters or more it starts with (`Projektleitungskompetenz` is near `Projektmanagement`;
+/// `Projektmanagement-Methoden` ask no programme the umbrella covers).
 fn edges(job: &str) -> Vec<&'static (String, Fit)> {
     let starts = (COMPOUND_NODE..job.len()).filter(|&at| job.is_char_boundary(at));
-    std::iter::once(job)
-        .chain(starts.map(|at| &job[..at]))
-        .filter_map(|node| EDGES.get(node))
+    let compounds = starts
+        .filter_map(|at| EDGES.get(&job[..at]))
         .flatten()
+        .filter(|(_, edge)| *edge == Fit::General);
+    EDGES
+        .get(job)
+        .into_iter()
+        .flatten()
+        .chain(compounds)
         .collect()
 }
 
