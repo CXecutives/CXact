@@ -280,9 +280,9 @@ fn core_open(s: &Signals, p: ScoreParams) -> bool {
     open >= 1 && 2 * share(met, partial, open, 0, 0, p) < u64::from(E_FULL)
 }
 
-/// Every cap the signals give, with the highest score it allows: an open formal must, the core
-/// of the role clearly open, a foreign field, a junior role for a senior profile, two or more
-/// levels below the target roles.
+/// Every cap the signals give, with the highest score it allows: a mandatory formal must open,
+/// the core of the role clearly open, a foreign field, a junior role for a senior profile, two
+/// or more levels below the target roles.
 pub(crate) fn caps(s: &Signals) -> Vec<Cap> {
     caps_with(s, ScoreParams::ENGINE)
 }

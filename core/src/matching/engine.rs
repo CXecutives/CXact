@@ -189,11 +189,13 @@ pub(crate) fn is_nice(s: &Scored) -> bool {
         )
 }
 
-/// Formal requirements the profile does not hold: without any degree in the profile a
-/// check (a cap only for a degree the ad makes mandatory without an equivalent); a must degree of another field or a missing licence is a check with
-/// a score cap, decided only when the ad makes it mandatory; a certificate the ad makes
-/// mandatory and the profile does not hold in full is decided too.
-/// (`Six Sigma Black Belt Zertifizierung (zwingend)` for a Green Belt)
+/// Formal requirements the profile does not hold, and whether one caps the score: only what
+/// the ad makes mandatory caps (the rubric). Without any degree in the profile a degree is
+/// unknown, a check that caps where the ad makes it mandatory without an equivalent. A must
+/// degree of another field or a missing licence is a check, decided (and capped) when the ad
+/// makes it mandatory; without that word it is an open must like any other. A certificate the
+/// ad makes mandatory and the profile does not hold in full is decided too
+/// (`Six Sigma Black Belt Zertifizierung (zwingend)` for a Green Belt).
 fn formal(profile: &EngineProfile, items: &[Scored]) -> (Vec<Finding>, bool) {
     let mut findings = Vec::new();
     let mut cap = false;
@@ -234,7 +236,7 @@ fn formal(profile: &EngineProfile, items: &[Scored]) -> (Vec<Finding>, bool) {
         if s.item.kind != ReqKind::Must || held {
             continue;
         }
-        cap = true;
+        cap |= mandatory;
         findings.push(Finding::new(
             ReasonCode::FormalOpen,
             mandatory,

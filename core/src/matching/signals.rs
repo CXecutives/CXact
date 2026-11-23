@@ -58,7 +58,8 @@ pub enum Sig {
     NiceMet,
     NicePartial,
     NiceOpen,
-    /// An open formal must (a degree of another field, a licence, a mandatory certificate).
+    /// A formal must the ad makes mandatory and the profile does not hold (a degree of another
+    /// field, a licence, a certificate).
     FormalOpen,
     /// A junior or entry-level role for a senior profile.
     Junior,
@@ -648,7 +649,8 @@ mod tests {
             Sig::OtherOpen,
         ];
         assert!(musts.iter().map(|m| s.get(*m)).sum::<u16>() > 0, "{s:?}");
-        assert_eq!(s.get(Sig::FormalOpen), 1, "{s:?}");
+        // A degree of another field asked without `zwingend` is an open must, no cap.
+        assert_eq!(s.get(Sig::FormalOpen), 0, "{s:?}");
     }
 
     #[test]
