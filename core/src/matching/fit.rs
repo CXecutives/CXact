@@ -527,6 +527,15 @@ fn entry_fit(job: &Alternative, whole: &Entry) -> (u16, Via) {
             (E_FULL, Via::Specific)
         };
     }
+    // What the entry names beside it is generic (`SAP SD` for order to cash asked, `Workforce
+    // Management` for workforce planning): near or more general like an entry of one word, half.
+    let rest_generic = entry
+        .iter()
+        .zip(&fits)
+        .all(|(p, f)| *f != Fit::None || atoms::is_generic(p));
+    if rest_generic && !generic_only && !sentence_like(whole) {
+        return (E_HALF, Via::General);
+    }
     (E_NONE, Via::Exact)
 }
 

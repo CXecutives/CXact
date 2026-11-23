@@ -265,3 +265,19 @@ fn a_programme_manager_meets_the_parts_and_comparable_methods() {
         assert_eq!(value(open), E_NONE, "{open}");
     }
 }
+
+/// What an entry names beside the skill is generic (`SAP SD`): something near the skill is
+/// met in half as by an entry of one word (order to cash by the module); a sentence proves
+/// nothing, and another process stays open.
+#[test]
+fn an_entry_with_a_generic_word_meets_near_work_in_half() {
+    let data = of_json(&json!({
+        "kernkompetenzen": [{"kompetenz": "Kundenservice"}],
+        "methoden_tools": ["SAP SD", "SAP S/4HANA"]
+    }));
+    let skills = Skills::new(&core_texts(&data), &data);
+    let value = |text: &str| skill_fit_in(&skills, text, true).value;
+    assert_eq!(value("O2C-Expertise"), E_HALF);
+    assert_eq!(value("SD-Kenntnisse"), E_FULL);
+    assert_eq!(value("P2P-Expertise"), E_NONE);
+}
