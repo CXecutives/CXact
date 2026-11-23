@@ -4,10 +4,11 @@
 //! consultant profiles. All entries are case-folded; sorted tables are searched with
 //! `binary_search`, keep them sorted.
 
-/// Items that are only a soft word (`Arbeitsweise`, `working style`, `Soft Skills`); compared
-/// as stems.
+/// Items that are only a soft word (`Arbeitsweise`, `working style`, `Soft Skills`) or the
+/// label of a line that names no skill alone (`Delivery`, `Werdegang`); compared as stems.
 pub(crate) const SOFT_ALONE: &[&str] = &[
     "arbeitsweise",
+    "delivery",
     "eigenschaften",
     "fahigkeiten",
     "haltung",
@@ -18,6 +19,7 @@ pub(crate) const SOFT_ALONE: &[&str] = &[
     "skills",
     "soft",
     "style",
+    "werdegang",
 ];
 
 /// A sentence starting with one of these words and naming no known skill is a soft
@@ -244,12 +246,23 @@ pub(crate) const CLAUSE_PREPOSITIONS: &[&str] = &[
     "on", "uber", "unter", "von", "with", "zu",
 ];
 
-/// Phrases that make an item soft (`Freude an Zahlen`, `Leadership style`, `build teams`).
-pub(crate) const SOFT_PHRASES: &[&str] = &[
+/// An interest or a liking the item opens with (`Interesse an KI`, `Affinität für Zahlen`): what
+/// it is in is no skill asked for, and neither are the bare parts listed after it
+/// (`Interesse an KI, Automatisierung und digitalen Innovationen`).
+pub(crate) const SOFT_LEADS: &[&str] = &[
+    "affinitat fur",
+    "affinitat zu",
+    "begeisterung fur",
     "freude an",
-    "spass an",
     "interesse an",
+    "interesse fur",
     "interest in",
+    "passion for",
+    "spass an",
+];
+
+/// Phrases that make an item soft (`Leadership style`, `build teams`), beside `SOFT_LEADS`.
+pub(crate) const SOFT_PHRASES: &[&str] = &[
     "confident when presenting",
     "presentation skills",
     "leadership style",

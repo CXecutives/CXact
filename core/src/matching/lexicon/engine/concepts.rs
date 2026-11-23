@@ -218,6 +218,12 @@ pub(crate) const CORE_CONCEPTS: &[(&str, &str)] = &[
     ("process automation", "prozessautomatisierung"),
     ("automation", "automatisierung"),
     ("quality management", "qualitatsmanagement"),
+    // Steering and managing a budget, the stakeholders or the suppliers are one work.
+    ("budgetsteuerung", "budgetmanagement"),
+    ("stakeholdersteuerung", "stakeholdermanagement"),
+    ("lieferantensteuerung", "lieferantenmanagement"),
+    ("vendormanagement", "lieferantenmanagement"),
+    ("vendor management", "lieferantenmanagement"),
     ("german", "deutsch"),
     ("english", "englisch"),
     ("french", "franzosisch"),

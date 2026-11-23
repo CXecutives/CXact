@@ -124,7 +124,7 @@ is the pure integer engine
 - exclusion.rs 648 · Exclusion words of the profile: a word excludes the ad… · check
 - explain.rs 684 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
 - facts.rs 1139 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +19
-- fit.rs 925 · The profile the engine matches against, and the match… · Entry, Broad, Skills, degree_fields_in +8
+- fit.rs 957 · The profile the engine matches against, and the match… · Entry, Broad, Skills, degree_fields_in +8
 - gaps.rs 192 · The gap finder's view of a job: the words of its… · Gap, JobGaps, vocabulary_gaps
 - graph.rs 346 · The engine's knowledge graph: how the atoms of an ad… · fit, packs, other_field, tool_kinds +3
 - layout.rs 104 · The layout of an ad's text for the reader: the lines that… · TextLayout, text_layout
@@ -165,28 +165,28 @@ is the pure integer engine
 - tests.rs 549 · (no header)
 
 ### core/src/matching/fit
-- tests.rs 267 · (no header)
+- tests.rs 327 · (no header)
 
 ### core/src/matching/job
-- classify.rs 246 · The kind of every item: skill, language, degree, soft,… · known_skill, language_of, frame_word, names_degree
-- coordination.rs 297 · Coordinated items: where an `und`, `and`, `&` or a comma…
+- classify.rs 265 · The kind of every item: skill, language, degree, soft,… · known_skill, language_of, frame_word, names_degree
+- coordination.rs 307 · Coordinated items: where an `und`, `and`, `&` or a comma…
 - frame.rs 63 · The frame of a requirement clause: `[pronoun] [verbs]… · without_lead
 - lines.rs 259 · Lines of a job text: headings, bullets, closing blocks and… · is_heading_line
 - mod.rs 240 · A job text as the engine reads it: sections with inline… · Stage, Class, Item, Task +2
 - quantities.rs 53 · Numbers in an item: language level and required years. · level_in, years_in
 - split.rs 200 · Cutting a requirement phrase into items, AND parts, OR… · split
-- tests.rs 1011 · (no header)
+- tests.rs 1070 · (no header)
 
 ### core/src/matching/lexicon
 - esco.rs 859 · ESCO, the European Commission's classification of skills,… · Kind, Concept, Lang, Hit +6
 - mod.rs 61 · Words and patterns the engine looks for in job ads and… · HeadingKind, contains, synonym, synonym_pair +4
-- tables.rs 627 · Word lists of the matching engine. · STOPWORDS, SYNONYM_WORDS, SYNONYM_PAIRS, JOB_SKILL_VOCAB +1
+- tables.rs 646 · Word lists of the matching engine. · STOPWORDS, SYNONYM_WORDS, SYNONYM_PAIRS, JOB_SKILL_VOCAB +1
 - terms.rs 841 · Words around a term of an ad and the words that name the… · LEADS, GERMAN_QUALIFIERS, ENGLISH_QUALIFIERS, ENGLISH_NOUNS +23
 - wishes.rs 463 · Word lists of the consultant's wishes and the industries… · LEAD_WORDS, LEAD_ENDINGS, LEVEL_WORDS, ROLE_SHAPE_WORDS +12
 
 ### core/src/matching/lexicon/domains
 - consulting.rs 135 · Management consulting for performance and profit: profit… · DOMAIN
-- customer_service.rs 650 · Customer service and customer experience: customer service… · DOMAIN
+- customer_service.rs 604 · Customer service and customer experience: customer service… · DOMAIN
 - data.rs 219 · Data and business intelligence: BI tools, SQL, data… · DOMAIN
 - energy.rs 127 · Energy industry: grids and their regulation, metering and… · DOMAIN
 - finance.rs 364 · Finance, controlling, accounting, treasury, restructuring… · DOMAIN
@@ -205,11 +205,11 @@ is the pure integer engine
 - software.rs 218 · Software and cloud: software development and languages,… · DOMAIN
 
 ### core/src/matching/lexicon/engine
-- classes.rs 574 · Word classes: languages, soft skills, frames, degrees,… · LANGUAGES, LANGUAGE_NAMES, LEVEL_WORDS, SOFT_SKILLS +24
-- concepts.rs 538 · Concepts, atoms, title heads and field relations. · GENERIC_ATOMS, FIELD_ATOMS, LIGHT_MODIFIERS, ELLIPSIS_HEADS +21
+- classes.rs 576 · Word classes: languages, soft skills, frames, degrees,… · LANGUAGES, LANGUAGE_NAMES, LEVEL_WORDS, SOFT_SKILLS +24
+- concepts.rs 544 · Concepts, atoms, title heads and field relations. · GENERIC_ATOMS, FIELD_ATOMS, LIGHT_MODIFIERS, ELLIPSIS_HEADS +21
 - contact.rs 85 · Contact person, name and phone words. · CONTACT_PERSON_WORDS, CONTACT_LABELS, CONTACT_FILLERS, HONORIFICS +4
 - contract.rs 356 · Contract kinds: agency work (ANUE), interim and permanent. · CONTRACT_DENIED, ANUE_WORDS, ANUE_PARTS, ANUE_HIDDEN +20
-- cues.rs 292 · Nice and must cues, separators, examples, lead verbs and… · CueScope, SOFT_ALONE, PRONOUN_STARTS, DESCRIPTION_STARTS +19
+- cues.rs 305 · Nice and must cues, separators, examples, lead verbs and… · CueScope, SOFT_ALONE, PRONOUN_STARTS, DESCRIPTION_STARTS +20
 - exclusion.rs 259 · Exclusion roles, mentions and denials. · EXCLUSION_WORD_FAMILIES, EXCLUSION_ROLE_WORDS, EXCLUSION_ROLE_ENDINGS, EXCLUSION_ROLE_HEADS +14
 - graph.rs 277 · Relations of the knowledge graph for every profile:… · CORE_COVERS, CORE_NEAR, PARTS, METHODS +1
 - level.rs 93 · Seniority and role levels. · ENTRY_LEVEL_VALUES, LOW_LEVEL_VALUES, ENTRY_LEVEL_MUSTS, LEVEL_CODES +1
@@ -219,7 +219,7 @@ is the pure integer engine
 - places.rs 404 · Places, countries, cities and remote words. · DAY_WORDS_ONSITE, PLACE_LABELS, LOCATION_ONSITE, COUNTRIES +8
 - sections.rs 423 · Section headings, prefixes, listings and closing lines. · TAG_HEADINGS, HEADING_LEADS, HEADINGS, HEADING_PREFIXES +9
 - time.rs 445 · Start, duration, deadline and workload words. · DURATION_TERMS, MONTH_UNITS, DURATION_CLAUSE_BREAKS, DURATION_FILLERS +34
-- tokens.rs 342 · Filler words, short tokens and name and gender forms. · FILLERS, NAME_WORDS, GENDER_FORMS, SHORT_TOKENS +13
+- tokens.rs 346 · Filler words, short tokens and name and gender forms. · FILLERS, NAME_WORDS, GENDER_FORMS, SHORT_TOKENS +14
 
 ### core/src/matching/sections
 - tests.rs 160 · (no header)

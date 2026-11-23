@@ -90,6 +90,7 @@ pub(crate) const LEVEL_WORDS: &[(&str, u8)] = &[
 
 /// Soft skills: weight 250, cannot be proven from a profile (prefix stems, sorted).
 pub(crate) const SOFT_SKILLS: &[&str] = &[
+    "affin",
     "analytical",
     "analytisch",
     "auffassungsgabe",
@@ -109,6 +110,7 @@ pub(crate) const SOFT_SKILLS: &[&str] = &[
     "gestaltungswill",
     "hands-on-mental",
     "humor",
+    "it-affin",
     "kommunikation",
     "kommunikationsstark",
     "kommunikativ",

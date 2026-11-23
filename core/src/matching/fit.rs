@@ -218,19 +218,42 @@ pub(crate) fn degree_level_in(folded: &str) -> u8 {
     }
 }
 
-/// Does the item ask for knowledge of the family and nothing else (`Sehr gute
-/// SAP-Kenntnisse`), no product of it (`Kenntnisse in SAP BW`) and no bare word of a teaser?
-fn family_only(text: &str, family: &str) -> bool {
+/// The family an item asks knowledge of and nothing else: the family alone (`Sehr gute
+/// SAP-Kenntnisse`), or a family that names a field (`lex::FIELD_ATOMS`) with generic words
+/// around it (`Kenntnisse in der Betreuung von SAP-Projekten`, `Erfahrung im SAP-Umfeld`); no
+/// product of it (`Kenntnisse in SAP BW`) and no bare word of a teaser.
+fn family_only<'a>(text: &str, job: &'a [String]) -> Option<&'a str> {
     let folded = fold(text);
-    let knowledge = lex::KNOWLEDGE_STEMS.iter().any(|k| folded.contains(k));
-    knowledge
-        && atoms::raw_tokens(&folded).all(|t| {
-            let t = t.split('-').next().unwrap_or(t);
-            t == family
-                || atoms::is_filler(t)
-                || lex::KNOWLEDGE_WORDS.contains(&t)
-                || lex::LEVEL_WORDS.iter().any(|(w, _)| *w == t)
+    if !lex::KNOWLEDGE_STEMS.iter().any(|k| folded.contains(k)) {
+        return None;
+    }
+    let (family, around) = match job {
+        [family] if atoms::is_generic(family) => (family.as_str(), false),
+        _ => {
+            let mut parts = job.iter().flat_map(|a| a.split('-'));
+            let field = |p: &&str| lex::FIELD_ATOMS.iter().any(|(w, _)| w == p);
+            (parts.find(field)?, true)
+        }
+    };
+    let says_knowledge = |t: &str| {
+        atoms::is_filler(t)
+            || lex::KNOWLEDGE_WORDS.contains(&t)
+            || lex::LEVEL_WORDS.iter().any(|(w, _)| *w == t)
+    };
+    let plain = |t: &str| {
+        let stem = atoms::stem(t);
+        atoms::is_generic(&stem)
+            || super::lexicon::contains(lex::LIGHT_HEADS, &stem)
+            || lex::FAMILY_WORK.contains(&stem.as_str())
+    };
+    atoms::raw_tokens(&folded)
+        .all(|token| {
+            let mut parts = token.split('-');
+            let first = parts.next().unwrap_or(token);
+            (first == family || says_knowledge(first) || (around && plain(first)))
+                && (!around || parts.all(|p| says_knowledge(p) || plain(p)))
         })
+        .then_some(family)
 }
 
 /// Languages of the profile with their CEFR level, those the engine knows.
@@ -588,24 +611,6 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
     }
     let asked = Alternative::new(skills, &job);
     let mut best = best_entry(skills, &asked, || industry_only(text, &skills.vocab));
-    // A generic family asked for alone (`SAP-Kenntnisse`) is met by an entry that names a
-    // product of it (`SAP S/4HANA`).
-    if best.value == E_NONE
-        && let [family] = job.as_slice()
-        && atoms::is_generic(family)
-        && family_only(text, family)
-        && let Some(index) = skills.entries.iter().position(|e| {
-            e.atoms.len() >= 2
-                && e.atoms.first() == Some(family)
-                && e.atoms.iter().any(|a| !atoms::is_generic(a))
-        })
-    {
-        best = ItemFit {
-            value: E_FULL,
-            entry: Some(index),
-            via: Via::Specific,
-        };
-    }
     // The ad asks for more than the profile names (`Tableau im Reporting` against
     // `Reporting`): the profile is more general, half.
     // Words of experience (`Berufserfahrung`, `Projekterfahrung`, `Praxis`) ask for nothing
@@ -629,6 +634,22 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
             best.value = E_HALF;
             best.via = Via::General;
         }
+    }
+    // A generic family asked for alone (`SAP-Kenntnisse`) or with generic words around it
+    // (`family_only`) is met by an entry that names a product of it (`SAP S/4HANA`).
+    if best.value == E_NONE
+        && let Some(family) = family_only(text, &job)
+        && let Some(index) = skills.entries.iter().position(|e| {
+            e.atoms.len() >= 2
+                && e.atoms.first().map(String::as_str) == Some(family)
+                && e.atoms.iter().any(|a| !atoms::is_generic(a))
+        })
+    {
+        best = ItemFit {
+            value: E_FULL,
+            entry: Some(index),
+            via: Via::Specific,
+        };
     }
     // A kind of tool and its tools (`kind_fit`), for what the entries leave open: a half
     // fit through a competence shows more than a tool does.
@@ -834,14 +855,16 @@ fn licence_fit(skills: &Skills, word: &str) -> ItemFit {
     }
 }
 
-/// The alternatives of a skill item; the item itself when it names no other: its text is the
-/// part written out in full (`Erfahrung im Risikomanagement` for `Erfahrung im Risiko-` before
-/// `und Qualitätsmanagement`).
+/// The alternatives of a skill item (the item itself when it has none). An item that names
+/// no other is read as its text too, the part written out in full: the first part of a
+/// hyphen ellipsis with the head it shares (`Risiko-` asks for risk management); the part as
+/// it stands still counts (`CRM-`, written out without its hyphen).
 fn alternatives(item: &Item) -> Vec<&str> {
-    if item.alternatives.len() < 2 {
-        return vec![&item.text];
+    let mut alternatives: Vec<&str> = item.alternatives.iter().map(String::as_str).collect();
+    if alternatives.len() < 2 && alternatives.first() != Some(&item.text.as_str()) {
+        alternatives.insert(0, &item.text);
     }
-    item.alternatives.iter().map(String::as_str).collect()
+    alternatives
 }
 
 /// Is an item general professional experience (`10 Jahre Berufserfahrung`, `8 years of

@@ -31,8 +31,7 @@ fn a_service_lead_meets_the_words_of_service_ads() {
     ] {
         assert_eq!(value(met), E_FULL, "{met}");
     }
-    // An IT service desk is near a contact center, no proof of one.
-    assert_eq!(value("Erfahrung im Service Desk"), E_HALF);
+    assert_eq!(value("Erfahrung im Service Desk"), E_NONE);
     // A code a number completes is no abbreviation of a compound.
     assert_eq!(value("DIN 1946"), E_NONE);
 }
@@ -53,6 +52,23 @@ fn a_family_is_met_by_its_products() {
         E_NONE
     );
     assert_eq!(skill_fit_in(&skills, "SAP", true).value, E_NONE);
+    // Generic words around the family ask for nothing more (the wording of real ads); a
+    // module does, and so does a line without a word of knowledge.
+    for met in [
+        "Kenntnisse in der Betreuung von SAP-Projekten",
+        "Kenntnisse in SAP-Integrationen",
+        "Erfahrung im SAP-Umfeld",
+    ] {
+        assert_eq!(skill_fit_in(&skills, met, true).value, E_FULL, "{met}");
+    }
+    for open in [
+        "Grundlegendes Verständnis der SAP-Module PS/PPM",
+        "Erfahrung mit SAP Ariba",
+        "Betreuung von SAP-Projekten",
+        "Erfahrung im Oracle-Umfeld",
+    ] {
+        assert_eq!(skill_fit_in(&skills, open, true).value, E_NONE, "{open}");
+    }
     // Another field with leadership stays open.
     assert_eq!(
         skill_fit_in(
@@ -228,6 +244,12 @@ fn an_ellipsis_part_is_matched_written_out() {
         values("Erfahrung im Qualitäts- und Risikomanagement"),
         [E_NONE, E_FULL]
     );
+    // An abbreviation written out without its hyphen still counts as it stands.
+    let data = of_json(&json!({"kernkompetenzen": [{"kompetenz": "CRM-Einführung"}]}));
+    let skills = Skills::new(&core_texts(&data), &data);
+    let text = "Anforderungen:\n- Fundiertes Verständnis von CRM- und Vertriebsprozessen\n";
+    let doc = crate::matching::job::read(text, &skills.vocab);
+    assert_eq!(item_fit(&skills, &doc.items[0]).value, E_HALF);
 }
 
 /// The parts of a programme are met by programme management (the wording of a real ad), a
@@ -264,6 +286,28 @@ fn a_programme_manager_meets_the_parts_and_comparable_methods() {
     ] {
         assert_eq!(value(open), E_NONE, "{open}");
     }
+}
+
+/// Steering and managing a budget, the stakeholders or the suppliers are one work, whichever
+/// word the ad and the profile use; controlling a budget is another.
+#[test]
+fn steering_is_managing() {
+    let data = of_json(&json!({"kernkompetenzen": [
+        {"kompetenz": "Budgetsteuerung"},
+        {"kompetenz": "Lieferantensteuerung"},
+        {"kompetenz": "Stakeholdermanagement"}
+    ]}));
+    let skills = Skills::new(&core_texts(&data), &data);
+    let value = |text: &str| skill_fit_in(&skills, text, true).value;
+    for met in [
+        "Budgetmanagement",
+        "Vendormanagement",
+        "Stakeholdersteuerung",
+    ] {
+        assert_eq!(value(met), E_FULL, "{met}");
+    }
+    assert_eq!(value("Budgetcontrolling"), E_NONE);
+    assert_eq!(value("Produktionssteuerung"), E_NONE);
 }
 
 /// What an entry names beside the skill is generic (`SAP SD`): something near the skill is
