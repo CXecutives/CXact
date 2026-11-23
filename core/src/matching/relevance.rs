@@ -4,9 +4,11 @@
 
 use std::collections::{BTreeMap, HashMap};
 use std::ops::Range;
+use std::sync::LazyLock;
 
 use super::atoms::{self, Fit, Vocab, fold};
 use super::fit::Skills;
+use super::graph::{self, Known};
 use super::lexicon::engine as lex;
 use super::params::{
     BM25_B, BM25_K1, BM25_LENGTH, FIELD_REQUIREMENTS, FIELD_REST, FIELD_TITLE, GENERIC_WEIGHT,
@@ -17,40 +19,63 @@ use crate::profile::key;
 fn counts(text: &str, vocab: &Vocab) -> BTreeMap<String, u64> {
     let mut map = BTreeMap::new();
     for line in text.lines() {
-        for atom in atoms::atoms(line, vocab) {
-            *map.entry(atom).or_insert(0) += 1;
+        for atom in atoms::atoms(line, vocab).iter() {
+            *map.entry(atom.clone()).or_insert(0) += 1;
         }
     }
     map
 }
 
+/// The atoms a profile is looked for by in an ad, each with its static weight
+/// ([`query`]), numbered.
+#[derive(Debug, Clone)]
+pub(crate) struct Query {
+    pub atoms: Vec<(String, u64)>,
+    known: Known,
+}
+
+impl Query {
+    pub(crate) fn new(atoms: Vec<(String, u64)>) -> Self {
+        Self {
+            known: Known::new(atoms.iter().map(|(a, _)| a.clone()).collect()),
+            atoms,
+        }
+    }
+}
+
 /// The atoms of each line read once, then [`counts`] over lines borrowing them.
 fn tally<'c>(
     lines: impl Iterator<Item = &'c str>,
-    read: &'c HashMap<&str, Vec<String>>,
+    read: &'c HashMap<&str, atoms::Atoms>,
 ) -> HashMap<&'c str, u64> {
     let mut map = HashMap::new();
     for line in lines {
-        for atom in read.get(line).into_iter().flatten() {
+        for atom in read.get(line).into_iter().flat_map(|a| a.iter()) {
             *map.entry(atom.as_str()).or_insert(0) += 1;
         }
     }
     map
 }
 
-/// Does a job atom name a profile atom (the same or narrower)?
-fn matches(job: &str, profile_atom: &str) -> bool {
-    matches!(atoms::fit(job, profile_atom), Fit::Equal | Fit::Specific)
+/// Is an atom a contract word of a title (`TITLE_CONTRACT_WORDS`, as written or stemmed)?
+fn contract_word(atom: &str) -> bool {
+    static WORDS: LazyLock<Vec<String>> = LazyLock::new(|| {
+        let written = lex::TITLE_CONTRACT_WORDS.iter().map(|w| (*w).to_owned());
+        let stemmed = lex::TITLE_CONTRACT_WORDS.iter().map(|w| atoms::stem(w));
+        let mut words: Vec<String> = written.chain(stemmed).collect();
+        words.sort();
+        words.dedup();
+        words
+    });
+    WORDS.binary_search_by(|w| w.as_str().cmp(atom)).is_ok()
 }
 
 /// Distinct profile atoms with their static weight: specific 1000, generic 200; an atom
 /// only named in free text counts half (an entry long enough to be a sentence). Languages are no field, and contract words and quantities say nothing about
 /// it: they stay out.
-pub(crate) fn query(skills: &Skills) -> Vec<(String, u64)> {
+pub(crate) fn query(skills: &Skills) -> Query {
     let noise = |a: &str| {
-        lex::TITLE_CONTRACT_WORDS
-            .iter()
-            .any(|w| *w == a || atoms::stem(w) == a)
+        contract_word(a)
             || lex::NUMBER_WORDS.iter().any(|(w, _)| *w == a)
             || lex::QUERY_NOISE.contains(&a)
     };
@@ -70,48 +95,44 @@ pub(crate) fn query(skills: &Skills) -> Vec<(String, u64)> {
     // Competence occurrences (`false`) sort first and win the dedup.
     atoms.sort();
     atoms.dedup_by(|b, a| a.0 == b.0);
-    atoms
-        .into_iter()
-        .map(|(a, usp)| {
-            let weight = if atoms::is_generic(&a) {
-                GENERIC_WEIGHT
-            } else if usp {
-                SPECIFIC_WEIGHT / 2
-            } else {
-                SPECIFIC_WEIGHT
-            };
-            (a, weight)
-        })
-        .collect()
+    Query::new(
+        atoms
+            .into_iter()
+            .map(|(a, usp)| {
+                let weight = if atoms::is_generic(&a) {
+                    GENERIC_WEIGHT
+                } else if usp {
+                    SPECIFIC_WEIGHT / 2
+                } else {
+                    SPECIFIC_WEIGHT
+                };
+                (a, weight)
+            })
+            .collect(),
+    )
 }
 
 /// Title fit in per-mille: share of the title's content atoms the profile covers, scaled
 /// by the static weight of the profile atom (specific 1000, USP-only 500).
-pub(crate) fn title_fit(query: &[(String, u64)], title: &str, vocab: &Vocab) -> u64 {
+pub(crate) fn title_fit(query: &Query, title: &str, vocab: &Vocab) -> u64 {
     title_fit_with(query, title, vocab, false)
 }
 
 /// The title fit of a text judged by its title alone: its contract words (`Interim`,
 /// `Freelance`) leave the title, the field words decide.
-pub(crate) fn field_title_fit(query: &[(String, u64)], title: &str, vocab: &Vocab) -> u64 {
+pub(crate) fn field_title_fit(query: &Query, title: &str, vocab: &Vocab) -> u64 {
     title_fit_with(query, title, vocab, true)
 }
 
-fn title_fit_with(query: &[(String, u64)], title: &str, vocab: &Vocab, drop_contract: bool) -> u64 {
+fn title_fit_with(query: &Query, title: &str, vocab: &Vocab, drop_contract: bool) -> u64 {
     // Contract words (`Interim`, `Freelance`, `befristet`) say nothing about the field: they
     // count in the title but never match the profile (`Interim Management` in a profile
     // does not make every interim title fit).
-    let contract = |a: &str| {
-        lex::TITLE_CONTRACT_WORDS
-            .iter()
-            .any(|w| *w == a || atoms::stem(w) == a)
-    };
+    let contract = contract_word;
     // A title judged alone drops them (and the generic atoms, as always).
     let dropped = |a: &str| atoms::is_generic(a) || (drop_contract && contract(a));
-    let title_atoms: Vec<String> = atoms::atoms(title, vocab)
-        .into_iter()
-        .filter(|a| !dropped(a))
-        .collect();
+    let read = atoms::atoms(title, vocab);
+    let title_atoms: Vec<&String> = read.iter().filter(|a| !dropped(a)).collect();
     if title_atoms.is_empty() {
         return 0;
     }
@@ -119,15 +140,20 @@ fn title_fit_with(query: &[(String, u64)], title: &str, vocab: &Vocab, drop_cont
         .iter()
         .filter(|t| !contract(t))
         .map(|t| {
+            let row = query.known.row(t);
             query
+                .atoms
                 .iter()
-                .map(|(p, weight)| {
+                .enumerate()
+                .map(|(i, (_, weight))| {
                     let full = (*weight).clamp(SPECIFIC_WEIGHT / 2, SPECIFIC_WEIGHT);
-                    match atoms::fit(t, p) {
+                    match row.fits[i] {
                         // A compound of another field names the title's word as part of
                         // other work (`Personalcontrolling` for `Head of Controlling`): half,
                         // as for a requirement (`fit::item_fit`).
-                        Fit::Specific if super::fit::other_field(t, p) => full / 2,
+                        Fit::Specific if graph::other_field(row.packs, query.known.packs(i)) => {
+                            full / 2
+                        }
                         Fit::Equal | Fit::Specific => full,
                         Fit::General => full / 2,
                         Fit::None => 0,
@@ -142,14 +168,14 @@ fn title_fit_with(query: &[(String, u64)], title: &str, vocab: &Vocab, drop_cont
 
 /// The title query: the profile's query plus the atoms of its target roles (a title that
 /// names a target role fits).
-pub(crate) fn title_query(query: &[(String, u64)], roles: &[String]) -> Vec<(String, u64)> {
-    let mut out = query.to_vec();
+pub(crate) fn title_query(query: &Query, roles: &[String]) -> Query {
+    let mut out = query.atoms.clone();
     for atom in roles {
         if !out.iter().any(|(a, _)| a == atom) {
             out.push((atom.clone(), SPECIFIC_WEIGHT));
         }
     }
-    out
+    Query::new(out)
 }
 
 /// A title without gender markers (`(m/w/d)`, `(all genders)`, `(f/m/d)`) and without a
@@ -188,8 +214,8 @@ pub(crate) fn clean_title(title: &str) -> String {
 
 /// Relevance `R = min(1000, R_lex + T/2)` in per-mille (`T` over the title query).
 pub(crate) fn relevance(
-    query: &[(String, u64)],
-    title_query: &[(String, u64)],
+    query: &Query,
+    title_query: &Query,
     vocab: &Vocab,
     title: &str,
     text: &str,
@@ -202,7 +228,7 @@ pub(crate) fn relevance(
             .iter()
             .flat_map(|range| text[range.clone()].lines())
     };
-    let mut read: HashMap<&str, Vec<String>> = HashMap::new();
+    let mut read: HashMap<&str, atoms::Atoms> = HashMap::new();
     for line in text.lines().chain(requirement_text()) {
         read.entry(line)
             .or_insert_with(|| atoms::atoms(line, vocab));
@@ -221,16 +247,14 @@ pub(crate) fn relevance(
         .chain(requirement_counts.keys().copied())
     {
         named.entry(job).or_insert_with(|| {
-            query
-                .iter()
-                .enumerate()
-                .filter(|(_, (atom, _))| matches(job, atom))
-                .map(|(index, _)| index)
+            let row = query.known.row(job);
+            (0..query.atoms.len())
+                .filter(|&i| matches!(row.fits[i], Fit::Equal | Fit::Specific))
                 .collect()
         });
     }
     let field = |counts: &mut dyn Iterator<Item = (&str, u64)>| {
-        let mut per_atom = vec![0u64; query.len()];
+        let mut per_atom = vec![0u64; query.atoms.len()];
         for (job, n) in counts {
             for &index in named.get(job).into_iter().flatten() {
                 per_atom[index] += n;
@@ -242,7 +266,7 @@ pub(crate) fn relevance(
     let in_all = field(&mut all.iter().map(|(k, n)| (*k, *n)));
     let in_requirements = field(&mut requirement_counts.iter().map(|(k, n)| (*k, *n)));
     let mut mass: u64 = 0;
-    for (index, (_, weight)) in query.iter().enumerate() {
+    for (index, (_, weight)) in query.atoms.iter().enumerate() {
         let in_rest = in_all[index].saturating_sub(in_requirements[index]);
         let tf = FIELD_TITLE * in_title[index]
             + FIELD_REQUIREMENTS * in_requirements[index]
@@ -268,7 +292,10 @@ mod tests {
     #[test]
     fn title_contract_words_never_match() {
         let vocab = Vocab::all();
-        let query = vec![("interim".to_owned(), 1000), ("controll".to_owned(), 1000)];
+        let query = Query::new(vec![
+            ("interim".to_owned(), 1000),
+            ("controll".to_owned(), 1000),
+        ]);
         assert_eq!(title_fit(&query, "Interim Controller", &vocab), 500);
         assert_eq!(title_fit(&query, "Controller", &vocab), 1000);
         assert_eq!(title_fit(&query, "Freelance Interim", &vocab), 0);
@@ -299,7 +326,7 @@ mod tests {
     #[test]
     fn target_roles_join_the_title_query() {
         let vocab = Vocab::all();
-        let query = vec![("controll".to_owned(), 1000)];
+        let query = Query::new(vec![("controll".to_owned(), 1000)]);
         let with_role = title_query(&query, &["werksleit".to_owned()]);
         assert_eq!(title_fit(&query, "Werksleiter", &vocab), 0);
         assert!(title_fit(&with_role, "Werksleiter", &vocab) > 0);
@@ -320,8 +347,12 @@ mod tests {
         let skills = Skills::new(&super::super::profile::core_texts(&data), &data);
         let query = query(&skills);
         let weight = |text: &str| {
-            let atom = atoms::atoms(text, &skills.vocab).remove(0);
-            query.iter().find(|(a, _)| *a == atom).map(|(_, w)| *w)
+            let atom = atoms::atoms(text, &skills.vocab)[0].clone();
+            query
+                .atoms
+                .iter()
+                .find(|(a, _)| *a == atom)
+                .map(|(_, w)| *w)
         };
         assert_eq!(weight("Controlling"), Some(SPECIFIC_WEIGHT));
         assert_eq!(weight("Treasury"), Some(SPECIFIC_WEIGHT / 2));
@@ -334,7 +365,7 @@ mod tests {
     #[test]
     fn a_title_alone_is_judged_by_its_field() {
         let vocab = Vocab::all();
-        let query = vec![("cfo".to_owned(), SPECIFIC_WEIGHT)];
+        let query = Query::new(vec![("cfo".to_owned(), SPECIFIC_WEIGHT)]);
         assert!(title_fit(&query, "Interim CFO", &vocab) < SPECIFIC_WEIGHT);
         assert_eq!(
             field_title_fit(&query, "Interim CFO", &vocab),

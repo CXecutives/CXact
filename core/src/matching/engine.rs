@@ -26,7 +26,7 @@ use super::params::{
 };
 use super::permanent;
 use super::profile::{self, CoreText};
-use super::relevance;
+use super::relevance::{self, Query};
 use super::roles::{self, Role, RoleFit};
 use super::scorer::{self, Percent};
 use super::sections::ReqKind;
@@ -43,9 +43,9 @@ pub(crate) struct EngineProfile {
     pub core: Vec<CoreText>,
     pub skills: Skills,
     pub criteria: HardCriteria,
-    pub query: Vec<(String, u64)>,
+    pub query: Query,
     /// The query plus the topics of the target roles: what the title may name.
-    pub title_query: Vec<(String, u64)>,
+    pub title_query: Query,
     pub roles: Vec<Role>,
     pub wishes: Wishes,
     /// The levels of the target roles and the profile's highest (engine 23).
@@ -55,6 +55,8 @@ pub(crate) struct EngineProfile {
     /// The level of the profile's own roles: its target roles and the roles its competences
     /// name, never its years (what its role brings, `fit::role_brings`).
     pub brings: u8,
+    /// What a title says beside its core (`roles::shape`).
+    pub shape: Vec<String>,
 }
 
 impl EngineProfile {
@@ -80,6 +82,7 @@ impl EngineProfile {
             .max()
             .unwrap_or(0);
         Self {
+            shape: roles::shape(&skills.vocab),
             core,
             skills,
             criteria,

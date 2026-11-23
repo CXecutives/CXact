@@ -6,7 +6,7 @@ file: name, lines, purpose (the first sentence of its header comment), main publ
 (Rust `pub`, TS exports, Svelte props; `+n` more). The notes under the headings come from
 docs/ARCHITECTURE.md "Layers".
 
-511 files, 14 of them without a header comment ("(no header)").
+512 files, 14 of them without a header comment ("(no header)").
 
 ## Where a change goes
 
@@ -113,30 +113,31 @@ reads the alert mails (IMAP)
 is the pure integer engine
 - ad_facts.rs 631 · The key facts of an ad, each with the passage that states… · Stated, Duration, AdFacts, read +4
 - application.rs 498 · How to apply to an ad: the application deadline it names… · Contact, deadline, contact
-- atoms.rs 932 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +10
+- atoms.rs 953 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +11
 - contract.rs 399 · Contract type of an ad: interim, permanent, temporary… · ContractKind, Contract, student_role, infer
-- engine.rs 752 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
+- engine.rs 755 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
 - exclusion.rs 614 · Exclusion words of the profile: a word excludes the ad… · check
 - explain.rs 713 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
 - facts.rs 1274 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +20
-- fit.rs 931 · The profile the engine matches against, and the match… · Entry, Broad, forget, Skills +11
+- fit.rs 996 · The profile the engine matches against, and the match… · Entry, Broad, Skills, degree_fields_in +9
 - gaps.rs 193 · The gap finder's view of a job: the words of its… · Gap, JobGaps, vocabulary_gaps
+- graph.rs 101 · The engine's knowledge graph: how the atoms of an ad… · packs, other_field, Known, Row
 - layout.rs 116 · The layout of an ad's text for the reader: the lines that… · TextLayout, text_layout
 - limits.rs 573 · The limits of an engagement the profile sets, checked and… · Workload, read, workload, workload_fits +4
-- mod.rs 467 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +19
+- mod.rs 466 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +19
 - normalize.rs 370 · Text primitives with Python semantics: case folding,… · is_space, is_word, decimal, digit_class_body +10
 - params.rs 142 · Frozen parameters of the engine. · E_FULL, E_HALF, E_NONE, W_MUST +57
 - permanent.rs 496 · The rule for permanent roles: the minimum annual salary. · Salary, with_bonus, parse_salary, salary +3
 - profile.rs 54 · The profile entries the engine matches against, with their… · CoreText, core_texts
 - pyre.rs 109 · Python `re` semantics on top of the `regex` crate. · compile, view, original_range
-- relevance.rs 344 · Relevance of a job for the profile, independent of… · query, title_fit, field_title_fit, title_query +2
+- relevance.rs 375 · Relevance of a job for the profile, independent of… · Query, query, title_fit, field_title_fit +3
 - requirements.rs 52 · Vocabulary terms of a job text, independent of the profile. · extract_job_skills
-- roles.rs 442 · Target roles: job titles the consultant wants. · Role, read, RoleFit, title_core +2
+- roles.rs 451 · Target roles: job titles the consultant wants. · Role, read, RoleFit, shape +3
 - score.rs 27 · Integer rounding of the scores. · div_round_half_even
 - scorer.rs 527 · The Passungsgrad: `score = content x frame factor`, then… · FieldClass, class, Percent, percent +3
 - sections.rs 223 · Lines, headings and requirement cues of a job text. · ReqKind, is_bullet, norm_heading, section_kind +4
 - seniority.rs 246 · The level of an ad against the profile's own years of… · experience_years, junior_title, entry_level_must, page_junior_level +1
-- signals.rs 666 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +14
+- signals.rs 664 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +14
 - terms.rs 726 · The term of a requirement and the profile field it belongs… · is_term, TermField, CoreTerm, term_key +3
 - title.rs 443 · The frame of a job title: the title without its noise, the… · clean, level_of, engagement, ad_level +5
 - types.rs 459 · Input and output types of the matching engine. · KeyFacts, TextKind, JobInput, Verdict +25

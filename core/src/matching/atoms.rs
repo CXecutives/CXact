@@ -4,6 +4,7 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 use std::sync::LazyLock;
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -344,38 +345,58 @@ fn kept(token: &str) -> Option<String> {
 /// Atoms of a text: tokens without fillers, stemmed, concepts of `vocab` applied. A
 /// concept whose words include a filler, a stopword or a short word (`US GAAP`, `Order to
 /// Cash`, `Year End Closing`) is found before those words go.
-pub(crate) fn atoms(text: &str, vocab: &Vocab) -> Vec<String> {
+pub(crate) fn atoms(text: &str, vocab: &Vocab) -> Atoms {
     // One job reads its title, items and lines many times (the ladder, the caps, the
-    // relevance): each text once per vocabulary and thread.
-
-    let key = (vocab.id, text.to_owned());
-    if let Some(found) = READ_ATOMS.with(|read| read.borrow().get(&key).cloned()) {
+    // relevance), the signals and the assessment read it twice, and every job the profile's
+    // own words: each text once per vocabulary and thread.
+    if let Some(found) = READ_ATOMS.with(|read| read.borrow().get(vocab.id, text)) {
         return found;
     }
-    let found = read_atoms(text, vocab);
-    READ_ATOMS.with(|read| {
-        let mut read = read.borrow_mut();
-        if read.len() >= ATOMS_KEPT {
-            read.clear();
-        }
-        read.insert(key, found.clone());
-    });
+    let found: Atoms = read_atoms(text, vocab).into();
+    READ_ATOMS.with(|read| read.borrow_mut().put(vocab.id, text, found.clone()));
     found
 }
 
-/// Forgets the texts [`atoms`] read on this thread (a new job: one job's texts are read
-/// again, another job's hardly).
-pub(crate) fn forget_atoms() {
-    READ_ATOMS.with(|read| read.borrow_mut().clear());
-}
+/// The atoms of a text as [`atoms`] hands them out: one read shared by every caller.
+pub(crate) type Atoms = Rc<[String]>;
 
 thread_local! {
     /// The texts [`atoms`] read, by vocabulary.
-    static READ_ATOMS: RefCell<HashMap<(u64, String), Vec<String>>> = RefCell::new(HashMap::new());
+    static READ_ATOMS: RefCell<Memo<Atoms>> = const { RefCell::new(Memo::new(1 << 14)) };
 }
 
-/// So many texts [`atoms`] keeps per thread before it starts anew.
-const ATOMS_KEPT: usize = 4096;
+/// What a pure function read from a text, by the table it read it with (a vocabulary, the
+/// profile's atoms), kept per thread up to `kept` texts in all before it starts anew.
+pub(crate) struct Memo<V> {
+    tables: Vec<(u64, HashMap<Box<str>, V>)>,
+    kept: usize,
+}
+
+impl<V: Clone> Memo<V> {
+    pub(crate) const fn new(kept: usize) -> Self {
+        Self {
+            tables: Vec::new(),
+            kept,
+        }
+    }
+
+    pub(crate) fn get(&self, table: u64, text: &str) -> Option<V> {
+        let (_, texts) = self.tables.iter().find(|(id, _)| *id == table)?;
+        texts.get(text).cloned()
+    }
+
+    pub(crate) fn put(&mut self, table: u64, text: &str, value: V) {
+        if self.tables.iter().map(|(_, t)| t.len()).sum::<usize>() >= self.kept {
+            self.tables.clear();
+        }
+        if !self.tables.iter().any(|(id, _)| *id == table) {
+            self.tables.push((table, HashMap::new()));
+        }
+        if let Some((_, texts)) = self.tables.iter_mut().find(|(id, _)| *id == table) {
+            texts.insert(text.into(), value);
+        }
+    }
+}
 
 /// A German hyphen ellipsis: modifiers that share the head of the word after them
 /// (`projekt- und programmmanagement`, `risiko-, issue- und eskalationsmanagement`,
@@ -668,7 +689,7 @@ static PACK_NAMES: LazyLock<Vec<Vec<String>>> = LazyLock::new(|| {
             let mut names: Vec<String> = d
                 .search
                 .iter()
-                .flat_map(|term| atoms(term, &ALL_PACKS))
+                .flat_map(|term| atoms(term, &ALL_PACKS).to_vec())
                 .filter(|a| !is_generic(a))
                 .collect();
             names.sort();

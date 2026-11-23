@@ -136,7 +136,7 @@ fn parts(text: &str, vocab: &Vocab) -> Parts {
         .copied()
         .collect();
     Parts {
-        topic: atoms::atoms(&rest.join(" "), vocab),
+        topic: atoms::atoms(&rest.join(" "), vocab).to_vec(),
         contract,
         lead,
     }
@@ -232,20 +232,29 @@ fn role_fit(
     Some(full)
 }
 
-/// The core of a title (engine 24): its specific atoms without the words of lead, level,
-/// contract, junior roles and the role's shape. An open must on them is an open core.
-pub(crate) fn title_core(title: &str, vocab: &Vocab) -> Vec<String> {
-    let shape: Vec<String> = lex::LEAD_WORDS
+/// The atoms of the words of lead, level, contract, junior roles and the role's shape,
+/// sorted: what a title says beside its core ([`title_core`]).
+pub(crate) fn shape(vocab: &Vocab) -> Vec<String> {
+    let mut shape: Vec<String> = lex::LEAD_WORDS
         .iter()
         .chain(lex::LEVEL_WORDS)
         .chain(lex::ROLE_CONTRACT_WORDS)
         .chain(lex::ROLE_SHAPE_WORDS)
         .chain(lexicon::engine::JUNIOR_TITLES)
-        .flat_map(|w| atoms::atoms(w, vocab))
+        .flat_map(|w| atoms::atoms(w, vocab).to_vec())
         .collect();
+    shape.sort();
+    shape.dedup();
+    shape
+}
+
+/// The core of a title (engine 24): its specific atoms without the words of its `shape`
+/// ([`shape`]). An open must on them is an open core.
+pub(crate) fn title_core(title: &str, vocab: &Vocab, shape: &[String]) -> Vec<String> {
     atoms::atoms(title, vocab)
-        .into_iter()
-        .filter(|a| !atoms::is_generic(a) && !shape.contains(a))
+        .iter()
+        .filter(|a| !atoms::is_generic(a) && shape.binary_search(a).is_err())
+        .cloned()
         .collect()
 }
 

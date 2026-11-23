@@ -533,7 +533,7 @@ mod tests {
     #[test]
     fn the_field_meets_its_narrower_work_in_half() {
         let v = vocab(&["Kundenservice", "Contact Center Management", "Zendesk"]);
-        let one = |text: &str| atoms(text, &v).pop().expect("one atom");
+        let one = |text: &str| atoms(text, &v).last().cloned().expect("one atom");
         let profile = one("Customer Service Management");
         for job in [
             "Beschwerdemanagement",

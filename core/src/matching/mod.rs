@@ -16,6 +16,7 @@ mod fit;
 /// the shipped app carries the fixed vocabulary alone.
 #[cfg(debug_assertions)]
 mod gaps;
+mod graph;
 mod job;
 mod layout;
 pub(crate) mod lexicon;
@@ -428,8 +429,6 @@ pub fn assess(profile: &CompiledProfile, job: &JobInput<'_>) -> Option<Assessmen
     if profile.quality == ProfileQuality::Empty {
         return None;
     }
-    // A new job: the texts the last one read are not read again.
-    fit::forget();
     // A page's placeholder is no word of the ad; the masked text keeps every byte offset, so
     // the passages are counted in the text as the reader shows it.
     let masked = normalize::mask_placeholders(job.text);

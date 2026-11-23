@@ -1,7 +1,7 @@
 use super::*;
 
 fn all(text: &str) -> Vec<String> {
-    atoms(text, &Vocab::all())
+    atoms(text, &Vocab::all()).to_vec()
 }
 
 /// `SAFe` is scaled agile work (the safe operating area of power electronics is none), the

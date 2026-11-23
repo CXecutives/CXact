@@ -239,7 +239,7 @@ mod tests {
                 ("currency translation", "Währungsumrechnung"),
             ],
         );
-        let one = |text: &str| atoms(text, &v).pop().expect("one atom");
+        let one = |text: &str| atoms(text, &v).last().cloned().expect("one atom");
         for (step, part) in [
             (
                 "Fundierte Erfahrung mit M&A-Prozessen",

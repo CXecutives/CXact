@@ -312,7 +312,7 @@ mod tests {
                 ("harmonisation of HR processes", "HR-Prozessharmonisierung"),
             ],
         );
-        let one = |text: &str| atoms(text, &v).pop().expect("one atom");
+        let one = |text: &str| atoms(text, &v).last().cloned().expect("one atom");
         let transformation = one("HR-Transformation");
         let harmonising = one("HR-Prozessharmonisierung");
         assert_eq!(fit(&harmonising, &transformation), Fit::General);

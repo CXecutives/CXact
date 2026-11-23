@@ -251,7 +251,7 @@ mod tests {
             ],
         );
         let lss = atoms("Lean Six Sigma", &operations());
-        assert_eq!(lss, ["lean-management", "six-sigma"]);
+        assert_eq!(*lss, ["lean-management", "six-sigma"]);
     }
 
     #[test]

@@ -12,7 +12,6 @@ use super::CompiledProfile;
 use super::atoms::{self, Fit, Vocab};
 use super::engine::{self, EngineProfile, Scored};
 use super::facts::Finding;
-use super::fit;
 use super::job::Class;
 use super::normalize;
 use super::params::{E_FULL, E_NONE};
@@ -305,7 +304,6 @@ pub fn trace(profile: &CompiledProfile, input: &JobInput<'_>) -> Trace {
     if profile.quality() == super::ProfileQuality::Empty {
         return Trace::default();
     }
-    fit::forget();
     let masked = normalize::mask_placeholders(input.text);
     let read = JobInput {
         text: &masked,
@@ -412,7 +410,7 @@ impl<'a> CoreTest<'a> {
     ) -> Self {
         let vocab = &profile.skills.vocab;
         Self {
-            title_atoms: roles::title_core(title, vocab),
+            title_atoms: roles::title_core(title, vocab, &profile.shape),
             title_fields: field_words(&atoms::atoms(title, vocab)).collect(),
             field,
             vocab,
