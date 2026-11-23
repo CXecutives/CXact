@@ -4,40 +4,6 @@
 //! consultant profiles. All entries are case-folded; sorted tables are searched with
 //! `binary_search`, keep them sorted.
 
-/// What a role brings (the rubric's rule 2): from this level of the profile's own roles on
-/// (its target roles and the roles its competences name, never its years), a requirement
-/// that asks only for these counts as shown (atom prefixes, folded). 4, a team lead:
-/// leadership; 5, the lead of a function and above: budget, results and stakeholders too.
-// external contract - do not translate (matching lexicon)
-pub(crate) const ROLE_BRINGS: &[(u8, &[&str])] = &[
-    (3, &["incident", "interface", "release", "schnittstell"]),
-    (
-        4,
-        &[
-            "disziplinarisch",
-            "fuhrung",
-            "leadership",
-            "mitarbeiterfuhrung",
-            "personalfuhrung",
-            "personalverantwort",
-            "teamfuhrung",
-            "teamleitung",
-        ],
-    ),
-    (
-        5,
-        &[
-            "budget",
-            "ergebnisverantwort",
-            "executive",
-            "kostenverantwort",
-            "management",
-            "senior",
-            "stakeholder",
-        ],
-    ),
-];
-
 /// Values of a page's career level or employment type field (exact, folded) that are
 /// clearly below a senior target: an internship, an entry-level role, voluntary work.
 pub(crate) const ENTRY_LEVEL_VALUES: &[&str] = &[

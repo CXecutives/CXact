@@ -5,8 +5,8 @@ use crate::matching::profile::core_texts;
 use crate::profile::of_json;
 
 /// A head of customer service as a CV names it: the field written apart meets the
-/// profile's compound, an abbreviation its compound, a ticket system its name, and
-/// leadership a competence of leadership in half; a tool name is no compound of a word.
+/// profile's compound, an abbreviation its compound, a ticket system its name; a tool name is
+/// no compound of a word.
 #[test]
 fn a_service_lead_meets_the_words_of_service_ads() {
     let data = of_json(&json!({
@@ -31,7 +31,6 @@ fn a_service_lead_meets_the_words_of_service_ads() {
     ] {
         assert_eq!(value(met), E_FULL, "{met}");
     }
-    assert_eq!(value("Leadership"), E_HALF);
     assert_eq!(value("Erfahrung im Service Desk"), E_NONE);
     // A code a number completes is no abbreviation of a compound.
     assert_eq!(value("DIN 1946"), E_NONE);
@@ -53,11 +52,7 @@ fn a_family_is_met_by_its_products() {
         E_NONE
     );
     assert_eq!(skill_fit_in(&skills, "SAP", true).value, E_NONE);
-    // Leadership alone is met half by a leading role; inside another skill it is not.
-    assert_eq!(
-        skill_fit_in(&skills, "Führungserfahrung", true).value,
-        E_HALF
-    );
+    // Another field with leadership stays open.
     assert_eq!(
         skill_fit_in(
             &skills,
@@ -138,30 +133,6 @@ fn an_industry_is_the_setting_not_the_function() {
     let fit = |text: &str| skill_fit_in(&skills, text, true).value;
     assert_eq!(fit("Ausgeprägte Kommunikationsfähigkeit"), E_NONE);
     assert_eq!(fit("Erfahrung in der Telekommunikation"), E_FULL);
-}
-
-/// A teaser's term met only through a compound of another field is half
-/// (`Personalcontrolling` for `Controlling`); a compound of its own field stays full.
-#[test]
-fn a_teaser_term_in_another_field_is_half() {
-    let term = |profile: &str| {
-        let data = of_json(&json!({"kernkompetenzen": [{"kompetenz": profile}]}));
-        let skills = Skills::new(&core_texts(&data), &data);
-        let item = Item {
-            span: None,
-            text: "controlling".to_owned(),
-            alternatives: vec!["controlling".to_owned()],
-            kind: crate::matching::sections::ReqKind::Must,
-            class: Class::Skill,
-            years: None,
-            years_max: None,
-            stage: Stage::Vocabulary,
-        };
-        item_fit(&skills, &item).value
-    };
-    assert_eq!(term("Personalcontrolling"), E_HALF);
-    assert_eq!(term("Konzerncontrolling"), E_FULL);
-    assert_eq!(term("Controlling"), E_FULL);
 }
 
 /// ESCO, the broad layer: a requirement and a profile entry the engine's own words do not

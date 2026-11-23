@@ -259,30 +259,6 @@ pub(crate) const SEARCH_BROAD_ATOMS: &[&str] = &[
     "weiterbildung",
 ];
 
-/// Words of a leading role in a profile entry (`Leiter Controlling`, `Head of IT`, `CFO`).
-pub(crate) const PROFILE_LEAD_WORDS: &[&str] = &[
-    "leiter",
-    "leiterin",
-    "leitung",
-    "head",
-    "director",
-    "direktor",
-    "chief",
-    "cfo",
-    "cio",
-    "coo",
-    "ceo",
-    "cto",
-    "geschaftsfuhrer",
-    "geschaftsfuhrung",
-    "vorstand",
-    "werksleiter",
-    "vp",
-    "teamleiter",
-    "abteilungsleiter",
-    "bereichsleiter",
-];
-
 /// Separators of a title's marketing tail (`Interim CFO – Scale-up E-Mobility`).
 pub(crate) const TITLE_TAIL_SEPARATORS: &[&str] = &[" – ", " — ", " | ", " - "];
 

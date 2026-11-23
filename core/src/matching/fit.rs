@@ -1,14 +1,14 @@
 //! The profile the engine matches against, and the match ladder for one item:
-//! exact/stem/synonym = 1.0, profile more specific = 1.0, profile more general = 0.5,
-//! two thirds of a long phrase = 0.5, generic atoms never alone (V1-V4, V15), language
+//! exact/stem/synonym = 1.0, profile more specific or covered (`graph`) = 1.0, profile more
+//! general or near = 0.5, generic atoms never alone (V1-V4, V15), kinds of tool, language
 //! levels (V9), years (V8), degrees (field, relatedness, level) and licences.
 
 use std::rc::Rc;
 use std::sync::LazyLock;
 
 use super::atoms::{self, Fit, Vocab, fold};
-use super::graph::{self, Known, Row};
-use super::job::{Class, Item, Stage, language_of, names_degree};
+use super::graph::{Known, Row};
+use super::job::{Class, Item, language_of, names_degree};
 use super::lexicon::engine as lex;
 use super::lexicon::esco::{self, Kind};
 use super::normalize::contains_word;
@@ -33,9 +33,6 @@ pub(crate) struct Entry {
     pub method: bool,
     /// The kinds of tool it names (`TOOL_KINDS`).
     pub tools: Vec<&'static str>,
-    /// It shows leadership: a leading role (`Leiter Controlling`, `CFO`) or a competence of
-    /// leadership alone.
-    pub leads: bool,
     /// An industry of the profile (`branchen`): a setting, no skill.
     pub industry: bool,
 }
@@ -254,11 +251,6 @@ impl Skills {
             .iter()
             .map(|entry| {
                 let atoms = atoms::atoms(&entry.text, &vocab).to_vec();
-                let folded = fold(&entry.text);
-                let leads = atoms::raw_tokens(&folded)
-                    .any(|t| lex::PROFILE_LEAD_WORDS.contains(&t))
-                    || (entry.path.starts_with(key::COMPETENCES)
-                        && atoms.iter().all(|a| leadership_atom(a)));
                 Entry {
                     years: years(&entry.text),
                     broad: if skill(&entry.path) {
@@ -268,7 +260,6 @@ impl Skills {
                     },
                     method: atoms::general_work(&entry.text),
                     tools: tool_kinds(&entry.text),
-                    leads,
                     industry: entry.path.starts_with(key::INDUSTRIES),
                     ids: Vec::new(),
                     atoms,
@@ -517,9 +508,6 @@ fn entry_fit(job: &Alternative, whole: &Entry) -> (u16, Via) {
             (E_FULL, Via::Specific)
         };
     }
-    if entry.len() >= 3 && 3 * matched >= 2 * entry.len() && !generic_only {
-        return (E_HALF, Via::General);
-    }
     (E_NONE, Via::Exact)
 }
 
@@ -576,15 +564,6 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
     {
         best = best_entry(skills, &asked, false);
     }
-    // The industry is the setting of a requirement (`Qualitätsmanagement produzierender
-    // Unternehmen`): without a fit the function alone is read, the setting costs little
-    // (the rubric's rule 5).
-    if best.value == E_NONE && job.iter().any(|a| industry_atom(a)) {
-        let function: Vec<String> = job.iter().filter(|a| !industry_atom(a)).cloned().collect();
-        if function.iter().any(|a| !atoms::is_generic(a)) {
-            best = best_entry(skills, &Alternative::new(skills, &function), false);
-        }
-    }
     // A generic family asked for alone (`SAP-Kenntnisse`) is met by an entry that names a
     // product of it (`SAP S/4HANA`).
     if best.value == E_NONE
@@ -601,20 +580,6 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
             value: E_FULL,
             entry: Some(index),
             via: Via::Specific,
-        };
-    }
-    // Leadership asked for is met at least half by a leading role or a competence of
-    // leadership in the profile (`Führung` for `Leadership`; only an item about leadership
-    // alone, not `8 Jahre Controlling, davon 3 mit Führung`). Leadership names no field: it
-    // never counts in full on its own.
-    if best.value < E_HALF
-        && leadership_only(&job)
-        && let Some(index) = skills.entries.iter().position(|e| e.leads)
-    {
-        best = ItemFit {
-            value: E_HALF,
-            entry: Some(index),
-            via: Via::General,
         };
     }
     // The ad asks for more than the profile names (`Tableau im Reporting` against
@@ -758,42 +723,11 @@ fn experience_atom(atom: &str) -> bool {
         || atom == "projekterfahrung"
 }
 
-/// Does a requirement ask only for what a role at `level` brings (`ROLE_BRINGS`:
-/// `Führungserfahrung`, `Budgetverantwortung`, `Stakeholder-Management` for a head of)?
-pub(crate) fn role_brings(level: u8, text: &str, vocab: &Vocab) -> bool {
-    let brought: Vec<&str> = lex::ROLE_BRINGS
-        .iter()
-        .filter(|(from, _)| *from <= level)
-        .flat_map(|(_, words)| words.iter().copied())
-        .collect();
-    let named = |a: &str| brought.iter().any(|w| a.starts_with(w));
-    let filler = |a: &str| atoms::is_generic(a) || experience_atom(a);
-    let mut any = false;
-    for atom in atoms::atoms(text, vocab).iter() {
-        let parts: Vec<&str> = atom.split('-').filter(|p| !p.is_empty()).collect();
-        if parts.iter().any(|p| named(p)) && parts.iter().all(|p| named(p) || filler(p)) {
-            any = true;
-        } else if !filler(atom) {
-            return false;
-        }
-    }
-    any
-}
-
 /// An atom of leadership (`fuhrung`, `personalverantwortung`).
 pub(crate) fn leadership_atom(atom: &str) -> bool {
     lex::LEADERSHIP_ATOMS
         .iter()
         .any(|l| atom == *l || atom.starts_with(l))
-}
-
-/// Does a requirement ask for leadership alone (`Erste Führungserfahrung`)? Its atoms are
-/// leadership atoms and generic ones only.
-fn leadership_only(atoms: &[String]) -> bool {
-    atoms.iter().any(|a| leadership_atom(a))
-        && atoms
-            .iter()
-            .all(|a| leadership_atom(a) || atoms::is_generic(a))
 }
 
 fn language_fit(skills: &Skills, language: &str, level: Option<u8>) -> ItemFit {
@@ -941,25 +875,6 @@ pub(crate) fn item_fit(skills: &Skills, item: &Item) -> ItemFit {
             .max_by_key(|f| f.value)
             .unwrap_or(NONE),
     };
-    // A teaser's term met only through a compound of another field is half: the profile
-    // names the skill as part of other work (`Personalcontrolling` for `Controlling`).
-    if item.stage == Stage::Vocabulary
-        && fit.value == E_FULL
-        && fit.via == Via::Specific
-        && let Some(entry) = fit.entry.and_then(|e| skills.entries.get(e))
-    {
-        let known = &skills.known;
-        let narrowed = atoms::atoms(&item.text, &skills.vocab).iter().any(|j| {
-            let row = known.row(j);
-            entry.ids.iter().any(|&i| {
-                row.fits[i] == Fit::Specific && graph::other_field(row.packs, known.packs(i))
-            })
-        });
-        if narrowed {
-            fit.value = E_HALF;
-            fit.via = Via::General;
-        }
-    }
     if let Some(needed) = item.years {
         let general = general_experience(&item.text, &skills.vocab);
         let have =

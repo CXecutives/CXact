@@ -53,9 +53,6 @@ pub(crate) struct EngineProfile {
     pub level: ProfileLevel,
     /// The field families of the profile's packs (engine 23).
     pub fields: Vec<&'static str>,
-    /// The level of the profile's own roles: its target roles and the roles its competences
-    /// name, never its years (what its role brings, `fit::role_brings`).
-    pub brings: u8,
     /// What a title says beside its core (`roles::shape`).
     pub shape: Vec<String>,
 }
@@ -71,17 +68,6 @@ impl EngineProfile {
         let wishes = Wishes::new(form);
         let level = ProfileLevel::new(form.roles.iter().map(String::as_str), skills.total_years);
         let fields = title::profile_fields(skills.vocab.packs());
-        let brings = level
-            .wished
-            .iter()
-            .copied()
-            .chain(
-                form.competences
-                    .iter()
-                    .filter_map(|c| title::level_of(&c.name)),
-            )
-            .max()
-            .unwrap_or(0);
         Self {
             shape: roles::shape(&skills.vocab),
             core,
@@ -93,7 +79,6 @@ impl EngineProfile {
             wishes,
             level,
             fields,
-            brings,
         }
     }
 }
@@ -406,17 +391,6 @@ fn scored(profile: &EngineProfile, items: Vec<Item>, title: &str, far: bool) -> 
                     } else {
                         E_HALF.max(fit.value)
                     },
-                    entry: None,
-                    via: Via::Exact,
-                };
-            }
-            // What follows from the profile's role counts as shown (the rubric's rule 2).
-            if fit.value < E_FULL
-                && matches!(item.class, Class::Skill | Class::Soft)
-                && fit::role_brings(profile.brings, &item.text, &profile.skills.vocab)
-            {
-                fit = ItemFit {
-                    value: E_FULL,
                     entry: None,
                     via: Via::Exact,
                 };
