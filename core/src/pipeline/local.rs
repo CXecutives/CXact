@@ -1,5 +1,5 @@
 //! The matching engine behind [`Matcher`]: one compiled profile, its revision
-//! `e{ENGINE_VERSION}.{INPUTS}:{fingerprint}`, what a stored job hands the engine (text, page
+//! `e{ENGINE_VERSION}.{engine}:{profile}`, what a stored job hands the engine (text, page
 //! facts, teaser or full text) and the mapping of an [`Assessment`] onto what the store keeps
 //! per job ([`MatchRecord`]).
 
@@ -23,15 +23,11 @@ const TOP: usize = 2;
 /// Open terms a stored match keeps ("Häufig verlangt" counts them across the jobs).
 pub const MAX_TERMS: usize = 8;
 
-/// Version of what a stored job hands the engine besides its text, and of what the store
-/// keeps of the assessment (2: page facts and the teaser flag; 3: the company, for the
-/// industry wish; 4: career level, industries and a remote field in words; 5: the workload
-/// in the stored facts; 6: the open terms for "Häufig verlangt"; 7: an open term is a
-/// requirement whose words hold a term, [`open_term`]; 8: the quoted requirements put a
-/// language last; 9: the text without its contact, legal and footer passages,
-/// [`crate::text::scored_text`]). Part of the revision: a change scores every stored job
-/// again.
-const INPUTS: u32 = 9;
+/// The fingerprint of everything that decides a score (`core/build.rs`): the engine with its
+/// word lists and ESCO data, the text it is handed ([`crate::text::scored_text`]) and this
+/// file, what a stored job hands the engine and what the store keeps of the assessment. Part
+/// of the revision: a change to any of them scores every stored job again.
+const ENGINE_FINGERPRINT: &str = env!("CXACT_ENGINE_SOURCES");
 
 /// The local engine with one profile.
 pub struct LocalMatcher {
@@ -41,11 +37,7 @@ pub struct LocalMatcher {
 
 impl LocalMatcher {
     pub fn new(profile: CompiledProfile) -> LocalMatcher {
-        let rev = format!(
-            "e{}.{INPUTS}:{}",
-            matching::ENGINE_VERSION,
-            profile.fingerprint()
-        );
+        let rev = revision(ENGINE_FINGERPRINT, &profile);
         LocalMatcher { profile, rev }
     }
 
@@ -131,6 +123,15 @@ impl LocalMatcher {
         };
         read(&input, full, matches!(scored, Cow::Owned(_)))
     }
+}
+
+/// The revision of a score: the engine version, the engine's fingerprint and the profile's.
+fn revision(engine: &str, profile: &CompiledProfile) -> String {
+    format!(
+        "e{}.{engine}:{}",
+        matching::ENGINE_VERSION,
+        profile.fingerprint()
+    )
 }
 
 impl Matcher for LocalMatcher {
@@ -469,8 +470,13 @@ Rahmenbedingungen:
     fn the_revision_names_engine_and_profile() {
         let matcher = LocalMatcher::from_form(&profile());
         let rev = matcher.rev();
-        let prefix = format!("e{}.{INPUTS}:", matching::ENGINE_VERSION);
+        let prefix = format!("e{}.{ENGINE_FINGERPRINT}:", matching::ENGINE_VERSION);
         assert!(rev.starts_with(&prefix), "{rev}");
+        assert_eq!(ENGINE_FINGERPRINT.len(), 16, "{ENGINE_FINGERPRINT}");
+        assert!(
+            ENGINE_FINGERPRINT.chars().all(|c| c.is_ascii_hexdigit()),
+            "{ENGINE_FINGERPRINT}"
+        );
         assert_eq!(rev.len(), prefix.len() + 16);
         assert_eq!(rev, LocalMatcher::from_form(&profile()).rev(), "stable");
         let mut other = profile();
@@ -754,6 +760,29 @@ Wünschenswert:
         let text = store.description(&key).unwrap();
         let teaser = matcher.assessment(&row, text.as_deref()).unwrap();
         assert_eq!(teaser.summary.evidence, matching::EvidenceLevel::Teaser);
+    }
+
+    /// A changed engine (another fingerprint of its sources) makes every stored score stale:
+    /// the list scores the job again instead of keeping the old number.
+    #[test]
+    fn another_engine_scores_stored_jobs_again() {
+        let matcher = LocalMatcher::from_form(&profile());
+        let (store, key) = job("Interim CFO (m/w/d)", "Hamburg", FIT);
+        let row = store.job(&key).unwrap().unwrap();
+        let record = matcher.assess(&row, Some(FIT)).unwrap();
+        store
+            .save_matches(&[(key.clone(), record)], matcher.rev(), Timestamp::now())
+            .unwrap();
+        assert_eq!(store.match_pending(matcher.rev()).unwrap(), 0, "current");
+        let changed = LocalMatcher {
+            rev: revision("0123456789abcdef", &matcher.profile),
+            profile: matching::compile_profile(&profile()),
+        };
+        assert_ne!(changed.rev(), matcher.rev());
+        assert_eq!(store.match_pending(changed.rev()).unwrap(), 1, "stale");
+        let unscored = store.unscored(changed.rev(), 10, 0).unwrap();
+        assert_eq!(unscored.len(), 1);
+        assert_eq!(unscored[0].0.key, key);
     }
 
     /// New page facts make a stored score stale.

@@ -34,7 +34,9 @@
 //! (`lexicon::EXCLUSION_WORD_FAMILIES`: `Praktikum` and `Praktikant`). A phrase matches word
 //! by word or written as one word (`Call Center`, `Callcenter`).
 
+use std::cell::RefCell;
 use std::ops::Range;
+use std::rc::Rc;
 use std::sync::LazyLock;
 
 use regex::Regex;
@@ -104,19 +106,51 @@ struct Form {
 }
 
 /// One exclusion word with its forms.
-struct Word<'a> {
-    text: &'a str,
+struct Word {
+    text: String,
     forms: Vec<Form>,
     /// The word names a kind of position (`Werkstudent`), not a condition (`Schichtdienst`).
     role: bool,
 }
 
-impl<'a> Word<'a> {
-    fn new(text: &'a str) -> Self {
-        let forms = forms(text);
-        let role = role_word(text);
-        Self { text, forms, role }
+impl Word {
+    fn new(text: &str) -> Self {
+        Self {
+            text: text.to_owned(),
+            forms: forms(text),
+            role: role_word(text),
+        }
     }
+
+    /// Can a folded text hold the word? Every form's last word lies inside a word that holds
+    /// it, so a text without any of them is skipped before it is split into words.
+    fn may_hold(&self, folded: &str) -> bool {
+        self.forms
+            .iter()
+            .any(|f| f.words.last().is_some_and(|w| folded.contains(w.as_str())))
+    }
+}
+
+thread_local! {
+    /// The exclusion words of the profile scored last on this thread, with their forms.
+    static WORDS: RefCell<(Vec<String>, Rc<[Word]>)> = RefCell::new((Vec::new(), Rc::from([])));
+}
+
+/// The profile's exclusion words with their forms (a word without any form left out), built
+/// once per profile and not again for every ad.
+fn compiled(words: &[String]) -> Rc<[Word]> {
+    WORDS.with(|memo| {
+        let mut memo = memo.borrow_mut();
+        if memo.0 != words {
+            let built: Vec<Word> = words
+                .iter()
+                .map(|text| Word::new(text))
+                .filter(|w| !w.forms.is_empty())
+                .collect();
+            *memo = (words.to_vec(), built.into());
+        }
+        Rc::clone(&memo.1)
+    })
 }
 
 fn words(folded: &str) -> Vec<&str> {
@@ -353,7 +387,7 @@ impl Hit<'_> {
 }
 
 /// Every occurrence of the word in the tokens of a text.
-fn hits<'t>(tokens: &[Token<'t>], word: &Word<'_>) -> Vec<Hit<'t>> {
+fn hits<'t>(tokens: &[Token<'t>], word: &Word) -> Vec<Hit<'t>> {
     let mut out = Vec::new();
     for form in &word.forms {
         let n = form.words.len();
@@ -383,8 +417,8 @@ fn hits<'t>(tokens: &[Token<'t>], word: &Word<'_>) -> Vec<Hit<'t>> {
 }
 
 /// Does the folded text contain the word in one of its forms?
-fn found(folded: &str, word: &Word<'_>) -> bool {
-    !hits(&tokens(folded), word).is_empty()
+fn found(folded: &str, word: &Word) -> bool {
+    word.may_hold(folded) && !hits(&tokens(folded), word).is_empty()
 }
 
 /// One sentence of the ad's own text, read for the exclusion words.
@@ -548,7 +582,10 @@ impl Sentence<'_, '_> {
 }
 
 /// Does this sentence name the job itself with the word?
-fn decides(folded: &str, requirement: bool, word: &Word<'_>) -> bool {
+fn decides(folded: &str, requirement: bool, word: &Word) -> bool {
+    if !word.may_hold(folded) {
+        return false;
+    }
     let tokens = tokens(folded);
     let sentence = Sentence {
         folded,
@@ -584,19 +621,16 @@ pub(crate) fn check(
             .iter()
             .any(|line| line.start < range.end && range.start < line.end)
     };
-    criteria
-        .exclusion_words
+    compiled(&criteria.exclusion_words)
         .iter()
-        .map(|text| Word::new(text))
-        .filter(|w| !w.forms.is_empty())
         .filter_map(|word| {
             let spans: Vec<Range<usize>> = segments
                 .iter()
-                .filter(|(range, f)| decides(f, in_requirements(range), &word))
+                .filter(|(range, f)| decides(f, in_requirements(range), word))
                 .map(|(range, _)| range.clone())
                 .take(SPANS_MAX)
                 .collect();
-            let named = found(&title, &word) || levels.iter().any(|l| found(l, &word));
+            let named = found(&title, word) || levels.iter().any(|l| found(l, word));
             (named || !spans.is_empty()).then(|| {
                 Finding::new(
                     ReasonCode::ExclusionWord,

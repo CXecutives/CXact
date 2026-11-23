@@ -6,7 +6,7 @@ file: name, lines, purpose (the first sentence of its header comment), main publ
 (Rust `pub`, TS exports, Svelte props; `+n` more). The notes under the headings come from
 docs/ARCHITECTURE.md "Layers".
 
-512 files, 14 of them without a header comment ("(no header)").
+513 files, 14 of them without a header comment ("(no header)").
 
 ## Where a change goes
 
@@ -38,6 +38,9 @@ docs/CHANGING.md:
 ## core
 
 everything the app knows and does, without UI and without…
+
+### core
+- build.rs 68 · The fingerprint of what decides a score, for the stored…
 
 ### core/examples
 - cv_compare.rs 71 · One paid call of the CV worker, read and sent exactly as…
@@ -118,14 +121,14 @@ is the pure integer engine
 - atoms.rs 932 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +10
 - contract.rs 399 · Contract type of an ad: interim, permanent, temporary… · ContractKind, Contract, student_role, infer
 - engine.rs 752 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
-- exclusion.rs 614 · Exclusion words of the profile: a word excludes the ad… · check
+- exclusion.rs 648 · Exclusion words of the profile: a word excludes the ad… · check
 - explain.rs 713 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
 - facts.rs 1274 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +20
 - fit.rs 931 · The profile the engine matches against, and the match… · Entry, Broad, forget, Skills +11
 - gaps.rs 193 · The gap finder's view of a job: the words of its… · Gap, JobGaps, vocabulary_gaps
 - layout.rs 116 · The layout of an ad's text for the reader: the lines that… · TextLayout, text_layout
 - limits.rs 573 · The limits of an engagement the profile sets, checked and… · Workload, read, workload, workload_fits +4
-- mod.rs 468 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +21
+- mod.rs 470 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +21
 - normalize.rs 370 · Text primitives with Python semantics: case folding,… · is_space, is_word, decimal, digit_class_body +10
 - params.rs 142 · Frozen parameters of the engine. · E_FULL, E_HALF, E_NONE, W_MUST +57
 - permanent.rs 496 · The rule for permanent roles: the minimum annual salary. · Salary, with_bonus, parse_salary, salary +3
@@ -143,7 +146,7 @@ is the pure integer engine
 - title.rs 443 · The frame of a job title: the title without its noise, the… · clean, level_of, engagement, ad_level +5
 - types.rs 459 · Input and output types of the matching engine. · KeyFacts, TextKind, JobInput, Verdict +25
 - vocabulary.rs 576 · The engine's words as a person writes them: the… · Vocabulary, vocabulary
-- wishes.rs 643 · Wishes of the profile: day rate, work mode and regions. · RemoteWish, Wishes, State, WishResult +3
+- wishes.rs 712 · Wishes of the profile: day rate, work mode and regions. · RemoteWish, Wishes, State, WishResult +3
 
 ### core/src/matching/atoms
 - tests.rs 380 · (no header)
@@ -219,12 +222,12 @@ is the pure integer engine
 - tests.rs 266 · (no header)
 
 ### core/src/matching/wishes
-- tests.rs 134 · (no header)
+- tests.rs 147 · (no header)
 
 ### core/src/pipeline
 runs mail and search, screen, fetch and score
 - dry_run.rs 364 · Dry run: a mailbox and portals to look at - without… · matcher, search_plan, DryRunBackends, DryRunMail +4
-- local.rs 844 · The matching engine behind `Matcher`: one compiled… · LocalMatcher, engine_facts, record, with_criterion +7
+- local.rs 873 · The matching engine behind `Matcher`: one compiled… · LocalMatcher, engine_facts, record, with_criterion +7
 - mod.rs 1133 · One click: the alert mails and the search -> new jobs ->… · LocalMatcher, Matcher, RunRequest, RunKind +23
 - rescore.rs 421 · When the app scores every job again by itself: after the… · Host, Rescore
 - score.rs 218 · Scoring jobs against the profile. · Matcher, engine_failed, guarded, screen +3
@@ -302,7 +305,7 @@ shape what the UI sees.
 - language.rs 243 · English-only sweep: every git-tracked text file must be…
 - mail_fixtures.rs 194 · Checked-in, anonymised alert mails - result as a snapshot.
 - mailbox_slot.rs 172 · Safety invariants of saving the mailbox in `src-tauri`, as…
-- matching_corpus.rs 621 · The synthetic matching corpus.
+- matching_corpus.rs 700 · The synthetic matching corpus.
 - matching_criteria.rs 1086 · The hard-criteria strip rests on evidence: a criterion is…
 - matching_fuzz.rs 270 · Deterministic fuzzing of the engine: every corpus ad line…
 - matching_generalisation.rs 364 · Rules found on the unseen held-out sets 3 to 6, checked on…

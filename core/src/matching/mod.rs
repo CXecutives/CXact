@@ -130,8 +130,10 @@ use facts::{Availability, HardCriteria};
 /// nice-to-haves only add; each stated condition worse than wished keeps 95 %, a permanent
 /// role 90 %, each a line of its own; the caps carry their reasons (the core clearly open at
 /// most 49, a foreign field at most 24; a title that meets a target role is never foreign).
-/// Only `PARTIAL` is fitted, on teacher labels; `UNNAMED` follows the rubric's rule 8.
-pub const ENGINE_VERSION: u32 = 25;
+/// Only `PARTIAL` is fitted, on teacher labels; `UNNAMED` follows the rubric's rule 8. 26: no
+/// score moved; a stored score names the fingerprint of the engine's sources (`core/build.rs`),
+/// so any change to them scores the stored jobs again without a version to raise.
+pub const ENGINE_VERSION: u32 = 26;
 
 /// Keys of the facts JSON the engine reads ([`JobInput::facts`]) - the one definition for
 /// the engine and for the pipeline that hands it the facts stored from the job page.

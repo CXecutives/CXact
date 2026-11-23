@@ -224,9 +224,9 @@ a tool, a certificate or a degree word is one more entry in `core/src/matching/l
 (add a phrase to the table test there); the words of languages and industries are the
 engine's. It is applied when the terms are read, so a change there needs no scoring again.
 Which open requirements offer a term (and at most `MAX_TERMS` per job) is `open_term` and
-`terms` in `core/src/pipeline/local.rs`, stored with each match (a change there raises
-`INPUTS`, so every job is scored again). The reader's "+" reads the same term and field from
-the reason (`params.term`, `params.field`). The stub's `askedTerms`
+`terms` in `core/src/pipeline/local.rs`, stored with each match (a change there changes
+the engine's fingerprint, so every job is scored again). The reader's "+" reads the same
+term and field from the reason (`params.term`, `params.field`). The stub's `askedTerms`
 (`tools/ui-harness/stub.ts`) mirrors them.
 
 ## Add a portal
@@ -375,8 +375,9 @@ a word that occurs nowhere stays out.
    set's `gold-locked` part with `bench/gold/eval.py`. Then re-pin `GOLDEN_DIGEST` with its
    reason and regenerate the demo snapshot (`npm run gen` writes both, commit them) and follow a held-out floor only for a loss
    within 0.03, with a one-line reason.
-5. A change that moves a score raises `ENGINE_VERSION` (`core/src/matching/mod.rs`; the app
-   scores the stored jobs again) and updates the rules and measurements in `docs/MATCHING.md`;
+5. A change that moves a score raises `ENGINE_VERSION` (`core/src/matching/mod.rs`) and updates
+   the rules and measurements in `docs/MATCHING.md` (the app scores the stored jobs again by
+   itself: any change of the engine's sources changes its fingerprint, `core/build.rs`);
    the numbers before and after go into the commit message.
 
 ## Change the Passungsgrad

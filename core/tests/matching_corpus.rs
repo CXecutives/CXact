@@ -3,11 +3,14 @@
 //! - Hygiene: no fixture is ignored by git (the repository is public, fixtures must ship).
 //! - Gates of the engine: decided exclusions and status exactly as in `corpus.json`,
 //!   expected checks raised, `mustOpen` items never met; a golden digest of all corpus
-//!   results (same on Windows and macOS) and the speed budget (release builds). Expectations
-//!   written for a later engine (`since`, `profileSince` in `corpus.json`) are gated from
-//!   that `ENGINE_VERSION` on.
+//!   results (same on Windows and macOS) and the speed budget (release builds, on held-out
+//!   ads of real length). Expectations written for a later engine (`since`, `profileSince` in
+//!   `corpus.json`) are gated from that `ENGINE_VERSION` on.
 
 mod common;
+#[allow(dead_code)]
+#[path = "../examples/common/gold.rs"]
+mod gold;
 
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
@@ -51,7 +54,9 @@ use sha2::Digest as _;
 /// the role does) and a specialist offered as an employment is a rung below a lead. Then the
 /// causes of held-out sets 1 and 6: a nice cue after a comma makes only its clause nice, a
 /// field word is no industry, a must naming the title's field word stands on the core, general
-/// business work shows no field, a compound of another field fits a title in half.
+/// business work shows no field, a compound of another field fits a title in half. Version 26
+/// (the revision carries the engine's fingerprint) changed only the version line: with
+/// `engine 25` in front the rows still give `106934c7fafea2b3`.
 const GOLDEN_DIGEST: &str = "golden_digest.txt";
 
 fn fixtures() -> PathBuf {
@@ -504,39 +509,113 @@ fn code_of_kind(kind: ReasonKind) -> String {
         .to_owned()
 }
 
-/// Median <= 0.5 ms per job and 2000 jobs <= 3 s (engine part; measured in release builds).
+/// The held-out sets the speed budget is measured on: ads of real length (portal pages with
+/// their details) and profiles that set every wish and exclusion words.
+const SPEED_SETS: &[&str] = &["heldout9", "heldout10"];
+/// Jobs of one timed run.
+const SPEED_JOBS: usize = 2000;
+/// The timed ads are at least this long in the median (characters): the corpus's own ads are
+/// short cases and would hide what a real ad costs.
+const REAL_AD_CHARS: usize = 1500;
+
+/// One ad of a speed set: its job and what it hands the engine besides.
+struct SpeedAd {
+    job: gold::GoldJob,
+    portal: Portal,
+    body: String,
+    posted: Option<jiff::civil::Date>,
+}
+
+impl SpeedAd {
+    fn input(&self) -> JobInput<'_> {
+        JobInput {
+            title: &self.job.title,
+            company: &self.job.company,
+            location: &self.job.location,
+            portal: self.portal,
+            text: &self.body,
+            facts: self.job.facts.as_ref(),
+            posted: self.posted,
+            kind: if self.job.is_teaser() {
+                TextKind::Teaser
+            } else {
+                TextKind::Full
+            },
+        }
+    }
+}
+
+/// Median <= 0.5 ms per job and 2000 jobs <= 3 s (engine part; measured in release builds,
+/// CI runs it there): every profile of [`SPEED_SETS`] against every ad of its set.
 #[test]
 fn engine_is_fast_enough() {
     if cfg!(debug_assertions) {
         eprintln!("speed budget is checked in release builds only");
         return;
     }
-    let root = fixtures();
-    let (_, jobs) = corpus();
-    let profile = compile_profile(&read_profile(&root.join("sample_profile.json")));
-    let mut times = Vec::with_capacity(2000);
+    let mut profiles = Vec::new();
+    let mut ads = Vec::new();
+    let mut pairs = Vec::new();
+    for set in SPEED_SETS {
+        let dir = fixtures().join(set);
+        let mut files: Vec<PathBuf> = std::fs::read_dir(&dir)
+            .expect("set dir")
+            .map(|e| e.expect("entry").path())
+            .filter(|p| p.extension().is_some_and(|x| x == "json"))
+            .filter(|p| {
+                p.file_name()
+                    .is_some_and(|n| n.to_string_lossy().starts_with('P'))
+            })
+            .collect();
+        files.sort();
+        let first = profiles.len();
+        profiles.extend(files.iter().map(|p| compile_profile(&read_profile(p))));
+        for job in gold::read_jobs(&dir.join("jobs.json")).expect("jobs.json") {
+            let content = std::fs::read_to_string(dir.join(job.txt_name())).expect("job file");
+            let posted = job
+                .mail_date
+                .as_deref()
+                .unwrap_or(&job.first_seen_at)
+                .parse::<jiff::Timestamp>()
+                .ok()
+                .map(|t| t.to_zoned(jiff::tz::TimeZone::UTC).date());
+            let ad = ads.len();
+            ads.push(SpeedAd {
+                portal: Portal::from_key(&job.portal).expect("portal"),
+                body: gold::parse_txt(&content).body,
+                posted,
+                job,
+            });
+            pairs.extend((first..profiles.len()).map(|profile| (profile, ad)));
+        }
+    }
+    let mut lengths: Vec<usize> = ads.iter().map(|a| a.body.chars().count()).collect();
+    lengths.sort_unstable();
+    let length = lengths[lengths.len() / 2];
+    assert!(length >= REAL_AD_CHARS, "median ad of {length} characters");
+    let mut times = Vec::with_capacity(SPEED_JOBS);
     let started = Instant::now();
-    for i in 0..2000 {
-        let job = &jobs[i % jobs.len()];
-        let input = JobInput {
-            title: &job.file.title,
-            company: &job.file.company,
-            location: &job.file.location,
-            portal: job.portal,
-            text: &job.file.text,
-            facts: (!job.facts.is_null()).then_some(&job.facts),
-            posted: job.mail_date,
-            kind: job.kind,
-        };
+    for i in 0..SPEED_JOBS {
+        let (profile, ad) = pairs[i % pairs.len()];
+        let input = ads[ad].input();
         let one = Instant::now();
-        let _ = assess(&profile, &input);
+        let _ = assess(&profiles[profile], &input);
         times.push(one.elapsed());
     }
     let total = started.elapsed();
     times.sort();
     let median = times[times.len() / 2];
+    println!(
+        "speed: {} ads (median {length} characters), {} pairs: median {median:?} per job, \
+         {SPEED_JOBS} jobs in {total:?}",
+        ads.len(),
+        pairs.len()
+    );
     assert!(median.as_micros() <= 500, "median {median:?} per job");
-    assert!(total.as_millis() <= 3000, "2000 jobs took {total:?}");
+    assert!(
+        total.as_millis() <= 3000,
+        "{SPEED_JOBS} jobs took {total:?}"
+    );
 }
 
 /// Prints the table of the corpus (`-- --ignored report --nocapture`).

@@ -92,12 +92,25 @@ fn remote_shares_of_ads() {
 
 #[test]
 fn places_in_the_order_the_text_names_them() {
-    let places = ["bayern", "munchen"];
+    let places = Places::new(["bayern", "munchen", "frankfurt", "frankfurt am main"]);
     assert_eq!(
-        first_named("munchen, bayern, deutschland", places.iter().copied()),
+        places.first_named("munchen, bayern, deutschland"),
         Some("munchen")
     );
-    assert_eq!(first_named("munchenstein", places.iter().copied()), None);
+    assert_eq!(places.first_named("munchenstein, bayern"), Some("bayern"));
+    assert_eq!(places.first_named("munchenstein"), None);
+    assert_eq!(
+        places.first_named("in frankfurt am main"),
+        Some("frankfurt am main")
+    );
+    assert_eq!(places.first_named("frankfurt am mainz"), Some("frankfurt"));
+    let signs = Places::new(["(berlin)", "berlin"]);
+    assert_eq!(signs.first_named("x (berlin) berlin"), Some("(berlin)"));
+    assert_eq!(signs.first_named("x(berlin) berlin"), Some("berlin"));
+    assert_eq!(
+        Places::new(["baden-baden"]).first_named("nach baden-baden"),
+        Some("baden-baden")
+    );
     assert_eq!(as_written("München, Bayern", "munchen"), "München");
     assert!(expand("bayern").contains(&"nurnberg".to_owned()));
     let germany = expand("deutschland");

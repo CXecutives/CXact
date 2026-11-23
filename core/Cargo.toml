@@ -52,6 +52,10 @@ uuid = { version = "1", features = ["v4"] }
 # Reading only (DOCX, ODT): deflate, no writer, no other methods.
 zip = { version = "8", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
+[build-dependencies]
+# The fingerprint of the engine's sources (build.rs), the same SHA-256 as the crate's.
+sha2 = "0.10"
+
 [dev-dependencies]
 insta = "1"
 rpassword = "7"
