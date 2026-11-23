@@ -18,6 +18,7 @@ use std::sync::LazyLock;
 
 mod classify;
 mod coordination;
+mod frame;
 mod lines;
 mod quantities;
 mod split;
@@ -25,13 +26,14 @@ mod split;
 mod tests;
 
 pub(crate) use self::classify::{known_skill, language_of, names_degree};
+pub(crate) use self::frame::without_lead;
 pub(crate) use self::lines::is_heading_line;
 pub(crate) use self::quantities::level_in;
 #[allow(
     clippy::wildcard_imports,
     reason = "siblings of one reader share its helpers"
 )]
-use self::{classify::*, coordination::*, lines::*, quantities::*, split::*};
+use self::{classify::*, coordination::*, frame::*, lines::*, quantities::*, split::*};
 
 /// Where an item came from (V16).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -454,25 +454,6 @@ fn expand_ellipses(folded: &str) -> std::borrow::Cow<'_, str> {
     std::borrow::Cow::Owned(trailing.into_owned())
 }
 
-/// A requirement without its leading pronoun and verbs (`you have spent several years in x`
-/// reads `several years in x`): the lead asks for nothing, its verbs would stay open.
-fn without_lead(mut raw: Vec<String>) -> Vec<String> {
-    if !raw
-        .first()
-        .is_some_and(|w| lex::PRONOUN_STARTS.contains(&w.as_str()))
-    {
-        return raw;
-    }
-    let verbs = raw[1..]
-        .iter()
-        .take_while(|w| lex::LEAD_VERBS.binary_search(&w.as_str()).is_ok())
-        .count();
-    if verbs > 0 {
-        raw.drain(..=verbs);
-    }
-    raw
-}
-
 /// [`atoms`], read.
 fn read_atoms(text: &str, vocab: &Vocab) -> Vec<String> {
     let folded = fold(text);
@@ -500,7 +481,7 @@ fn read_atoms(text: &str, vocab: &Vocab) -> Vec<String> {
             .map(|(_, t)| *t)
             .collect::<Vec<_>>(),
     );
-    let raw = without_lead(raw);
+    let raw = super::job::without_lead(raw);
     // Concepts across dropped words: the whole stream, stemmed.
     let full: Vec<String> = raw.iter().map(|t| stem(t)).collect();
     let mut pieces: Vec<(String, bool)> = Vec::with_capacity(raw.len());

@@ -171,14 +171,6 @@ pub(super) fn noise_item(item: &str) -> bool {
     legal || founded || frame_only
 }
 
-/// An item that says something is not needed (`Keine SAP-Kenntnisse erforderlich`).
-pub(super) fn not_needed(item: &str) -> bool {
-    let folded = fold(item);
-    lex::NOT_NEEDED.iter().any(|w| folded.contains(w))
-        || folded.starts_with("kein ")
-        || folded.starts_with("keine ")
-}
-
 pub(super) type Phrase<'a> = (&'a str, ReqKind, Stage);
 
 /// What stage 1 read: the phrases of the requirement sections, the offsets of nice lines

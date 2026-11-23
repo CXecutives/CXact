@@ -951,3 +951,48 @@ fn ellipsis_modifiers_complete() {
     assert_eq!(leading_ellipsis("Risiko", " und Qualität"), None);
     assert_eq!(leading_ellipsis("Ein-", " und Verkauf"), None);
 }
+
+/// The frame of a clause asks for nothing: a pronoun with its verbs and modals, and the verb
+/// that closes a German clause; a pronoun sentence that asks for knowledge is no soft
+/// sentence as a whole.
+#[test]
+fn the_frame_of_a_clause_asks_for_nothing() {
+    let vocab = Vocab::all();
+    let all = |text: &str| atoms::atoms(text, &vocab);
+    assert_eq!(
+        all("Sie sollten Erfahrung im Controlling mitbringen"),
+        all("Erfahrung im Controlling")
+    );
+    assert_eq!(
+        all("Du bringst Kenntnisse in SAP FI mit"),
+        all("Kenntnisse in SAP FI")
+    );
+    assert_eq!(
+        all("You should have experience with Power BI"),
+        all("experience with Power BI")
+    );
+    assert_eq!(
+        all("Sie besitzen fundierte Kenntnisse im Arbeitsrecht"),
+        all("fundierte Kenntnisse im Arbeitsrecht")
+    );
+    let doc = read(
+        "Ihr Profil\n- Sie haben Erfahrung mit Lieferantenverhandlungen\n\
+         - Sie kommunizieren klar und wertschätzend\n",
+        &vocab,
+    );
+    let classes: Vec<(&str, &Class)> = doc
+        .items
+        .iter()
+        .map(|i| (i.text.as_str(), &i.class))
+        .collect();
+    assert_eq!(
+        classes,
+        [
+            (
+                "Sie haben Erfahrung mit Lieferantenverhandlungen",
+                &Class::Skill
+            ),
+            ("Sie kommunizieren klar und wertschätzend", &Class::Soft)
+        ]
+    );
+}

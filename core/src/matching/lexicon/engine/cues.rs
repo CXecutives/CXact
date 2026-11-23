@@ -165,13 +165,17 @@ pub(crate) const EXAMPLES: &[&str] = &[
 /// Separators inside an example list.
 pub(crate) const EXAMPLE_SEPARATORS: &[&str] = &[", ", " und ", " oder ", " or ", " and "];
 
-/// Verbs that lead a requirement after its pronoun (`You have spent several years in X`,
-/// `Sie bringen Erfahrung in X mit`, `Du verfügst über X`): they ask for nothing themselves
-/// (sorted).
+/// Verbs and modals that lead a requirement after its pronoun (`You have spent several years
+/// in X`, `Sie sollten Erfahrung in X mitbringen`, `Du verfügst über X`) or close it: they ask
+/// for nothing themselves (sorted).
 pub(crate) const LEAD_VERBS: &[&str] = &[
     "acquired",
+    "besitzen",
+    "besitzt",
+    "bist",
     "bring",
     "bringen",
+    "brings",
     "bringst",
     "bringt",
     "gained",
@@ -181,14 +185,22 @@ pub(crate) const LEAD_VERBS: &[&str] = &[
     "has",
     "hast",
     "have",
+    "kannst",
     "led",
     "mitbringen",
     "mitbringst",
+    "musst",
     "possess",
+    "should",
+    "sollte",
+    "sollten",
+    "solltest",
     "spent",
     "verfugen",
     "verfugst",
     "verfugt",
+    "vorweisen",
+    "vorweist",
 ];
 
 /// The joining words between the modifiers of a leading ellipsis and its head

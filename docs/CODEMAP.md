@@ -6,7 +6,7 @@ file: name, lines, purpose (the first sentence of its header comment), main publ
 (Rust `pub`, TS exports, Svelte props; `+n` more). The notes under the headings come from
 docs/ARCHITECTURE.md "Layers".
 
-512 files, 15 of them without a header comment ("(no header)").
+513 files, 15 of them without a header comment ("(no header)").
 
 ## Where a change goes
 
@@ -111,22 +111,22 @@ reads the alert mails (IMAP)
 
 ### core/src/matching
 is the pure integer engine
-- ad_facts.rs 631 · The key facts of an ad, each with the passage that states… · Stated, Duration, AdFacts, read +4
+- ad_facts.rs 630 · The key facts of an ad, each with the passage that states… · Stated, Duration, AdFacts, read +4
 - application.rs 463 · How to apply to an ad: the application deadline it names… · Contact, deadline, contact
-- atoms.rs 900 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +10
+- atoms.rs 881 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +10
 - contract.rs 399 · Contract type of an ad: interim, permanent, temporary… · ContractKind, Contract, student_role, infer
 - engine.rs 752 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
 - exclusion.rs 614 · Exclusion words of the profile: a word excludes the ad… · check
 - explain.rs 713 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
-- facts.rs 1254 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +19
+- facts.rs 1224 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +19
 - fit.rs 931 · The profile the engine matches against, and the match… · Entry, Broad, forget, Skills +11
 - gaps.rs 193 · The gap finder's view of a job: the words of its… · Gap, JobGaps, vocabulary_gaps
 - layout.rs 116 · The layout of an ad's text for the reader: the lines that… · TextLayout, text_layout
-- limits.rs 573 · The limits of an engagement the profile sets, checked and… · Workload, read, workload, workload_fits +4
+- limits.rs 553 · The limits of an engagement the profile sets, checked and… · Workload, read, workload, workload_fits +4
 - mod.rs 467 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +19
-- normalize.rs 414 · Text primitives with Python semantics: case folding,… · is_space, is_word, decimal, digit_class_body +14
+- normalize.rs 456 · Text primitives with Python semantics: case folding,… · is_space, is_word, decimal, digit_class_body +16
 - params.rs 142 · Frozen parameters of the engine. · E_FULL, E_HALF, E_NONE, W_MUST +57
-- permanent.rs 496 · The rule for permanent roles: the minimum annual salary. · Salary, with_bonus, parse_salary, salary +3
+- permanent.rs 482 · The rule for permanent roles: the minimum annual salary. · Salary, with_bonus, parse_salary, salary +3
 - profile.rs 54 · The profile entries the engine matches against, with their… · CoreText, core_texts
 - pyre.rs 78 · Python `re` semantics on top of the `regex` crate. · compile, view
 - relevance.rs 344 · Relevance of a job for the profile, independent of… · query, title_fit, field_title_fit, title_query +2
@@ -162,13 +162,14 @@ is the pure integer engine
 - tests.rs 204 · (no header)
 
 ### core/src/matching/job
-- classify.rs 262 · The kind of every item: skill, language, degree, soft,… · known_skill, language_of, frame_word, names_degree
+- classify.rs 246 · The kind of every item: skill, language, degree, soft,… · known_skill, language_of, frame_word, names_degree
 - coordination.rs 292 · Coordinated items: where an `und`, `and`, `&` or a comma…
-- lines.rs 267 · Lines of a job text: headings, bullets, closing blocks and… · is_heading_line
-- mod.rs 239 · A job text as the engine reads it: sections with inline… · Stage, Class, Item, Task +2
+- frame.rs 63 · The frame of a requirement clause: `[pronoun] [verbs]… · without_lead
+- lines.rs 259 · Lines of a job text: headings, bullets, closing blocks and… · is_heading_line
+- mod.rs 241 · A job text as the engine reads it: sections with inline… · Stage, Class, Item, Task +2
 - quantities.rs 58 · Numbers in an item: language level and required years. · level_in, years_in
 - split.rs 200 · Cutting a requirement phrase into items, AND parts, OR… · split
-- tests.rs 953 · (no header)
+- tests.rs 998 · (no header)
 
 ### core/src/matching/lexicon
 - esco.rs 859 · ESCO, the European Commission's classification of skills,… · Kind, Concept, Lang, Hit +6
@@ -202,7 +203,7 @@ is the pure integer engine
 - concepts.rs 581 · Concepts, atoms, title heads and field relations. · GENERIC_ATOMS, FIELD_ATOMS, LIGHT_MODIFIERS, ELLIPSIS_HEADS +24
 - contact.rs 85 · Contact person, name and phone words. · CONTACT_PERSON_WORDS, CONTACT_LABELS, CONTACT_FILLERS, HONORIFICS +4
 - contract.rs 356 · Contract kinds: agency work (ANUE), interim and permanent. · CONTRACT_DENIED, ANUE_WORDS, ANUE_PARTS, ANUE_HIDDEN +20
-- cues.rs 280 · Nice and must cues, separators, examples, lead verbs and… · CueScope, SOFT_ALONE, PRONOUN_STARTS, DESCRIPTION_STARTS +19
+- cues.rs 292 · Nice and must cues, separators, examples, lead verbs and… · CueScope, SOFT_ALONE, PRONOUN_STARTS, DESCRIPTION_STARTS +19
 - exclusion.rs 259 · Exclusion roles, mentions and denials. · EXCLUSION_WORD_FAMILIES, EXCLUSION_ROLE_WORDS, EXCLUSION_ROLE_ENDINGS, EXCLUSION_ROLE_HEADS +14
 - level.rs 127 · Seniority and role levels. · ROLE_BRINGS, ENTRY_LEVEL_VALUES, LOW_LEVEL_VALUES, ENTRY_LEVEL_MUSTS +2
 - mod.rs 32 · Word lists of the engine, split by topic.
