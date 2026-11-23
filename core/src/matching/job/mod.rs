@@ -3,15 +3,15 @@
 //! items with AND parts, OR alternatives and examples (V6) and the kind of every item (V7).
 
 use super::atoms::{self, Vocab, fold};
-use super::facts::{self, rate_in};
+use super::facts::rate_in;
 use super::lexicon::engine::{
-    AND, AND_WORDS, EN_CUES, EXAMPLE_SEPARATORS, EXAMPLES, MUST_PREFIXES, NICE_CUES, NICE_LEADS,
-    NICE_PREFIXES, NUMBER_WORDS, OR, OTHER_PREFIXES, YEAR_UNITS,
+    AND, AND_WORDS, EN_CUES, EXAMPLE_SEPARATORS, EXAMPLES, NICE_CUES, NICE_LEADS, NUMBER_WORDS, OR,
+    YEAR_UNITS,
 };
 use super::lexicon::{HeadingKind, engine as lex};
 use super::normalize::{contains_word, sentences, splitlines, strip};
 use super::requirements::extract_job_skills;
-use super::sections::{self, Inline, ReqKind};
+use super::sections::{self, Line, ReqKind};
 use regex::Regex;
 use std::ops::Range;
 use std::sync::LazyLock;
@@ -25,8 +25,6 @@ mod split;
 mod tests;
 
 pub(crate) use self::classify::{known_skill, language_of, names_degree};
-#[cfg(test)]
-pub(crate) use self::lines::heading_kind;
 pub(crate) use self::lines::is_heading_line;
 pub(crate) use self::quantities::level_in;
 #[allow(
@@ -186,8 +184,7 @@ fn cued_sentences<'a>(text: &'a str, in_nice: &[usize]) -> Vec<(&'a str, ReqKind
     for line in splitlines(text) {
         let (stripped, bullet) = line_of(line);
         if stripped.is_empty()
-            || heading_of(stripped, bullet).is_some()
-            || closing_start(stripped)
+            || sections::classify(stripped, bullet, None) != Line::Text
             || in_nice.contains(&offset(text, stripped))
         {
             continue;

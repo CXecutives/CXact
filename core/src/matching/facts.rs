@@ -195,33 +195,13 @@ pub(crate) fn own_text(text: &str) -> &str {
     let mut offset = 0;
     for line in text.split_inclusive('\n') {
         let folded = fold(line.trim());
-        let heading = folded.chars().count() <= 48 && is_listings_heading(&folded);
+        let heading = super::sections::is_listings_heading(&folded);
         if heading && offset > 0 {
             return &text[..offset];
         }
         offset += line.len();
     }
     text
-}
-
-/// A folded line that heads the other listings of a portal: a heading of
-/// `lexicon::OTHER_LISTINGS` as whole words, then nothing, a count (`(12)`), a colon or a
-/// known tail (`anzeigen`, `dieses Anbieters`). A line that goes on is a sentence of the ad
-/// (`Ähnliche Projekterfahrung von Vorteil`, `Weitere Projekte sind geplant.`).
-pub(crate) fn is_listings_heading(folded: &str) -> bool {
-    lex::OTHER_LISTINGS.iter().any(|heading| {
-        let Some(tail) = folded.strip_prefix(heading) else {
-            return false;
-        };
-        if tail.chars().next().is_some_and(char::is_alphanumeric) {
-            return false;
-        }
-        let tail = tail.trim().trim_end_matches(':').trim_end();
-        let count = tail.trim_start_matches('(').trim_end_matches(')');
-        tail.is_empty()
-            || (!count.is_empty() && count.chars().all(|c| c.is_ascii_digit()))
-            || lex::LISTING_TAILS.contains(&tail)
-    })
 }
 
 /// Sentences of the text (also split at ` // `, ` · `, ` | `, ` • `), as byte ranges with

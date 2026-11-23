@@ -1,5 +1,13 @@
 use super::*;
 
+/// The section a line opens when it is a heading.
+fn heading_kind(line: &str) -> Option<HeadingKind> {
+    match sections::classify(line, false, None) {
+        Line::Heading(kind) => Some(kind),
+        _ => None,
+    }
+}
+
 #[test]
 fn task_lines_follow_a_task_heading() {
     let text = "Aufgaben:
@@ -568,9 +576,9 @@ fn overlapping_separators_and_a_marker_after_brackets() {
 /// ends with a language, frame lines about workload and extension.
 #[test]
 fn messy_ads_keep_their_structure() {
-    assert_eq!(heading("Aufgaben / Tasks:"), Some(HeadingKind::Task));
-    assert_eq!(heading("Profil / Profile"), Some(HeadingKind::Must));
-    assert_eq!(heading("Controlling / Reporting"), None);
+    assert_eq!(heading_kind("Aufgaben / Tasks:"), Some(HeadingKind::Task));
+    assert_eq!(heading_kind("Profil / Profile"), Some(HeadingKind::Must));
+    assert_eq!(heading_kind("Controlling / Reporting"), None);
     let core = Vocab::core();
     assert_eq!(
         classify(
@@ -732,4 +740,32 @@ fn split_parts_keep_their_shared_object() {
             "in der Führung von Vertriebsteams"
         ]
     );
+}
+
+/// Real wording: a skill that starts like a heading stays a must; an English inline heading
+/// keeps its content, split into sentences; `Ihre Aufgaben` lists tasks.
+#[test]
+fn the_line_classifier_keeps_skills_inline_content_and_tasks() {
+    let doc = read(
+        "Ihre Aufgaben\n- Steuerung des Category Managements\n\nIhr Profil\nRequirements Engineering\n\
+         Kategoriemanagement\nBranchenkenntnisse im Handel\n\
+         Nice to have: Erfahrung mit Tableau. Kenntnisse in Python\n",
+        &Vocab::all(),
+    );
+    let items: Vec<(&str, ReqKind)> = doc
+        .items
+        .iter()
+        .map(|i| (i.text.as_str(), i.kind))
+        .collect();
+    assert_eq!(
+        items,
+        [
+            ("Requirements Engineering", ReqKind::Must),
+            ("Kategoriemanagement", ReqKind::Must),
+            ("Branchenkenntnisse im Handel", ReqKind::Must),
+            ("Erfahrung mit Tableau", ReqKind::Nice),
+            ("Kenntnisse in Python", ReqKind::Nice),
+        ]
+    );
+    assert_eq!(doc.task_lines.len(), 1);
 }

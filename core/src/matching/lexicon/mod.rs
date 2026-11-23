@@ -12,18 +12,6 @@ pub(crate) mod wishes;
 
 pub(crate) use tables::*;
 
-/// Heading prefixes checked after the exact heading lists, in this order.
-pub(crate) const HEADING_PREFIXES: &[(&str, HeadingKind)] = &[
-    ("anforderung", HeadingKind::Must),
-    ("ihr profil", HeadingKind::Must),
-    ("dein profil", HeadingKind::Must),
-    ("qualifikation", HeadingKind::Must),
-    ("voraussetzung", HeadingKind::Must),
-    ("wünschenswert", HeadingKind::Nice),
-    ("wuenschenswert", HeadingKind::Nice),
-    ("von vorteil", HeadingKind::Nice),
-];
-
 /// What a heading line opens.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum HeadingKind {
@@ -44,9 +32,6 @@ pub(crate) const LANGUAGE_SUFFIXES: &[&str] = &[
     "sprachen",
     "sprachkenntnisse",
 ];
-
-/// Inline headings (`Anforderungen: ...`). `{S}` is Python's whitespace class.
-pub(crate) const INLINE_HEADING: &str = r"^{S}*(ihr profil|dein profil|anforderung(?:en)?|qualifikation(?:en)?|voraussetzung(?:en)?|wünschenswert|wuenschenswert|ihre aufgaben|deine aufgaben|aufgaben|wir bieten|über uns){S}*[:：]{S}+(.+)$";
 
 /// Requirement cues in a sentence (fallback without requirement sections).
 pub(crate) const CUE_HARD: &str = r"\b(?:vorausgesetzt|erforderlich|benötigt|benoetigt|setzen{S}+wir{S}+voraus|setzt{S}+{NS}+{S}+voraus|voraussetzung{S}+ist|erwarten{S}+wir|abgeschlossenes{S}+studium|studium|hochschulabschluss|abschluss|abgeschlossene{S}+ausbildung|ausbildung|zertifizierung|zertifikat|zertifiziert|mehrjährig|mehrjaehrig|langjährig|langjaehrig|verhandlungssicher|fließend|fliessend|muttersprachlich|sprachkenntnisse|sicherer{S}+umgang|fundierte{S}+kenntnisse|umfassende{S}+kenntnisse|sehr{S}+gute{S}+kenntnisse|gute{S}+kenntnisse|tiefgehende{S}+kenntnisse|praxiserfahrung|berufserfahrung)\b";

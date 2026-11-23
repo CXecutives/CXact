@@ -55,28 +55,6 @@ fn view_char(c: char) -> char {
     }
 }
 
-/// Byte range in the original text of a byte range in its [`view`].
-pub(crate) fn original_range(
-    original: &str,
-    view: &str,
-    start: usize,
-    end: usize,
-) -> (usize, usize) {
-    let first = view[..start].chars().count();
-    let count = view[start..end].chars().count();
-    let mut indices = original
-        .char_indices()
-        .map(|(i, _)| i)
-        .chain(std::iter::once(original.len()));
-    let from = indices.nth(first).unwrap_or(original.len());
-    let to = if count == 0 {
-        from
-    } else {
-        indices.nth(count - 1).unwrap_or(original.len())
-    };
-    (from, to)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -96,14 +74,5 @@ mod tests {
         assert!(compile("abschluss").is_match(&view("ABSCHLUſS")));
         assert!(compile("fließend").is_match(&view("FLIEẞEND")));
         assert!(compile(r"{D}+").is_match(&view("\u{661}\u{662}")));
-    }
-
-    #[test]
-    fn ranges_map_back() {
-        let original = "İndia ist weit";
-        let v = view(original);
-        let m = compile(r"\bindia\b").find(&v).unwrap();
-        let (a, b) = original_range(original, &v, m.start(), m.end());
-        assert_eq!(&original[a..b], "İndia");
     }
 }

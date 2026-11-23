@@ -33,41 +33,6 @@ pub(super) fn cut_at_nice_lead(phrase: &str) -> Option<(&str, &str)> {
     })
 }
 
-pub(super) fn heading(line: &str) -> Option<HeadingKind> {
-    if sections::is_bullet(line) {
-        return None;
-    }
-    let norm = fold(&sections::norm_heading(line));
-    if norm.is_empty() || norm.len() > 64 {
-        return None;
-    }
-    let starts = |list: &[&str]| list.iter().any(|p| norm.starts_with(p));
-    // A heading of the other listings only as a whole heading ("Ähnliche Projekterfahrung"
-    // is a requirement).
-    let other = OTHER_PREFIXES.iter().any(|p| {
-        norm.starts_with(p)
-            && (!lex::OTHER_LISTINGS.contains(p) || facts::is_listings_heading(&norm))
-    });
-    // A bare `Skills` heading is the portal's tag list, not the ad's requirements.
-    if other || lex::TAG_HEADINGS.contains(&norm.as_str()) {
-        return Some(HeadingKind::Neutral);
-    }
-    if let Some(kind) = sections::section_kind(line) {
-        return Some(kind);
-    }
-    if starts(NICE_PREFIXES) {
-        Some(HeadingKind::Nice)
-    } else if starts(MUST_PREFIXES) {
-        Some(HeadingKind::Must)
-    } else {
-        // A heading in two languages (`Aufgaben / Tasks`, `Profil / Profile`): its first
-        // part that is a heading.
-        norm.split(" / ")
-            .skip_while(|_| !norm.contains(" / "))
-            .find_map(|part| heading(part).filter(|_| part != norm))
-    }
-}
-
 /// A stripped line without a leading glyph bullet (`✅`, `👉`, `→`), and whether it had
 /// one: such a line is a bullet, never a heading.
 pub(super) fn line_of(line: &str) -> (&str, bool) {
@@ -76,16 +41,11 @@ pub(super) fn line_of(line: &str) -> (&str, bool) {
     (strip(rest), rest.len() != stripped.len())
 }
 
-/// A heading, unless the line is a glyph bullet.
-pub(super) fn heading_of(stripped: &str, bullet: bool) -> Option<HeadingKind> {
-    if bullet { None } else { heading(stripped) }
-}
-
-/// Whether a line opens a section of the ad the way the engine reads it (a heading, never a
-/// glyph bullet); the reader sets such a line as a heading (`layout.rs`).
+/// Whether a line opens a section of the ad the way the engine reads it; the reader sets such
+/// a line as a heading (`layout.rs`).
 pub(crate) fn is_heading_line(line: &str) -> bool {
     let (stripped, bullet) = line_of(line);
-    heading_of(stripped, bullet).is_some()
+    matches!(sections::classify(stripped, bullet, None), Line::Heading(_))
 }
 
 pub(super) fn offset(text: &str, part: &str) -> usize {
@@ -96,36 +56,6 @@ pub(super) fn nice_cue(line: &str) -> bool {
     let folded = fold(line);
     NICE_CUES.iter().any(|c| folded.contains(c))
 }
-
-/// A line that ends requirements from its start on (`Skills: ...`, `Hinweis`, `Datenschutz`),
-/// a bullet or not.
-pub(super) fn closing_start(line: &str) -> bool {
-    let folded = fold(sections::clean_phrase(line));
-    lex::CLOSING_STARTS.iter().any(|w| folded.starts_with(w))
-}
-
-/// A bare `Skills` heading over prose (`Skills:` then `Substantive experience from leading
-/// IT projects ...`): the ad's requirements; over a tag list (`SAP FI, DATEV, HGB`) it is the
-/// portal's tags.
-pub(super) fn skills_over_prose(stripped: &str, after: &[&str]) -> bool {
-    let folded = fold(stripped);
-    if !lex::TAG_HEADINGS.contains(&folded.trim_end_matches(':').trim()) {
-        return false;
-    }
-    let Some(next) = after
-        .iter()
-        .map(|l| sections::clean_phrase(line_of(l).0))
-        .find(|l| !l.is_empty())
-    else {
-        return false;
-    };
-    let words = next.split_whitespace().count();
-    let commas = next.matches(',').count();
-    words >= SKILLS_PROSE_WORDS && 3 * commas < words
-}
-
-/// Words from which the line under a `Skills` heading is prose, not a tag list.
-pub(super) const SKILLS_PROSE_WORDS: usize = 8;
 
 /// An item about the company or the frame, no requirement: a legal form (`Muster GmbH`), a
 /// founding year (`seit 1998`), or only places, days and contract words.
@@ -180,15 +110,6 @@ pub(super) struct SectionRead<'a> {
     pub(super) tasks: Vec<Range<usize>>,
 }
 
-/// A line that opens a pick list: it names a count and refers to the items below
-/// (`lex::PICK_LIST_COUNTS`, `PICK_LIST_REFERS`), and ends with a colon.
-pub(super) fn opens_pick_list(stripped: &str) -> bool {
-    let folded = fold(stripped);
-    stripped.trim_end().ends_with(':')
-        && lex::PICK_LIST_COUNTS.iter().any(|w| folded.contains(w))
-        && lex::PICK_LIST_REFERS.iter().any(|w| folded.contains(w))
-}
-
 /// An item of a pick list: a bullet, or a short line without a sentence's end.
 pub(super) fn pick_item(stripped: &str, bullet: bool) -> bool {
     bullet || (stripped.chars().count() <= 60 && !stripped.trim_end().ends_with('.'))
@@ -209,49 +130,34 @@ pub(super) fn section_phrases(text: &str) -> SectionRead<'_> {
         if stripped.is_empty() {
             continue;
         }
-        if !bullet && skills_over_prose(stripped, &lines[at + 1..]) {
-            current = Some(HeadingKind::Must);
-            continue;
-        }
-        match sections::inline_heading(stripped) {
-            Inline::Section(kind, rest) => {
-                current = Some(if kind == ReqKind::Must {
-                    HeadingKind::Must
-                } else {
-                    HeadingKind::Nice
-                });
-                let phrase = sections::clean_phrase(rest);
-                if !phrase.is_empty() {
-                    phrases.push((phrase, kind, Stage::Section));
-                }
+        let next = lines[at + 1..]
+            .iter()
+            .map(|l| line_of(l).0)
+            .find(|l| !sections::clean_phrase(l).is_empty());
+        let content = match sections::classify(stripped, bullet, next) {
+            Line::Heading(kind) => {
+                current = Some(kind);
+                pick = false;
                 continue;
             }
-            Inline::Other => {
+            Line::Inline(kind, rest) => {
+                current = Some(kind);
+                pick = false;
+                rest
+            }
+            Line::Closing => {
                 current = Some(HeadingKind::Neutral);
                 continue;
             }
-            Inline::None => {}
-        }
-        if let Some(kind) = heading_of(stripped, bullet) {
-            current = Some(kind);
-            pick = false;
-            continue;
-        }
-        if closing_start(stripped) {
-            current = Some(HeadingKind::Neutral);
-            continue;
-        }
-        // `Interessiert? Dann freuen wir uns auf Ihre Bewerbung.` closes the ad.
-        let folded = fold(stripped);
-        if lex::CLOSING_WORDS.iter().any(|w| folded.contains(w)) {
-            current = Some(HeadingKind::Neutral);
-            continue;
-        }
-        if current == Some(HeadingKind::Must) && opens_pick_list(stripped) {
-            pick = true;
-            continue;
-        }
-        pick = pick && pick_item(stripped, bullet);
+            Line::PickList if current == Some(HeadingKind::Must) => {
+                pick = true;
+                continue;
+            }
+            Line::PickList | Line::Text => {
+                pick = pick && pick_item(stripped, bullet);
+                stripped
+            }
+        };
         let kind = match current {
             Some(HeadingKind::Must) if pick => ReqKind::Nice,
             // A nice cue inside a must line marks items, not the line (see `read`).
@@ -261,13 +167,13 @@ pub(super) fn section_phrases(text: &str) -> SectionRead<'_> {
                 ReqKind::Nice
             }
             Some(HeadingKind::Task) => {
-                let start = offset(text, stripped);
-                tasks.push(start..start + stripped.len());
+                let start = offset(text, content);
+                tasks.push(start..start + content.len());
                 continue;
             }
             _ => continue,
         };
-        for sentence in sentences(stripped) {
+        for sentence in sentences(content) {
             let phrase = sections::clean_phrase(sentence);
             if !phrase.is_empty() {
                 phrases.push((phrase, kind, Stage::Section));
@@ -279,10 +185,4 @@ pub(super) fn section_phrases(text: &str) -> SectionRead<'_> {
         in_nice,
         tasks,
     }
-}
-
-/// Does the lexicon know this heading text? (for tests and the relevance fields)
-#[cfg(test)]
-pub(crate) fn heading_kind(line: &str) -> Option<HeadingKind> {
-    heading(line)
 }

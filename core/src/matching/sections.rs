@@ -1,19 +1,30 @@
-//! Lines, headings and requirement cues of a job text.
+//! The line classifier of a job text: what a line is (a heading, a heading with its content
+//! after a colon, a closing line, a pick list's opener or text), the one heading folding, and
+//! the requirement cues of a sentence.
 
+use std::collections::HashSet;
 use std::sync::LazyLock;
 
 use regex::Regex;
 
-use super::lexicon::{self, HeadingKind};
-use super::normalize::{casefold, char_len, decimal, is_space, split_whitespace, strip};
+use super::atoms::{self, fold};
+use super::lexicon::domains::DOMAINS;
+use super::lexicon::{self, HeadingKind, engine as lex};
+use super::normalize::{char_len, decimal, is_space, split_whitespace, strip};
 use super::pyre;
 
 /// Headings longer than this are ordinary lines.
 const HEADING_MAX_CHARS: usize = 64;
+/// A heading has at most this many words (a longer line is a sentence that starts with a
+/// heading's word).
+const HEADING_WORDS: usize = 6;
 /// Cue sentences longer than this are ignored.
 const CUE_MAX_CHARS: usize = 400;
+/// Words from which the line under a `Skills` heading is prose, not a tag list.
+const SKILLS_PROSE_WORDS: usize = 8;
+/// A heading of the other listings has at most this many characters.
+const LISTINGS_MAX_CHARS: usize = 48;
 
-static INLINE_HEADING: LazyLock<Regex> = LazyLock::new(|| pyre::compile(lexicon::INLINE_HEADING));
 static CUE_HARD: LazyLock<Regex> = LazyLock::new(|| pyre::compile(lexicon::CUE_HARD));
 static CUE_EXPERIENCE: LazyLock<Regex> = LazyLock::new(|| pyre::compile(lexicon::CUE_EXPERIENCE));
 static CUE_NICE: LazyLock<Regex> = LazyLock::new(|| pyre::compile(lexicon::CUE_NICE));
@@ -23,6 +34,171 @@ static CUE_NICE: LazyLock<Regex> = LazyLock::new(|| pyre::compile(lexicon::CUE_N
 pub(crate) enum ReqKind {
     Must,
     Nice,
+}
+
+/// What a line of a job text is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Line<'a> {
+    /// A heading: it opens a section of this kind.
+    Heading(HeadingKind),
+    /// A heading with its content after a colon (`Anforderungen: SAP FI`, `Nice to have: Power
+    /// BI`): the content belongs to the section it opens.
+    Inline(HeadingKind, &'a str),
+    /// A line that ends the requirements: the portal's tags, a notice, application, contact or
+    /// privacy text, a greeting.
+    Closing,
+    /// A line that opens a pick list: the items below it are a choice.
+    PickList,
+    /// Anything else: an item or prose.
+    Text,
+}
+
+/// What a line is: `line` is stripped, `bullet` says it led with a glyph bullet, `next` is
+/// the next non-empty line (a bare `Skills` heading over prose opens the requirements, over a
+/// tag list it is the portal's tags).
+pub(crate) fn classify<'a>(line: &'a str, bullet: bool, next: Option<&str>) -> Line<'a> {
+    let bullet = bullet || is_bullet(line);
+    let norm = norm_heading(line);
+    if !bullet && lex::TAG_HEADINGS.contains(&norm.as_str()) {
+        let prose = next.is_some_and(|n| {
+            let n = clean_phrase(n);
+            let words = n.split_whitespace().count();
+            words >= SKILLS_PROSE_WORDS && 3 * n.matches(',').count() < words
+        });
+        return Line::Heading(if prose {
+            HeadingKind::Must
+        } else {
+            HeadingKind::Neutral
+        });
+    }
+    let folded = fold(clean_phrase(line));
+    if lex::CLOSING_STARTS.iter().any(|w| folded.starts_with(w)) {
+        return Line::Closing;
+    }
+    if !bullet {
+        if let Some((head, rest)) = line.split_once([':', '：'])
+            && !strip(rest).is_empty()
+            && let Some(kind) = heading_kind(&norm_heading(head))
+        {
+            return Line::Inline(kind, strip(rest));
+        }
+        if let Some(kind) = heading_kind(&norm) {
+            // A heading names no number (`Bewerbungsfrist 15.10.2026` states a date): a frame
+            // line ends the section, any other line is text.
+            let shown = split_whitespace(&norm).count() <= HEADING_WORDS
+                && !norm.chars().any(|c| c.is_ascii_digit());
+            return match kind {
+                _ if shown || is_listings_heading(&norm) => Line::Heading(kind),
+                HeadingKind::Neutral => Line::Closing,
+                _ => Line::Text,
+            };
+        }
+    }
+    if lex::CLOSING_WORDS.iter().any(|w| folded.contains(w)) {
+        return Line::Closing;
+    }
+    if line.trim_end().ends_with(':')
+        && lex::PICK_LIST_COUNTS.iter().any(|w| folded.contains(w))
+        && lex::PICK_LIST_REFERS.iter().any(|w| folded.contains(w))
+    {
+        return Line::PickList;
+    }
+    Line::Text
+}
+
+/// What a normalised heading opens: the other listings and whole headings, the heading
+/// without its lead word (`Ihre Qualifikation`), a prefix (`Anforderungen an Sie`), then a
+/// heading in two languages (`Aufgaben / Tasks`).
+fn heading_kind(norm: &str) -> Option<HeadingKind> {
+    if norm.is_empty() || char_len(norm) > HEADING_MAX_CHARS {
+        return None;
+    }
+    if is_listings_heading(norm) {
+        return Some(HeadingKind::Neutral);
+    }
+    let bare = norm
+        .split_once(' ')
+        .filter(|(lead, _)| lex::HEADING_LEADS.contains(lead))
+        .map_or(norm, |(_, rest)| rest);
+    let exact = |text: &str| {
+        lex::HEADINGS
+            .binary_search_by(|(h, _)| (*h).cmp(text))
+            .ok()
+            .map(|i| lex::HEADINGS[i].1)
+    };
+    exact(norm)
+        .or_else(|| exact(bare))
+        .or_else(|| by_prefix(norm))
+        .or_else(|| by_prefix(bare))
+        .or_else(|| {
+            norm.split(" / ")
+                .skip_while(|_| !norm.contains(" / "))
+                .find_map(heading_kind)
+        })
+}
+
+/// The kind of the longest heading prefix of `norm`, unless the heading is a skill: a frame
+/// or task word compounded with a skill head (`Branchenkenntnisse`, `Kategoriemanagement`), or
+/// one skill term (`Requirements Engineering`, `Compensation & Benefits`).
+fn by_prefix(norm: &str) -> Option<HeadingKind> {
+    let &(prefix, kind) = lex::HEADING_PREFIXES
+        .iter()
+        .filter(|(p, _)| norm.starts_with(p))
+        .max_by_key(|(p, _)| p.len())?;
+    let rest = &norm[prefix.len()..];
+    let tail = rest.split(' ').next().unwrap_or("");
+    let compound = !tail.is_empty()
+        && !lex::HEADING_INFLECTIONS.contains(&tail)
+        && matches!(kind, HeadingKind::Neutral | HeadingKind::Task)
+        && lex::SKILL_COMPOUND_HEADS.iter().any(|h| tail.ends_with(h));
+    (!compound && !skill_term(norm)).then_some(kind)
+}
+
+/// Skill terms of several words: the concept keys of the core and every domain pack and the
+/// general vocabulary.
+static SKILL_TERMS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
+    lex::CORE_CONCEPTS
+        .iter()
+        .chain(DOMAINS.iter().flat_map(|d| d.concepts.iter()))
+        .map(|(key, _)| *key)
+        .chain(lexicon::JOB_SKILL_VOCAB.iter().copied())
+        .filter(|term| term.contains(' '))
+        .collect()
+});
+
+/// Is a heading one skill term of several words, as written or without its fillers (concept
+/// keys have none)?
+fn skill_term(norm: &str) -> bool {
+    let words: Vec<&str> = atoms::raw_tokens(norm).collect();
+    let content: Vec<&str> = words
+        .iter()
+        .copied()
+        .filter(|w| !atoms::is_filler(w))
+        .collect();
+    [words, content]
+        .iter()
+        .any(|w| w.len() > 1 && SKILL_TERMS.contains(w.join(" ").as_str()))
+}
+
+/// A folded line that heads the other listings of a portal: a heading of
+/// `lexicon::OTHER_LISTINGS` as whole words, then nothing, a count (`(12)`), a colon or a
+/// known tail (`anzeigen`, `dieses Anbieters`). A line that goes on is a sentence of the ad
+/// (`Ähnliche Projekterfahrung von Vorteil`, `Weitere Projekte sind geplant.`).
+pub(crate) fn is_listings_heading(folded: &str) -> bool {
+    char_len(folded) <= LISTINGS_MAX_CHARS
+        && lex::OTHER_LISTINGS.iter().any(|heading| {
+            let Some(tail) = folded.strip_prefix(heading) else {
+                return false;
+            };
+            if tail.chars().next().is_some_and(char::is_alphanumeric) {
+                return false;
+            }
+            let tail = tail.trim().trim_end_matches(':').trim_end();
+            let count = tail.trim_start_matches('(').trim_end_matches(')');
+            tail.is_empty()
+                || (!count.is_empty() && count.chars().all(|c| c.is_ascii_digit()))
+                || lex::LISTING_TAILS.contains(&tail)
+        })
 }
 
 /// Does the (stripped) line start with a bullet character?
@@ -52,99 +228,28 @@ fn strip_number(text: &str) -> &str {
     }
 }
 
-/// Python `_norm_heading`.
+/// A heading line in the heading folding: without bullets, numbering and a closing colon.
 pub(crate) fn norm_heading(line: &str) -> String {
     let text = strip(strip_bullets(strip(line)));
     let text = strip(strip_number(text));
-    let text = text.trim_end_matches([':', '：']);
-    let kept: String = casefold(text)
+    heading_fold(text.trim_end_matches([':', '：']))
+}
+
+/// The one folding of headings and their tables: case and umlauts folded, a spelled umlaut
+/// read as one (`ue` as `ü`, so `Wuenschenswert` is `Wünschenswert`), only letters, digits,
+/// spaces, `&`, `/` and `-` kept (`What you'll do` reads `what youll do`), spaces joined.
+pub(crate) fn heading_fold(text: &str) -> String {
+    let kept: String = fold(text)
         .chars()
         .filter(|&c| {
-            c.is_ascii_lowercase()
-                || c.is_ascii_digit()
-                || matches!(c, 'ä' | 'ö' | 'ü' | 'ß' | ' ' | '&' | '/' | '-')
+            c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, ' ' | '&' | '/' | '-')
         })
         .collect();
-    split_whitespace(&kept).collect::<Vec<_>>().join(" ")
-}
-
-/// Possessive and emphasis words a heading may lead with (`Ihre Qualifikation`, `Key Requirements`).
-/// external contract - do not translate
-const HEADING_LEADS: &[&str] = &[
-    "mein", "meine", "ihr", "ihre", "unser", "unsere", "key", "your", "main", "core",
-];
-
-/// Python `_section_kind`: what a heading line opens, `None` for ordinary lines.
-pub(crate) fn section_kind(line: &str) -> Option<HeadingKind> {
-    let norm = norm_heading(line);
-    if norm.is_empty() || char_len(&norm) > HEADING_MAX_CHARS {
-        return None;
-    }
-    heading_kind(&norm).or_else(|| {
-        // `Ihre Qualifikation`, `Unsere Aufgaben`: the heading without its lead word.
-        let (lead, rest) = norm.split_once(' ')?;
-        HEADING_LEADS.contains(&lead).then(|| heading_kind(rest))?
-    })
-}
-
-/// The kind of a normalised heading: the exact lists, then the prefixes.
-fn heading_kind(norm: &str) -> Option<HeadingKind> {
-    for (table, kind) in [
-        (lexicon::NEUTRAL_HEADINGS, HeadingKind::Neutral),
-        (lexicon::NICE_HEADINGS, HeadingKind::Nice),
-        (lexicon::MUST_HEADINGS, HeadingKind::Must),
-        (lexicon::TASK_HEADINGS, HeadingKind::Task),
-    ] {
-        if lexicon::contains(table, norm) {
-            return Some(kind);
-        }
-    }
-    lexicon::HEADING_PREFIXES
-        .iter()
-        .find(|(prefix, _)| norm.starts_with(prefix))
-        .map(|&(_, kind)| kind)
-}
-
-/// Result of the inline-heading check (`Anforderungen: ...` on one line).
-pub(crate) enum Inline<'a> {
-    /// No inline heading.
-    None,
-    /// A must/nice heading with the rest of the line as a requirement.
-    Section(ReqKind, &'a str),
-    /// Another inline heading (tasks, offer, about us): the line stays an ordinary line.
-    Other,
-}
-
-/// The inline heading of a line (`Anforderungen: ...`).
-pub(crate) fn inline_heading(line: &str) -> Inline<'_> {
-    // The pattern needs its colon: most lines have none.
-    if !line.contains([':', '：']) {
-        return Inline::None;
-    }
-    let view = pyre::view(line);
-    let Some(caps) = INLINE_HEADING.captures(&view) else {
-        return Inline::None;
-    };
-    let (Some(head), Some(rest)) = (caps.get(1), caps.get(2)) else {
-        return Inline::None;
-    };
-    let (from, to) = pyre::original_range(line, &view, head.start(), head.end());
-    let head = casefold(&line[from..to]);
-    let (from, to) = pyre::original_range(line, &view, rest.start(), rest.end());
-    let rest = strip(&line[from..to]);
-    let kind = if head == "ihr profil"
-        || head == "dein profil"
-        || head.starts_with("anforderung")
-        || head.starts_with("qualifikation")
-        || head.starts_with("voraussetzung")
-    {
-        ReqKind::Must
-    } else if head.starts_with("wünschenswert") || head.starts_with("wuenschenswert") {
-        ReqKind::Nice
-    } else {
-        return Inline::Other;
-    };
-    Inline::Section(kind, rest)
+    let spelled = kept
+        .replace("ae", "a")
+        .replace("oe", "o")
+        .replace("ue", "u");
+    split_whitespace(&spelled).collect::<Vec<_>>().join(" ")
 }
 
 /// Python `_clean_phrase`: leading bullets and numbering removed.
@@ -170,54 +275,4 @@ pub(crate) fn cue_kind(sentence: &str) -> Option<ReqKind> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn headings() {
-        assert_eq!(section_kind("Anforderungen:"), Some(HeadingKind::Must));
-        assert_eq!(section_kind("- 2) Wünschenswert"), Some(HeadingKind::Nice));
-        assert_eq!(section_kind("Ihre Qualifikation"), Some(HeadingKind::Must));
-        assert_eq!(section_kind("Über uns"), Some(HeadingKind::Neutral));
-        assert_eq!(norm_heading("• 1. Ihr Profil："), "ihr profil");
-    }
-
-    #[test]
-    fn new_headings_and_lead_words() {
-        for (line, kind) in [
-            ("Qualifikation", HeadingKind::Must),
-            ("Anforderungen", HeadingKind::Must),
-            ("Muss-Anforderungen", HeadingKind::Must),
-            ("Profile", HeadingKind::Must),
-            ("Requirements", HeadingKind::Must),
-            ("Aufgaben", HeadingKind::Task),
-            ("Hauptaufgaben", HeadingKind::Task),
-            ("Responsibilities", HeadingKind::Task),
-            ("Key Responsibilities", HeadingKind::Task),
-            ("Ihre Qualifikation", HeadingKind::Must),
-            ("Unsere Aufgaben", HeadingKind::Task),
-            ("Meine Anforderungen", HeadingKind::Must),
-            ("Core Requirements", HeadingKind::Must),
-            ("Your Profile", HeadingKind::Must),
-            ("Main Responsibilities", HeadingKind::Task),
-        ] {
-            assert_eq!(section_kind(line), Some(kind), "{line}");
-        }
-        assert_eq!(section_kind("Ihre Reise"), None);
-        assert_eq!(section_kind("Key"), None);
-    }
-
-    #[test]
-    fn inline_headings() {
-        assert!(matches!(
-            inline_heading("Anforderungen: SAP"),
-            Inline::Section(ReqKind::Must, "SAP")
-        ));
-        assert!(matches!(inline_heading("Anforderungen:"), Inline::None));
-        assert!(matches!(
-            inline_heading("Ihr Profil: SAP FI"),
-            Inline::Section(ReqKind::Must, "SAP FI")
-        ));
-        assert!(matches!(inline_heading("Wir bieten: Geld"), Inline::Other));
-    }
-}
+mod tests;
