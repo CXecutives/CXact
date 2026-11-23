@@ -3,10 +3,11 @@
 //! general or near = 0.5, generic atoms never alone (V1-V4, V15), kinds of tool, language
 //! levels (V9), years (V8), degrees (field, relatedness, level) and licences.
 
+use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::LazyLock;
 
-use super::atoms::{self, Fit, Vocab, fold};
+use super::atoms::{self, Fit, Memo, Vocab, fold};
 use super::graph::{self, Known, Row};
 use super::job::{Class, Item, language_of, names_degree};
 use super::lexicon::engine as lex;
@@ -90,9 +91,15 @@ impl Broad {
         Self { terms }
     }
 
-    /// The skills and knowledge of a requirement or a profile entry.
+    /// The skills and knowledge of a requirement or a profile entry, read once per text,
+    /// vocabulary and thread.
     pub(crate) fn skills(text: &str, vocab: &Vocab) -> Self {
-        Self::of(text, vocab, &[Kind::Skill, Kind::Knowledge])
+        if let Some(found) = SKILLS.with(|read| read.borrow().get(vocab.id(), text)) {
+            return found;
+        }
+        let found = Self::of(text, vocab, &[Kind::Skill, Kind::Knowledge]);
+        SKILLS.with(|read| read.borrow_mut().put(vocab.id(), text, found.clone()));
+        found
     }
 
     /// The pairs of a term of `self` (the ad's side) and a term of `profile` that name one
@@ -135,6 +142,11 @@ impl Broad {
     pub(crate) fn names(&self, role: &Broad) -> bool {
         self.shared(role).next().is_some()
     }
+}
+
+thread_local! {
+    /// The skills and knowledge of the texts read so far ([`Broad::skills`]).
+    static SKILLS: RefCell<Memo<Broad>> = const { RefCell::new(Memo::new(1 << 14)) };
 }
 
 /// What the engine uses from the profile.

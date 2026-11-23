@@ -22,28 +22,40 @@ use super::lexicon::domains::DOMAINS;
 use super::lexicon::engine as lex;
 use super::normalize::contains_word;
 
-/// How an ad atom relates to a profile atom: by their words, then through the graph. A
-/// node of ten letters or more stands for its compounds too (`Projektleitungskompetenz` is
-/// near `Projektmanagement`); the profile atom is the other node, or a compound of it.
+/// How an ad atom relates to a profile atom: by their words, then through the graph
+/// ([`edges`]).
 pub(crate) fn fit(job: &str, profile: &str) -> Fit {
+    fit_with(job, &edges(job), profile)
+}
+
+/// [`fit`] with the edges of the ad atom read once: the other node, or a compound of it
+/// (`Konzerncontrolling` for FP&A asked: half; a compound proves no umbrella,
+/// `Standortkonsolidierung` is no accounting).
+fn fit_with(job: &str, edges: &[&(String, Fit)], profile: &str) -> Fit {
     let direct = atoms::fit_direct(job, profile);
     if direct != Fit::None {
         return direct;
     }
-    let starts = (COMPOUND_NODE..job.len()).filter(|&at| job.is_char_boundary(at));
-    std::iter::once(job)
-        .chain(starts.map(|at| &job[..at]))
-        .filter_map(|node| EDGES.get(node))
-        .flatten()
+    edges
+        .iter()
         .filter_map(|(other, edge)| match atoms::fit_direct(other, profile) {
             Fit::Equal => Some(*edge),
-            // A compound of the other node meets in half (`Konzerncontrolling` for FP&A asked);
-            // it proves no umbrella (`Standortkonsolidierung` is no accounting).
             Fit::Specific if *edge == Fit::General => Some(Fit::General),
             _ => None,
         })
         .max()
         .unwrap_or(Fit::None)
+}
+
+/// The edges of an ad atom: those of the node it is, and of every node of ten letters or
+/// more it starts with (`Projektleitungskompetenz` is near `Projektmanagement`).
+fn edges(job: &str) -> Vec<&'static (String, Fit)> {
+    let starts = (COMPOUND_NODE..job.len()).filter(|&at| job.is_char_boundary(at));
+    std::iter::once(job)
+        .chain(starts.map(|at| &job[..at]))
+        .filter_map(|node| EDGES.get(node))
+        .flatten()
+        .collect()
 }
 
 /// A node relates its compounds when it has this many letters or more.
@@ -207,8 +219,13 @@ impl Known {
         if let Some(found) = ROWS.with(|rows| rows.borrow().get(self.id, job)) {
             return found;
         }
+        let edges = edges(job);
         let row = Rc::new(Row {
-            fits: self.atoms.iter().map(|p| fit(job, p)).collect(),
+            fits: self
+                .atoms
+                .iter()
+                .map(|p| fit_with(job, &edges, p))
+                .collect(),
             packs: packs(job),
             back: OnceCell::new(),
         });

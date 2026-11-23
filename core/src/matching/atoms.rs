@@ -132,6 +132,11 @@ impl Vocab {
         Self::with(DOMAINS)
     }
 
+    /// Its number ([`Vocab::id`]): the key of what is read with it.
+    pub(crate) fn id(&self) -> u64 {
+        self.id
+    }
+
     /// Names of the switched-on packs.
     pub(crate) fn packs(&self) -> &[&'static str] {
         &self.packs
