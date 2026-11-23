@@ -34,17 +34,16 @@
 //! (`lexicon::EXCLUSION_WORD_FAMILIES`: `Praktikum` and `Praktikant`). A phrase matches word
 //! by word or written as one word (`Call Center`, `Callcenter`).
 
-use std::cell::RefCell;
 use std::ops::Range;
-use std::rc::Rc;
 use std::sync::LazyLock;
 
 use regex::Regex;
 use serde_json::json;
 
 use super::atoms::fold;
-use super::facts::{Finding, HardCriteria, Segment};
+use super::facts::{Finding, Segment};
 use super::lexicon::engine as lex;
+use super::normalize::word_spans;
 use super::types::{CriterionKey, ReasonCode};
 
 /// Shortest form that also matches as the start of a longer word or with an inflection.
@@ -106,7 +105,7 @@ struct Form {
 }
 
 /// One exclusion word with its forms.
-struct Word {
+pub(crate) struct Word {
     text: String,
     forms: Vec<Form>,
     /// The word names a kind of position (`Werkstudent`), not a condition (`Schichtdienst`).
@@ -131,26 +130,10 @@ impl Word {
     }
 }
 
-thread_local! {
-    /// The exclusion words of the profile scored last on this thread, with their forms.
-    static WORDS: RefCell<(Vec<String>, Rc<[Word]>)> = RefCell::new((Vec::new(), Rc::from([])));
-}
-
-/// The profile's exclusion words with their forms (a word without any form left out), built
-/// once per profile and not again for every ad.
-fn compiled(words: &[String]) -> Rc<[Word]> {
-    WORDS.with(|memo| {
-        let mut memo = memo.borrow_mut();
-        if memo.0 != words {
-            let built: Vec<Word> = words
-                .iter()
-                .map(|text| Word::new(text))
-                .filter(|w| !w.forms.is_empty())
-                .collect();
-            *memo = (words.to_vec(), built.into());
-        }
-        Rc::clone(&memo.1)
-    })
+/// The profile's exclusion words with their forms (a word without any form left out).
+pub(crate) fn compile(words: &[String]) -> Vec<Word> {
+    let words = words.iter().map(|text| Word::new(text));
+    words.filter(|w| !w.forms.is_empty()).collect()
 }
 
 fn words(folded: &str) -> Vec<&str> {
@@ -169,30 +152,14 @@ struct Token<'t> {
 }
 
 fn tokens(folded: &str) -> Vec<Token<'_>> {
-    let mut out = Vec::new();
-    let mut start = None;
-    for (at, c) in folded.char_indices() {
-        match (c.is_alphanumeric(), start) {
-            (true, None) => start = Some(at),
-            (false, Some(from)) => {
-                out.push(Token {
-                    text: &folded[from..at],
-                    start: from,
-                    end: at,
-                });
-                start = None;
-            }
-            _ => {}
-        }
-    }
-    if let Some(from) = start {
-        out.push(Token {
-            text: &folded[from..],
-            start: from,
-            end: folded.len(),
-        });
-    }
-    out
+    let words = word_spans(folded, &[]).into_iter();
+    words
+        .map(|(start, text)| Token {
+            text,
+            start,
+            end: start + text.len(),
+        })
+        .collect()
 }
 
 /// The word itself, the male form of a female or participle form and the other words of
@@ -606,13 +573,13 @@ fn decides(folded: &str, requirement: bool, word: &Word) -> bool {
 /// ad's own text as the module describes (`exclusionWord {word}`, with those sentences).
 /// `requirement_lines` are the byte ranges of the ad's requirement lines.
 pub(crate) fn check(
-    criteria: &HardCriteria,
+    words: &[Word],
     title: &str,
     levels: &[String],
     segments: &[Segment],
     requirement_lines: &[Range<usize>],
 ) -> Vec<Finding> {
-    if criteria.exclusion_words.is_empty() {
+    if words.is_empty() {
         return Vec::new();
     }
     let title = fold(title);
@@ -621,7 +588,7 @@ pub(crate) fn check(
             .iter()
             .any(|line| line.start < range.end && range.start < line.end)
     };
-    compiled(&criteria.exclusion_words)
+    words
         .iter()
         .filter_map(|word| {
             let spans: Vec<Range<usize>> = segments

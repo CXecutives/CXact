@@ -2,6 +2,7 @@
 //! after a colon, a closing line, a pick list's opener or text), the one heading folding, and
 //! the requirement cues of a sentence.
 
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::ops::Range;
 use std::sync::LazyLock;
@@ -13,7 +14,8 @@ use super::lexicon::domains::DOMAINS;
 use super::lexicon::engine::{self as lex, CueScope};
 use super::lexicon::{self, HeadingKind};
 use super::normalize::{
-    char_len, decimal, is_space, phrase_at, split_whitespace, strip, word_spans,
+    any_longest_word, char_len, decimal, folded_word, holds_any, is_space, phrase_at,
+    split_whitespace, strip, word_spans,
 };
 use super::pyre;
 
@@ -61,7 +63,12 @@ pub(crate) enum Line<'a> {
 /// tag list it is the portal's tags).
 pub(crate) fn classify<'a>(line: &'a str, bullet: bool, next: Option<&str>) -> Line<'a> {
     let bullet = bullet || is_bullet(line);
-    let norm = norm_heading(line);
+    // Only a line without a bullet can be a heading.
+    let norm = if bullet {
+        String::new()
+    } else {
+        norm_heading(line)
+    };
     if !bullet && lex::TAG_HEADINGS.contains(&norm.as_str()) {
         let prose = next.is_some_and(|n| {
             let n = clean_phrase(n);
@@ -97,7 +104,7 @@ pub(crate) fn classify<'a>(line: &'a str, bullet: bool, next: Option<&str>) -> L
             };
         }
     }
-    if lex::CLOSING_WORDS.iter().any(|w| folded.contains(w)) {
+    if holds_any(&folded, lex::CLOSING_WORDS) {
         return Line::Closing;
     }
     if line.trim_end().ends_with(':')
@@ -122,7 +129,7 @@ fn heading_kind(norm: &str) -> Option<HeadingKind> {
     let bare = norm
         .split_once(' ')
         .filter(|(lead, _)| lex::HEADING_LEADS.contains(lead))
-        .map_or(norm, |(_, rest)| rest);
+        .map(|(_, rest)| rest);
     let exact = |text: &str| {
         lex::HEADINGS
             .binary_search_by(|(h, _)| (*h).cmp(text))
@@ -130,9 +137,9 @@ fn heading_kind(norm: &str) -> Option<HeadingKind> {
             .map(|i| lex::HEADINGS[i].1)
     };
     exact(norm)
-        .or_else(|| exact(bare))
+        .or_else(|| bare.and_then(exact))
         .or_else(|| by_prefix(norm))
-        .or_else(|| by_prefix(bare))
+        .or_else(|| bare.and_then(by_prefix))
         .or_else(|| {
             norm.split(" / ")
                 .skip_while(|_| !norm.contains(" / "))
@@ -204,6 +211,11 @@ pub(crate) fn is_listings_heading(folded: &str) -> bool {
         })
 }
 
+/// Does a line as written head the other listings (folding never shortens a line)?
+pub(crate) fn heads_listings(line: &str) -> bool {
+    char_len(line) <= LISTINGS_MAX_CHARS && is_listings_heading(&fold(line))
+}
+
 /// Does the (stripped) line start with a bullet character?
 pub(crate) fn is_bullet(line: &str) -> bool {
     line.starts_with(lexicon::BULLETS)
@@ -233,26 +245,34 @@ fn strip_number(text: &str) -> &str {
 
 /// A heading line in the heading folding: without bullets, numbering and a closing colon.
 pub(crate) fn norm_heading(line: &str) -> String {
-    let text = strip(strip_bullets(strip(line)));
-    let text = strip(strip_number(text));
-    heading_fold(text.trim_end_matches([':', '：']))
+    heading_fold(clean_phrase(line).trim_end_matches([':', '：']))
 }
 
 /// The one folding of headings and their tables: case and umlauts folded, a spelled umlaut
 /// read as one (`ue` as `ü`, so `Wuenschenswert` is `Wünschenswert`), only letters, digits,
 /// spaces, `&`, `/` and `-` kept (`What you'll do` reads `what youll do`), spaces joined.
 pub(crate) fn heading_fold(text: &str) -> String {
-    let kept: String = fold(text)
-        .chars()
-        .filter(|&c| {
-            c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, ' ' | '&' | '/' | '-')
-        })
-        .collect();
-    let spelled = kept
-        .replace("ae", "a")
-        .replace("oe", "o")
-        .replace("ue", "u");
-    split_whitespace(&spelled).collect::<Vec<_>>().join(" ")
+    let mut out = String::with_capacity(text.len());
+    // After `a`, `o` or `u` the `e` of a spelled umlaut goes.
+    let mut spelled = false;
+    for c in fold(text).chars() {
+        match c {
+            'e' if spelled => spelled = false,
+            ' ' => {
+                spelled = false;
+                if !out.is_empty() && !out.ends_with(' ') {
+                    out.push(' ');
+                }
+            }
+            'a'..='z' | '0'..='9' | '&' | '/' | '-' => {
+                spelled = matches!(c, 'a' | 'o' | 'u');
+                out.push(c);
+            }
+            _ => {}
+        }
+    }
+    out.truncate(out.trim_end().len());
+    out
 }
 
 /// Python `_clean_phrase`: leading bullets and numbering removed.
@@ -277,21 +297,39 @@ pub(crate) struct Cue {
     pub at: Range<usize>,
 }
 
+static NICE_WORD: LazyLock<Regex> =
+    LazyLock::new(|| any_longest_word(lex::NICE_CUES.iter().map(|(cue, _)| *cue)));
+/// The words a nice cue starts at: its first word, a cue of one word also with its endings.
+static NICE_STARTS: LazyLock<HashSet<String>> = LazyLock::new(|| {
+    let endings = || std::iter::once(&"").chain(lex::DECLENSION_ENDINGS);
+    let starts = lex::NICE_CUES
+        .iter()
+        .flat_map(|(cue, _)| match cue.split_once(' ') {
+            Some((first, _)) => vec![first.to_owned()],
+            None => endings().map(|ending| format!("{cue}{ending}")).collect(),
+        });
+    starts.collect()
+});
+
 /// The nice cues of a text, left to right, the longest at each word (`lex::NICE_CUES`: whole
 /// words, `Bonussysteme` holds no `bonus`).
 pub(crate) fn nice_cues(text: &str) -> Vec<Cue> {
+    if !NICE_WORD.is_match(&fold(text)) {
+        return Vec::new();
+    }
     let words = word_spans(text, &[]);
-    let folded: Vec<String> = words.iter().map(|(_, w)| fold(w)).collect();
+    let folded: Vec<Cow<'_, str>> = words.iter().map(|(_, w)| folded_word(w)).collect();
     let mut cues = Vec::new();
     let mut i = 0;
     while i < words.len() {
-        let found = lex::NICE_CUES
-            .iter()
-            .filter_map(|&(cue, scope)| {
+        let cues_at = || {
+            let ends = lex::NICE_CUES.iter().filter_map(|&(cue, scope)| {
                 phrase_at(&folded, i, cue, lex::DECLENSION_ENDINGS).map(|end| (end, scope))
-            })
-            .max_by_key(|(end, _)| *end);
-        let Some((end, scope)) = found else {
+            });
+            ends.max_by_key(|(end, _)| *end)
+        };
+        let starts = NICE_STARTS.contains(folded[i].as_ref());
+        let Some((end, scope)) = starts.then(cues_at).flatten() else {
             i += 1;
             continue;
         };

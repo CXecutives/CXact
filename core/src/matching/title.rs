@@ -16,12 +16,15 @@
 //! title (three times) and the musts trigger most; its distance to the profile's families is
 //! same, near (`NEAR_FIELDS`) or far.
 
+use std::collections::HashMap;
 use std::sync::LazyLock;
+
+use regex::Regex;
 
 use super::atoms::{fold, raw_tokens};
 use super::lexicon::domains::DOMAINS;
 use super::lexicon::engine as lex;
-use super::normalize::contains_word;
+use super::normalize::{any_word, contains_word, holds_any};
 use super::relevance;
 
 /// The title without its noise: HTML entities decoded, a leading ID (`1083881 Power
@@ -66,7 +69,19 @@ fn head_level(token: &str) -> Option<(&'static str, u8)> {
 /// The level of a title's head noun (none when it names no head: `Customer Service`) and
 /// whether a head of it is an engagement of every level (`TITLE_ENGAGEMENTS`).
 fn head_of(title: &str) -> (Option<u8>, bool) {
+    /// A title names a level only with a head, a head phrase or a senior word in it.
+    static LEVEL_WORD: LazyLock<Regex> = LazyLock::new(|| {
+        let heads = lex::TITLE_HEADS.iter().chain(lex::TITLE_HEAD_PHRASES);
+        any_word(
+            heads
+                .map(|(head, _)| *head)
+                .chain(lex::TITLE_SENIOR.iter().copied()),
+        )
+    });
     let mut folded = fold(title);
+    if !LEVEL_WORD.is_match(&folded) {
+        return (None, false);
+    }
     let mut level: Option<u8> = None;
     let mut engagement = false;
     for &(phrase, phrase_level) in lex::TITLE_HEAD_PHRASES {
@@ -107,19 +122,18 @@ pub(crate) fn engagement(title: &str) -> bool {
 }
 
 /// The level of an ad: its title's, moved by what the ad says of staff, or operative work
-/// where the title names no head and the ad asks for a vocational training (`own`: the ad
-/// without the other listings under it).
-pub(crate) fn ad_level(title: &str, own: &str) -> Option<u8> {
+/// where the title names no head and the ad asks for a vocational training (`folded`: the
+/// folded ad without the other listings under it).
+pub(crate) fn ad_level(title: &str, folded: &str) -> Option<u8> {
     let level = level_of(title);
-    let folded = fold(own);
-    if lex::NO_LEAD_CUES.iter().any(|c| folded.contains(c)) {
+    if holds_any(folded, lex::NO_LEAD_CUES) {
         return level.map(|l| l.min(3));
     }
-    if lex::LEAD_CUES.iter().any(|c| folded.contains(c)) {
+    if holds_any(folded, lex::LEAD_CUES) {
         return Some(level.map_or(4, |l| l.max(4)));
     }
     // A title without a head noun whose ad asks for a vocational training is operative work.
-    if level.is_none() && lex::OPERATIVE_CUES.iter().any(|c| folded.contains(c)) {
+    if level.is_none() && holds_any(folded, lex::OPERATIVE_CUES) {
         return Some(1);
     }
     level
@@ -217,28 +231,37 @@ pub(crate) fn profile_fields(packs: &[&'static str]) -> Vec<&'static str> {
     out
 }
 
-/// Every trigger of the packs with the index of its family in `FIELD_PACKS`.
-static TRIGGERS: LazyLock<Vec<(&'static str, usize)>> = LazyLock::new(|| {
-    DOMAINS
-        .iter()
-        .filter_map(|domain| {
-            let family = family_of_pack(domain.name)?;
-            let index = lex::FIELD_PACKS.iter().position(|(f, _)| *f == family)?;
-            Some(domain.triggers.iter().map(move |t| (*t, index)))
-        })
-        .flatten()
-        .collect()
+/// Every trigger of the packs with the families it stands for (a bit per index in
+/// `FIELD_PACKS`).
+static TRIGGERS: LazyLock<HashMap<&'static str, u16>> = LazyLock::new(|| {
+    let mut triggers: HashMap<&'static str, u16> = HashMap::new();
+    for domain in DOMAINS {
+        let family = family_of_pack(domain.name);
+        if let Some(index) = lex::FIELD_PACKS
+            .iter()
+            .position(|(f, _)| Some(*f) == family)
+        {
+            for trigger in domain.triggers {
+                *triggers.entry(trigger).or_default() |= 1 << index;
+            }
+        }
+    }
+    triggers
 });
 
-/// Trigger hits of each family in a text (`weight` per hit, once per pack and token).
+/// Trigger hits of each family in a text (`weight` per hit, once per pack and token): a
+/// token is hit by the triggers it starts with.
 fn tally(text: &str, weight: u32, hits: &mut [u32]) {
     let folded = fold(text);
     for token in raw_tokens(&folded) {
-        let mut seen = [false; 16];
-        for &(trigger, index) in TRIGGERS.iter() {
-            if !seen[index] && token.starts_with(trigger) {
-                seen[index] = true;
-                hits[index] += weight;
+        let starts = token.char_indices().skip(1).map(|(at, _)| &token[..at]);
+        let families = starts
+            .chain([token])
+            .filter_map(|start| TRIGGERS.get(start))
+            .fold(0, |all, families| all | families);
+        for (index, hit) in hits.iter_mut().enumerate() {
+            if families & (1 << index) != 0 {
+                *hit += weight;
             }
         }
     }
@@ -338,21 +361,21 @@ mod tests {
         assert_eq!(
             ad_level(
                 "Referent Controlling",
-                "Sie übernehmen die disziplinarische Führung von 4 Mitarbeitenden."
+                &fold("Sie übernehmen die disziplinarische Führung von 4 Mitarbeitenden.")
             ),
             Some(4)
         );
         assert_eq!(
             ad_level(
                 "Head of Reporting",
-                "Die Rolle ist ohne Personalverantwortung."
+                &fold("Die Rolle ist ohne Personalverantwortung.")
             ),
             Some(3)
         );
         assert_eq!(
             ad_level(
                 "Customer Service",
-                "Abgeschlossene kaufmännische Ausbildung"
+                &fold("Abgeschlossene kaufmännische Ausbildung")
             ),
             Some(1)
         );

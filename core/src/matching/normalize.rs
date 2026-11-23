@@ -6,7 +6,10 @@
 //! toolchain.
 
 use std::borrow::Cow;
-use std::sync::LazyLock;
+use std::collections::HashMap;
+use std::sync::{LazyLock, Mutex};
+
+use regex::Regex;
 
 use super::lexicon;
 
@@ -253,43 +256,35 @@ pub(crate) fn sentences(line: &str) -> Vec<&str> {
     let text = strip(line);
     let mut parts = Vec::new();
     let mut start = 0;
-    let chars: Vec<(usize, char)> = text.char_indices().collect();
-    for (i, &(at, c)) in chars.iter().enumerate() {
-        if !matches!(c, '.' | '!' | '?' | ';') {
-            continue;
+    let mut part = |from: usize, to: usize| {
+        let part = strip(&text[from..to]);
+        if !part.is_empty() {
+            parts.push(part);
         }
-        let Some(&(_, next)) = chars.get(i + 1) else {
+    };
+    for (at, sign) in text.match_indices(['.', '!', '?', ';']) {
+        let after = &text[at + 1..];
+        let Some(space) = after.find(|c: char| !c.is_whitespace()).filter(|n| *n > 0) else {
             continue;
         };
-        if !next.is_whitespace() {
-            continue;
-        }
-        let Some(&(word_at, first)) = chars[i + 1..].iter().find(|(_, c)| !c.is_whitespace())
-        else {
-            continue;
-        };
-        if !(first.is_uppercase() || first.is_ascii_digit()) {
+        if !after[space..].starts_with(|c: char| c.is_uppercase() || c.is_ascii_digit()) {
             continue;
         }
         let word = text[..at]
             .rsplit(|c: char| !c.is_alphanumeric())
             .next()
             .unwrap_or("");
-        if c == '.'
+        if sign == "."
             && (word.chars().count() <= 2
                 || lexicon::engine::ABBREVIATIONS.contains(&word.to_lowercase().as_str()))
         {
             continue;
         }
-        parts.push(&text[start..=at]);
-        start = word_at;
+        part(start, at + 1);
+        start = at + 1 + space;
     }
-    parts.push(&text[start..]);
+    part(start, text.len());
     parts
-        .into_iter()
-        .map(strip)
-        .filter(|p| !p.is_empty())
-        .collect()
 }
 
 /// Whole-word (or whole-phrase) containment in a folded text.
@@ -368,20 +363,79 @@ pub(crate) fn phrase_at<S: AsRef<str>>(
     phrase: &str,
     endings: &[&str],
 ) -> Option<usize> {
-    let parts: Vec<&str> = phrase.split(' ').collect();
-    for (i, part) in parts.iter().enumerate() {
-        let word = words.get(at + i)?.as_ref();
+    let mut parts = phrase.split(' ').peekable();
+    let mut next = at;
+    while let Some(part) = parts.next() {
+        let word = words.get(next)?.as_ref();
+        let last = parts.peek().is_none();
         let ending = || {
-            i + 1 == parts.len()
-                && word
-                    .strip_prefix(part)
-                    .is_some_and(|rest| endings.contains(&rest))
+            word.strip_prefix(part)
+                .is_some_and(|rest| endings.contains(&rest))
         };
-        if word != *part && !ending() {
+        if word != part && !(last && ending()) {
             return None;
         }
+        next += 1;
     }
-    Some(at + parts.len())
+    Some(next)
+}
+
+/// One pattern for a list of words: whether (and where) a text holds any of them, in one pass
+/// over the text instead of one per word.
+pub(crate) fn any_word<'a>(words: impl IntoIterator<Item = &'a str>) -> Regex {
+    let pattern: Vec<String> = words.into_iter().map(regex::escape).collect();
+    Regex::new(&pattern.join("|")).expect("a list of literal words")
+}
+
+/// One pattern for the longest word of every phrase (words separated by single spaces): a text
+/// holds one of the phrases, word by word, only with that word in it.
+pub(crate) fn any_longest_word<'a>(phrases: impl IntoIterator<Item = &'a str>) -> Regex {
+    let longest = |phrase: &'a str| phrase.split(' ').max_by_key(|word| word.len());
+    any_word(phrases.into_iter().filter_map(longest))
+}
+
+/// Does a text hold any word of a list (anywhere, also inside a word)? The list's pattern
+/// ([`any_word`]) is built once.
+pub(crate) fn holds_any(text: &str, words: &'static [&'static str]) -> bool {
+    static BUILT: LazyLock<Mutex<HashMap<(usize, usize), &'static Regex>>> =
+        LazyLock::new(Mutex::default);
+    if words.is_empty() {
+        return false;
+    }
+    let pattern = *BUILT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .entry((words.as_ptr() as usize, words.len()))
+        .or_insert_with(|| Box::leak(Box::new(any_word(words.iter().copied()))));
+    pattern.is_match(text)
+}
+
+/// The lines of a text that `pattern` matches in (a match lies in one line), in their order.
+pub(crate) fn lines_with<'t>(text: &'t str, pattern: &'t Regex) -> impl Iterator<Item = &'t str> {
+    let mut next = 0;
+    pattern.find_iter(text).filter_map(move |found| {
+        if found.start() < next {
+            return None;
+        }
+        let start = text[..found.start()].rfind('\n').map_or(0, |i| i + 1);
+        let end = text[found.end()..]
+            .find('\n')
+            .map_or(text.len(), |i| found.end() + i);
+        next = end;
+        Some(text[start..end].trim_end_matches('\r'))
+    })
+}
+
+/// A word in the engine's folding (`atoms::fold`), borrowed where it is folded as written.
+pub(crate) fn folded_word(word: &str) -> Cow<'_, str> {
+    if word
+        .bytes()
+        .all(|b| b.is_ascii() && !b.is_ascii_uppercase())
+    {
+        Cow::Borrowed(word)
+    } else {
+        Cow::Owned(super::atoms::fold(word))
+    }
 }
 
 /// A date written as one word: a day (`31.03.2027`, `2027-03-31`) or a month (`03/2027`), as
@@ -420,6 +474,13 @@ pub(crate) fn number_word(word: &str) -> Option<u32> {
         .iter()
         .find(|(w, _)| *w == word)
         .map(|&(_, n)| n)
+}
+
+/// The years a word names (`10`, `10+`, `zehn`), from 1 to 40.
+pub(crate) fn years_named(word: &str) -> Option<u32> {
+    let word = word.trim_end_matches('+');
+    let years = word.parse::<u32>().ok().or_else(|| number_word(word));
+    years.filter(|n| (1..=40).contains(n))
 }
 
 /// The text after an amount (`start..end` of `text`) and the text before it, each past a range

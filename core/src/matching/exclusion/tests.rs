@@ -11,9 +11,9 @@ fn excluded(words: &[&str], title: &str, levels: &[&str], text: &str) -> Vec<Str
         exclusion_words: words.iter().map(|w| (*w).to_owned()).collect(),
         ..crate::profile::ProfileForm::default()
     };
-    let criteria = HardCriteria::new(&form);
+    let words = compile(&form.exclusion_words);
     let levels: Vec<String> = levels.iter().map(|l| fold(l)).collect();
-    check(&criteria, title, &levels, &segments(text), &[])
+    check(&words, title, &levels, &segments(text), &[])
         .into_iter()
         .map(|f| {
             let marked: Vec<&str> = f.spans.iter().map(|r| &text[r.clone()]).collect();

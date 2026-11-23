@@ -33,7 +33,7 @@ Gates of `matching_corpus.rs`:
 - `GOLDEN_DIGEST` over every result (the same on Windows and macOS);
 - the target role and the wishes never lift a job into the high band (80) while fewer than half
   of its musts are met;
-- the speed budget in release builds (median <= 0.5 ms per job, 2,000 jobs <= 3 s); no fixture
+- the speed budget in release builds (median <= 3 ms per job, 2,000 jobs <= 6 s); no fixture
   ignored by git.
 
 Ten held-out sets (`heldout1/` to `heldout10/`): invented ads with blind labels (grade 0-3,

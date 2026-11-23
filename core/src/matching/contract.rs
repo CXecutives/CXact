@@ -7,9 +7,8 @@
 //! the portal (freelance portals list projects). A staffing agency without any of it stays
 //! unclear and is checked like a permanent role with an ANÜ risk.
 
-use std::collections::HashMap;
 use std::ops::Range;
-use std::sync::{LazyLock, Mutex};
+use std::sync::LazyLock;
 
 use regex::Regex;
 use serde_json::Value;
@@ -17,6 +16,7 @@ use serde_json::Value;
 use super::atoms::fold;
 use super::facts::{Finding, JobFacts, Segment, fact, parse_rate, rate_in, wage_in};
 use super::lexicon::engine as lex;
+use super::normalize::{any_longest_word, holds_any as any};
 
 /// Inferred contract type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -56,25 +56,19 @@ pub(crate) struct Contract {
     pub spans: Vec<Range<usize>>,
 }
 
-fn any(folded: &str, words: &'static [&'static str]) -> bool {
-    !words.is_empty() && any_of(words).is_match(folded)
-}
-
-/// A list of words as one pattern (built once per list): whether a text contains any of
-/// them, in one pass over the text instead of one per word.
-fn any_of(words: &'static [&'static str]) -> &'static Regex {
-    static BUILT: LazyLock<Mutex<HashMap<usize, &'static Regex>>> =
-        LazyLock::new(|| Mutex::new(HashMap::new()));
-    let mut built = BUILT
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    built.entry(words.as_ptr() as usize).or_insert_with(|| {
-        let pattern: Vec<String> = words.iter().map(|w| regex::escape(w)).collect();
-        Box::leak(Box::new(
-            Regex::new(&pattern.join("|")).expect("a list of literal words"),
-        ))
-    })
-}
+/// A sentence says something of the contract only with a digit (a rate, a wage) or the
+/// longest word of a cue in it (a cue stands in the sentence as written or without its `, `).
+static CUE_WORD: LazyLock<Regex> = LazyLock::new(|| {
+    let cues = [
+        lex::INTERIM_CUES,
+        lex::INTERIM_MANAGEMENT_CUES,
+        lex::PERMANENT_WORDS,
+        lex::PERMANENT_STATED,
+        lex::PERMANENT_HINTS,
+        lex::AGENCY_CUES,
+    ];
+    any_longest_word(cues.into_iter().flatten().copied())
+});
 
 /// A student or trainee role (`Werkstudent`, `Praktikum` in the title): employment, inferred
 /// from the title; only its stated wage decides.
@@ -89,6 +83,8 @@ pub(crate) fn infer(job: &JobFacts<'_>, segments: &[Segment], anue: &[Finding]) 
         .map(fold)
         .unwrap_or_default();
     let title = fold(job.title);
+    let telling = |(_, f): &&Segment| f.bytes().any(|b| b.is_ascii_digit()) || CUE_WORD.is_match(f);
+    let segments: Vec<&Segment> = segments.iter().filter(telling).collect();
     // A sentence that denies a contract form gives no contract signal.
     let denied = |f: &str| any(f, lex::CONTRACT_DENIED);
     // Interim wording; a rate is a cue of its own, a wage (`Stundenlohn`, `18,50 € brutto

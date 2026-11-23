@@ -7,15 +7,13 @@
 //! number up to 80 (no lower bound). A number of days or a percentage next to a place word
 //! (`3 Tage/Woche vor Ort`, `80 % remote`) is the place of work, not the workload.
 
-use std::ops::Range;
-
 use serde_json::{Map, Value, json};
 
-use super::ad_facts::{AdFacts, Duration, Stated};
+use super::ad_facts::{AdFacts, Duration, Stated, stated};
 use super::contract::ContractKind;
 use super::facts::{Finding, HardCriteria, JobFacts, Segment, fact};
 use super::lexicon::engine as lex;
-use super::normalize::{clauses, contains_word, number_word};
+use super::normalize::{clauses, contains_word, holds_any, number_word};
 use super::types::{CriterionKey, ReasonCode};
 
 /// Share of a week of one day.
@@ -58,6 +56,10 @@ pub(crate) fn read(job: &JobFacts<'_>, segments: &[Segment]) -> Option<Stated<Wo
     let numeric = |cued: bool| {
         segments
             .iter()
+            // Without a workload word only days or hours of a week are a workload.
+            .filter(|(_, f)| {
+                cued || holds_any(f, lex::WORKLOAD_WEEK) || holds_any(f, lex::WORKLOAD_WEEKLY_HOURS)
+            })
             .filter(|(_, f)| workload_cue(f) == cued)
             .find_map(|(range, f)| {
                 clauses(f, &[',', ';'])
@@ -80,14 +82,10 @@ pub(crate) fn read(job: &JobFacts<'_>, segments: &[Segment]) -> Option<Stated<Wo
         })
 }
 
-fn stated(value: Workload, span: Option<Range<usize>>) -> Stated<Workload> {
-    Stated { value, span }
-}
-
 /// Does a sentence or clause hold a workload word (`Auslastung`, `Arbeitszeit`, `Vollzeit`,
 /// `Teilzeit`)?
 fn workload_cue(folded: &str) -> bool {
-    lex::WORKLOAD_CUES.iter().any(|w| folded.contains(w))
+    holds_any(folded, lex::WORKLOAD_CUES)
 }
 
 /// Words, numbers and the signs `/`, `%`, `-` of a folded clause; a decimal part stays with
@@ -262,6 +260,9 @@ fn hours(low: u32, high: u32) -> Option<Workload> {
 
 /// Full-time or part-time in the words of a sentence.
 fn word_workload(sentence: &str) -> Option<Workload> {
+    if !holds_any(sentence, lex::WORKLOAD_FULL) && !holds_any(sentence, lex::WORKLOAD_PART_WORDS) {
+        return None;
+    }
     let has = |list: &[&str]| list.iter().any(|w| contains_word(sentence, w));
     let full = has(lex::WORKLOAD_FULL);
     let part = has(lex::WORKLOAD_PART_WORDS);

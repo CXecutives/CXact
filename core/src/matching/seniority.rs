@@ -18,7 +18,7 @@ use super::atoms::fold;
 use super::facts::Finding;
 use super::job::{Item, JobDoc};
 use super::lexicon::engine as lex;
-use super::normalize::contains_word;
+use super::normalize::{contains_word, holds_any, years_named};
 use super::params::JUNIOR_ROLE_YEARS;
 use super::sections::ReqKind;
 use super::types::{ReasonCode, ReasonKind};
@@ -47,18 +47,7 @@ pub(crate) fn experience_years(folded: &str) -> Option<(u32, Option<u32>)> {
                 || (words[k] == "which" && k > 0 && words[k - 1] == "of")
         })
     };
-    let number = |w: &str| -> Option<u32> {
-        let w = w.trim_end_matches('+');
-        w.parse::<u32>()
-            .ok()
-            .or_else(|| {
-                lex::NUMBER_WORDS
-                    .iter()
-                    .find(|(word, _)| *word == w)
-                    .map(|&(_, n)| n)
-            })
-            .filter(|n| (1..=40).contains(n))
-    };
+    let number = years_named;
     let unit = |i: usize| {
         words
             .get(i)
@@ -87,8 +76,7 @@ pub(crate) fn experience_years(folded: &str) -> Option<(u32, Option<u32>)> {
 
 /// Junior wording in the title (`Junior`, `Werkstudent`, `Trainee`, `Berufseinstieg`).
 pub(crate) fn junior_title(title: &str) -> bool {
-    let folded = fold(title);
-    lex::JUNIOR_TITLES.iter().any(|w| contains_word(&folded, w))
+    title_level(title).is_some()
 }
 
 /// The code of the level a junior word names (`internship`, `student`, `junior`, ...); an
@@ -101,7 +89,7 @@ fn level_code(word: &str) -> &'static str {
 }
 
 /// The junior level the title names, if any.
-fn junior_level(title: &str) -> Option<&'static str> {
+fn title_level(title: &str) -> Option<&'static str> {
     let folded = fold(title);
     lex::JUNIOR_TITLES
         .iter()
@@ -111,34 +99,45 @@ fn junior_level(title: &str) -> Option<&'static str> {
 
 /// Does a must ask for first professional experience (`Erste Berufserfahrung`,
 /// `Berufseinsteiger`, `Absolvent`)? Then the role is an entry-level one.
-pub(crate) fn entry_level_must<'a>(items: impl IntoIterator<Item = &'a Item>) -> bool {
-    items.into_iter().any(|item| {
+fn entry_level_must(items: &[Item]) -> bool {
+    items.iter().any(|item| {
         item.kind == ReqKind::Must && {
             let folded = fold(&item.text);
-            lex::ENTRY_LEVEL_MUSTS
-                .iter()
-                .any(|w| contains_word(&folded, w))
+            holds_any(&folded, lex::ENTRY_LEVEL_MUSTS)
+                && lex::ENTRY_LEVEL_MUSTS
+                    .iter()
+                    .any(|w| contains_word(&folded, w))
         }
     })
 }
 
-/// The junior or entry level the page states in its own fields (folded), if any.
-pub(crate) fn page_junior_level(page_levels: &[String]) -> Option<&'static str> {
+/// The junior or entry level of a role, if any: the one the page states in its own fields
+/// (`page_levels`, folded: an internship, a working student), a junior title (`Junior`,
+/// `Werkstudent`, `Trainee`, `Berufseinstieg`) or a must that asks for first professional
+/// experience (`Erste Berufserfahrung`, `Berufseinsteiger`, `Absolvent`).
+pub(crate) fn junior_level(
+    title: &str,
+    page_levels: &[String],
+    items: &[Item],
+) -> Option<&'static str> {
     page_levels
         .iter()
         .map(|l| l.trim())
         .find(|l| lex::ENTRY_LEVEL_VALUES.contains(l) || *l == "junior")
         .map(level_code)
+        .or_else(|| title_level(title))
+        .or_else(|| entry_level_must(items).then_some("entry"))
 }
 
 /// The level rule; empty without the profile's years (`total`). `page_levels`: the career
-/// level and employment type the page states in its own fields (folded).
+/// level and employment type the page states in its own fields (folded); `junior`: the
+/// role's [`junior_level`].
 pub(crate) fn check(
     total: Option<u32>,
-    title: &str,
     text: &str,
     doc: &JobDoc,
     page_levels: &[String],
+    junior: Option<&'static str>,
 ) -> Vec<Finding> {
     let Some(have) = total else {
         return Vec::new();
@@ -178,9 +177,6 @@ pub(crate) fn check(
     if have < JUNIOR_ROLE_YEARS {
         return Vec::new();
     }
-    let junior = page_junior_level(page_levels)
-        .or_else(|| junior_level(title))
-        .or_else(|| entry_level_must(&doc.items).then_some("entry"));
     if let Some(level) = junior {
         return over(json!({ "level": level, "have": have }), Vec::new());
     }

@@ -55,6 +55,8 @@ pub(crate) struct EngineProfile {
     pub fields: Vec<&'static str>,
     /// What a title says beside its core (`roles::shape`).
     pub shape: Vec<String>,
+    /// The exclusion words with their forms.
+    pub exclusions: Vec<exclusion::Word>,
 }
 
 impl EngineProfile {
@@ -70,6 +72,7 @@ impl EngineProfile {
         let fields = title::profile_fields(skills.vocab.packs());
         Self {
             shape: roles::shape(&skills.vocab),
+            exclusions: exclusion::compile(&criteria.exclusion_words),
             core,
             skills,
             criteria,
@@ -277,50 +280,74 @@ fn must_weight(items: &[Scored]) -> u64 {
         .sum()
 }
 
-/// Contract type and the findings of the hard criteria (ANÜ, country, day rate,
-/// availability, salary and region of permanent roles).
+/// The contract type, what the ad states and the findings of the hard criteria (ANÜ, country,
+/// day rate, availability, the salary of permanent roles).
 fn criteria_findings(
     profile: &EngineProfile,
     facts: &JobFacts<'_>,
     segments: &[Segment],
     folded: &str,
-) -> (Vec<Finding>, Contract) {
+) -> (Vec<Finding>, Contract, AdFacts) {
+    let criteria = &profile.criteria;
     let anue = facts::anue(facts, segments);
     let contract = contract::infer(facts, segments, &anue);
-    let criteria = &profile.criteria;
-    let mut findings = facts::check(criteria, facts, segments, folded, &contract, anue);
+    let ad = ad_facts::read(facts, segments, folded, &contract);
+    let mut findings = facts::check(criteria, facts, segments, folded, &contract, anue, &ad);
     findings.extend(permanent::salary(
         criteria,
         &contract,
         facts.title,
         segments,
     ));
-    (findings, contract)
+    (findings, contract, ad)
 }
 
-/// The target role the title matches and the wishes for one ad.
-fn preferences(
+/// The level of the ad against the profile's years (`own`: the ad without the other listings
+/// under it), the limits of an engagement (checks) and the exclusion words (they exclude
+/// where they name the job itself: the title, the page's level, a sentence that states the
+/// role); and whether the role is a junior one ([`seniority::junior_level`]).
+fn limit_findings(
     profile: &EngineProfile,
-    ad: &wishes::Ad<'_>,
+    job: &JobInput<'_>,
+    own: &str,
+    segments: &[Segment],
+    ad: &AdFacts,
+    doc: &job::JobDoc,
+) -> (Vec<Finding>, bool) {
+    let criteria = &profile.criteria;
+    let levels = page_levels(job);
+    let junior = seniority::junior_level(job.title, &levels, &doc.items);
+    let total = profile.skills.total_years;
+    let mut findings = seniority::check(total, own, doc, &levels, junior);
+    findings.extend(limits::workload(criteria, ad));
+    findings.extend(limits::duration(criteria, ad));
+    findings.extend(exclusion::check(
+        &profile.exclusions,
+        job.title,
+        &levels,
+        segments,
+        &doc.requirement_lines,
+    ));
+    (findings, junior.is_some())
+}
+
+/// The target role the title matches.
+fn target_role(
+    profile: &EngineProfile,
+    contract: ContractKind,
     title: &str,
     level: Option<u8>,
-) -> (Option<(RoleFit, String)>, Vec<WishResult>) {
+) -> Option<(RoleFit, String)> {
     let criteria = &profile.criteria;
-    let allowed = match ad.contract {
+    let allowed = match contract {
         ContractKind::Interim => !criteria.project_excluded,
         ContractKind::Permanent => !criteria.permanent_excluded,
         ContractKind::Anue => !criteria.anue_excluded,
         ContractKind::Unclear => false,
     };
-    let fit = roles::best(
-        &profile.roles,
-        title,
-        ad.vocab,
-        (ad.contract, allowed),
-        level,
-    );
-    let role = fit.map(|fit| (fit, title.to_owned()));
-    (role, wishes::evaluate(&profile.wishes, ad))
+    let vocab = &profile.skills.vocab;
+    let fit = roles::best(&profile.roles, title, vocab, (contract, allowed), level);
+    fit.map(|fit| (fit, title.to_owned()))
 }
 
 /// How much the text allowed to assess: a teaser, low (vocabulary terms, no weighted
@@ -473,25 +500,6 @@ fn job_facts<'a>(job: &JobInput<'a>) -> JobFacts<'a> {
     }
 }
 
-/// A junior role for a profile with `SENIOR_YEARS` or more: a junior title (`Junior`,
-/// `Werkstudent`, `Trainee`, `Berufseinstieg`), a junior or entry level the page states (an
-/// internship), or a must that asks for first professional experience (`Erste
-/// Berufserfahrung`, `Berufseinsteiger`, `Absolvent`). A level mismatch whatever the skills.
-fn junior_for_senior(
-    profile: &EngineProfile,
-    title: &str,
-    levels: &[String],
-    items: &[Scored],
-) -> bool {
-    profile
-        .skills
-        .total_years
-        .is_some_and(|years| years >= SENIOR_YEARS)
-        && (seniority::junior_title(title)
-            || seniority::page_junior_level(levels).is_some()
-            || seniority::entry_level_must(items.iter().map(|s| &s.item)))
-}
-
 /// The page's own career level and employment type (LinkedIn's criteria), folded.
 fn page_levels(job: &JobInput<'_>) -> Vec<String> {
     [super::fact_key::LEVEL, super::fact_key::CONTRACT]
@@ -542,34 +550,6 @@ fn final_score(
     (score, percent.fine, capped)
 }
 
-/// The level of the ad against the profile's years (the same for every profile: all packs,
-/// not the profile's; `own`: the ad without the other listings under it), the limits of an
-/// engagement (checks) and the exclusion words (they exclude where they name the job itself:
-/// the title, the page's level, a sentence that states the role).
-fn limit_findings(
-    profile: &EngineProfile,
-    job: &JobInput<'_>,
-    own: &str,
-    segments: &[Segment],
-    ad: &AdFacts,
-    doc: &job::JobDoc,
-) -> Vec<Finding> {
-    let criteria = &profile.criteria;
-    let levels = page_levels(job);
-    let total = profile.skills.total_years;
-    let mut findings = seniority::check(total, job.title, own, doc, &levels);
-    findings.extend(limits::workload(criteria, ad));
-    findings.extend(limits::duration(criteria, ad));
-    findings.extend(exclusion::check(
-        criteria,
-        job.title,
-        &levels,
-        segments,
-        &doc.requirement_lines,
-    ));
-    findings
-}
-
 fn verdict(decided: bool, unscorable: bool) -> Verdict {
     match (decided, unscorable) {
         (true, _) => Verdict::Excluded,
@@ -593,11 +573,11 @@ impl Frame {
     fn of(
         profile: &EngineProfile,
         title: &str,
-        own: &str,
+        folded: &str,
         items: &[Item],
         contract: ContractKind,
     ) -> Self {
-        let level = title::ad_level(title, own);
+        let level = title::ad_level(title, folded);
         let employment = matches!(contract, ContractKind::Permanent | ContractKind::Anue);
         let engagement = !employment || title::engagement(title);
         let musts = items
@@ -628,12 +608,14 @@ fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluation {
     let vocab = &profile.skills.vocab;
     let facts = job_facts(job);
     // The hard criteria and the seniority read the ad only, not the other listings under it.
-    let own = facts::own_text(job.text);
+    let own = facts.text;
     let segments = facts::segments(own);
     let folded = fold(own);
-    let (mut findings, stated_contract) = criteria_findings(profile, &facts, &segments, &folded);
+    let (mut findings, stated_contract, ad_facts) =
+        criteria_findings(profile, &facts, &segments, &folded);
     let contract = stated_contract.kind;
-    let short = char_len(strip(text)) < MIN_TEXT_CHARS;
+    let chars = char_len(strip(text));
+    let short = chars < MIN_TEXT_CHARS;
     // The title without gender markers and marketing tails (what the role is).
     let title = title::clean(job.title);
     // A short text still has its title: it is judged from the title and the field, without a
@@ -643,12 +625,10 @@ fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluation {
     } else {
         job::read(text, vocab)
     };
-    let ad_facts = ad_facts::read(&facts, &segments, &folded, &stated_contract);
-    findings.extend(limit_findings(
-        profile, job, own, &segments, &ad_facts, &doc,
-    ));
+    let (limits, junior) = limit_findings(profile, job, own, &segments, &ad_facts, &doc);
+    findings.extend(limits);
     let requirement_lines = doc.requirement_lines;
-    let frame = Frame::of(profile, &title, own, &doc.items, contract);
+    let frame = Frame::of(profile, &title, &folded, &doc.items, contract);
     let far = matches!(frame.field, Some((_, Distance::Far)));
     let mut items = scored(profile, doc.items, &title, far);
     let core = signals::CoreTest::new(profile, &title, frame.field.map(|(f, _)| f));
@@ -656,22 +636,19 @@ fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluation {
         x.core = is_must(x) && core.on_core(x);
     }
     let relevance = relevance_of(profile, job, &title, &requirement_lines, items.is_empty());
-    let evidence = evidence_level(job.kind, &items, must_weight(&items), char_len(strip(text)));
+    let evidence = evidence_level(job.kind, &items, must_weight(&items), chars);
     let (formal, formal_cap) = formal(profile, &items);
     findings.extend(formal);
     let decided = findings.iter().any(|f| f.decided);
 
-    let ad = wishes::Ad {
-        job: &facts,
-        segments: &segments,
-        folded: &folded,
-        contract,
-        vocab,
-    };
-    let (role, wishes) = preferences(profile, &ad, &title, frame.level);
+    let role = target_role(profile, contract, &title, frame.level);
     // A short text whose title names neither the field nor a target role stays unscorable.
     let unscorable = short && relevance == 0 && role.is_none();
-    let wishes = if unscorable { Vec::new() } else { wishes };
+    let wishes = if unscorable {
+        Vec::new()
+    } else {
+        wishes::evaluate(&profile.wishes, &facts, &segments, &ad_facts)
+    };
     let aspects = signals::frame_aspects(&findings, &wishes);
     let title_fit = relevance::title_fit(&profile.query, &title, vocab);
     let mut signals = signals::compute(
@@ -691,9 +668,11 @@ fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluation {
     for (sig, set) in [
         (Sig::OffField, off_field(&items, vocab, title_fit)),
         (Sig::FormalOpen, formal_cap),
+        // A junior role for a profile with `SENIOR_YEARS` or more: a level mismatch whatever
+        // the skills.
         (
             Sig::Junior,
-            junior_for_senior(profile, job.title, &page_levels(job), &items),
+            junior && (profile.skills.total_years).is_some_and(|years| years >= SENIOR_YEARS),
         ),
         (Sig::Permanent, contract == ContractKind::Permanent),
     ] {

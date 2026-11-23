@@ -8,7 +8,12 @@ use super::*;
 
 /// Highest language level word in a text.
 pub(crate) fn level_in(text: &str) -> Option<u8> {
+    static LEVEL_WORD: LazyLock<Regex> =
+        LazyLock::new(|| any_word(lex::LEVEL_WORDS.iter().map(|(word, _)| *word)));
     let folded = fold(text);
+    if !LEVEL_WORD.is_match(&folded) {
+        return None;
+    }
     lex::LEVEL_WORDS
         .iter()
         .filter(|(word, _)| contains_word(&folded, word))
@@ -24,13 +29,7 @@ pub(crate) fn years_in(text: &str) -> Option<(u32, Option<u32>)> {
         .split(|c: char| !c.is_alphanumeric() && c != '+')
         .filter(|w| !w.is_empty())
         .collect();
-    let number = |w: &str| {
-        let w = w.trim_end_matches('+');
-        w.parse::<u32>()
-            .ok()
-            .or_else(|| number_word(w))
-            .filter(|n| (1..=40).contains(n))
-    };
+    let number = years_named;
     (1..words.len()).find_map(|i| {
         if !YEAR_UNITS.iter().any(|u| words[i].starts_with(u)) {
             return None;

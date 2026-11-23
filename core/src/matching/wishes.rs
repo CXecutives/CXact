@@ -29,11 +29,14 @@ use std::sync::LazyLock;
 
 use serde_json::{Value, json};
 
-use super::atoms::{Vocab, fold};
+use super::ad_facts::AdFacts;
+use super::atoms::fold;
 use super::contract::ContractKind;
 use super::facts::{self, JobFacts, Segment, fact};
 use super::lexicon::{engine as core_lex, wishes as lex};
-use super::normalize::contains_word;
+use super::normalize::{
+    contains_word, find_word, holds_any, starts_word, word_bounded, word_spans,
+};
 use super::params::{
     HYBRID_SHARE, ONSITE_MAX, REGION_REMOTE_NEAR, REMOTE_FULL, REMOTE_MARGIN, REMOTE_NAMED_SHARE,
     REMOTE_PARTLY, WISH_RATE_NEAR, WORKDAYS,
@@ -152,64 +155,25 @@ impl Places {
     /// The place a folded text names first as a whole word (`München, Bayern` names
     /// München), the longest of those that start there.
     fn first_named(&self, folded: &str) -> Option<&str> {
-        let indexed = words_at(folded).find_map(|(start, word)| {
-            let places = self.by_word.get(word)?;
-            let place = places.iter().find(|p| whole_at(folded, start, p))?;
-            Some((start, place.as_str()))
-        });
+        let indexed = word_spans(folded, &[])
+            .into_iter()
+            .find_map(|(start, word)| {
+                let places = self.by_word.get(word)?;
+                let place = places.iter().find(|p| whole_at(folded, start, p))?;
+                Some((start, place.as_str()))
+            });
         self.others
             .iter()
-            .filter_map(|place| first_whole(folded, place).map(|start| (start, place.as_str())))
+            .filter_map(|place| find_word(folded, place).map(|start| (start, place.as_str())))
             .chain(indexed)
             .min_by_key(|(start, place)| (*start, std::cmp::Reverse(place.len())))
             .map(|(_, place)| place)
     }
 }
 
-/// The words of a folded text (letters and digits) with their byte offsets.
-fn words_at(folded: &str) -> impl Iterator<Item = (usize, &str)> {
-    let mut start = None;
-    folded
-        .char_indices()
-        .chain(std::iter::once((folded.len(), ' ')))
-        .filter_map(move |(at, c)| match (c.is_alphanumeric(), start) {
-            (true, None) => {
-                start = Some(at);
-                None
-            }
-            (false, Some(from)) => {
-                start = None;
-                Some((from, &folded[from..at]))
-            }
-            _ => None,
-        })
-}
-
 /// Does `place` stand in the folded text at `start` as a whole word?
 fn whole_at(folded: &str, start: usize, place: &str) -> bool {
-    let end = start + place.len();
-    folded[start..].starts_with(place)
-        && folded[..start]
-            .chars()
-            .next_back()
-            .is_none_or(|c| !c.is_alphanumeric())
-        && folded[end..]
-            .chars()
-            .next()
-            .is_none_or(|c| !c.is_alphanumeric())
-}
-
-/// Where a folded text first names `place` as a whole word.
-fn first_whole(folded: &str, place: &str) -> Option<usize> {
-    let mut from = 0;
-    while let Some(at) = folded[from..].find(place) {
-        let start = from + at;
-        if whole_at(folded, start, place) {
-            return Some(start);
-        }
-        from = start + place.len();
-    }
-    None
+    folded[start..].starts_with(place) && word_bounded(folded, start, start + place.len())
 }
 
 /// German places (cities and states) for a region `Deutschland`.
@@ -362,10 +326,6 @@ impl Wishes {
             .find(|(c, _, _)| *c == code)
             .map(|(_, text, path)| (text.as_str(), path.as_str()))
     }
-
-    fn any(&self) -> bool {
-        self.rate.is_some() || self.remote.is_some() || self.regions.is_some()
-    }
 }
 
 /// How a wish came out.
@@ -421,21 +381,13 @@ fn result(
     }
 }
 
-/// What an ad says for the wishes.
-pub(crate) struct Ad<'a> {
-    pub job: &'a JobFacts<'a>,
-    pub segments: &'a [Segment],
-    pub folded: &'a str,
-    pub contract: ContractKind,
-    pub vocab: &'a Vocab,
-}
-
-/// The wishes for one ad, in the order day rate, remote, region.
-pub(crate) fn evaluate(wishes: &Wishes, ad: &Ad<'_>) -> Vec<WishResult> {
-    if !wishes.any() {
-        return Vec::new();
-    }
-    let share = remote_share(ad.job, ad.segments, ad.folded);
+/// The wishes for one ad (`ad`: what it states), in the order day rate, remote, region.
+pub(crate) fn evaluate(
+    wishes: &Wishes,
+    job: &JobFacts<'_>,
+    segments: &[Segment],
+    ad: &AdFacts,
+) -> Vec<WishResult> {
     let mut out = Vec::new();
     if let Some(wish) = wishes.rate
         && ad.contract != ContractKind::Permanent
@@ -443,22 +395,22 @@ pub(crate) fn evaluate(wishes: &Wishes, ad: &Ad<'_>) -> Vec<WishResult> {
         out.push(rate(wish, ad));
     }
     if let Some(wish) = wishes.remote {
-        out.push(remote(wish, share));
+        out.push(remote(wish, ad.remote));
     }
     if wishes.regions.is_some() {
-        out.push(region(&wishes.places, ad, share));
+        out.push(region(&wishes.places, job, segments, ad.remote));
     }
     out
 }
 
-fn rate(wish: u64, ad: &Ad<'_>) -> WishResult {
+fn rate(wish: u64, ad: &AdFacts) -> WishResult {
     let code = ReasonCode::DayRateWish;
     // A wage is employment pay, no day rate.
-    let Some((rate, span)) = facts::stated_rate(ad.job, ad.segments).filter(|(r, _)| !r.wage)
-    else {
+    let Some(stated) = ad.rate.as_ref().filter(|r| !r.value.wage) else {
         return result(code, State::Unknown, json!({ "wish": wish }), Vec::new());
     };
-    let spans: Vec<Range<usize>> = span.into_iter().collect();
+    let rate = stated.value;
+    let spans: Vec<Range<usize>> = stated.span.clone().into_iter().collect();
     if let Some(currency) = rate.currency {
         let params = json!({ "wish": wish, "currency": currency.to_uppercase() });
         return result(code, State::Unknown, params, spans);
@@ -478,14 +430,15 @@ fn rate(wish: u64, ad: &Ad<'_>) -> WishResult {
 
 /// Does a folded text name one of `list` (whole words, word starts from six letters on, or
 /// phrases)?
-fn names(folded: &str, list: &[&str]) -> bool {
-    list.iter().any(|entry| {
-        if entry.contains(' ') {
-            contains_word(folded, entry)
-        } else {
-            words(folded).any(|w| word_is(w, entry))
-        }
-    })
+fn names(folded: &str, list: &'static [&'static str]) -> bool {
+    holds_any(folded, list)
+        && list.iter().any(|entry| {
+            if entry.contains(' ') {
+                contains_word(folded, entry)
+            } else {
+                words(folded).any(|w| word_is(w, entry))
+            }
+        })
 }
 
 fn has_remote(folded: &str) -> bool {
@@ -500,6 +453,10 @@ fn has_onsite(folded: &str) -> bool {
 /// remote days of a week (`zwei Tage vor Ort` = 60 %).
 fn stated_shares(folded: &str) -> Vec<u64> {
     let mut out = Vec::new();
+    // A share is a percentage or a number of days.
+    if !folded.contains('%') && !holds_any(folded, lex::DAY_WORDS) {
+        return out;
+    }
     // Read only where a share or days need them (most sentences state neither).
     let remote = LazyCell::new(|| has_remote(folded));
     let onsite = LazyCell::new(|| has_onsite(folded));
@@ -566,23 +523,11 @@ fn stated_shares(folded: &str) -> Vec<u64> {
 
 /// Byte position of the first word of `list` in a folded text (`usize::MAX` if none).
 fn first_at(folded: &str, list: &[&str]) -> usize {
-    let mut best = usize::MAX;
-    for entry in list {
-        let mut from = 0;
-        while let Some(at) = folded[from..].find(entry) {
-            let start = from + at;
-            let before = folded[..start]
-                .chars()
-                .next_back()
-                .is_none_or(|c| !c.is_alphanumeric());
-            if before {
-                best = best.min(start);
-                break;
-            }
-            from = start + entry.len();
-        }
-    }
-    best
+    let first = |entry: &&str| {
+        let mut starts = folded.match_indices(*entry).map(|(at, _)| at);
+        starts.find(|&at| starts_word(folded, at))
+    };
+    list.iter().filter_map(first).min().unwrap_or(usize::MAX)
 }
 
 /// The ad's remote share in percent (from, to), as far as it can be read.
@@ -604,10 +549,8 @@ pub(crate) fn remote_share(
         .iter()
         .flat_map(|(_, f)| stated_shares(f))
         .collect();
-    let full = core_lex::FULL_REMOTE
-        .iter()
-        .chain(core_lex::REMOTE_FULL_EXTRA)
-        .any(|w| folded.contains(w))
+    let full = holds_any(folded, core_lex::FULL_REMOTE)
+        || holds_any(folded, core_lex::REMOTE_FULL_EXTRA)
         || contains_word(&location, "remote");
     if full {
         stated.push(100);
@@ -615,10 +558,10 @@ pub(crate) fn remote_share(
     if let Some(&max) = stated.iter().max() {
         return Some((max, max));
     }
-    if lex::REMOTE_NONE.iter().any(|w| folded.contains(w)) {
+    if holds_any(folded, lex::REMOTE_NONE) {
         return Some((0, 0));
     }
-    if lex::HYBRID_WORDS.iter().any(|w| folded.contains(w)) || contains_word(&location, "hybrid") {
+    if holds_any(folded, lex::HYBRID_WORDS) || contains_word(&location, "hybrid") {
         return Some(HYBRID_SHARE);
     }
     if segments.iter().any(|(_, f)| has_remote(f)) {
@@ -668,19 +611,23 @@ fn as_written(text: &str, place: &str) -> String {
         .map_or_else(|| place.to_owned(), str::to_owned)
 }
 
-fn region(places: &Places, ad: &Ad<'_>, share: Option<(u64, u64)>) -> WishResult {
+fn region(
+    places: &Places,
+    job: &JobFacts<'_>,
+    segments: &[Segment],
+    share: Option<(u64, u64)>,
+) -> WishResult {
     let code = ReasonCode::RegionWish;
     let from = share.map_or(0, |(from, _)| from);
     if from >= 100 {
         return result(code, State::Met, json!({ "remote": true }), Vec::new());
     }
-    let job = ad.job;
     let raw = fact(job.facts, super::fact_key::LOCATION)
         .and_then(Value::as_str)
         .unwrap_or(job.location);
     // Where the ad names its place: the location, location lines, on-site sentences.
     let mut sources: Vec<(String, Option<Range<usize>>, &str)> = vec![(fold(raw), None, raw)];
-    for (range, f) in ad.segments {
+    for (range, f) in segments {
         let line = core_lex::LOCATION_LINES.iter().any(|w| f.starts_with(w));
         let onsite = core_lex::ONSITE_WORDS.iter().any(|w| f.contains(w));
         if line || onsite {
