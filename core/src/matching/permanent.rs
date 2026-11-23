@@ -18,6 +18,7 @@ use super::ad_facts::currency_code;
 use super::contract::{Contract, ContractKind};
 use super::facts::{Finding, HardCriteria, Segment, hourly_pay_in};
 use super::lexicon::engine as lex;
+use super::normalize::amount_at;
 use super::params::HOURS_PER_YEAR;
 use super::types::{CriterionKey, ReasonCode};
 
@@ -87,23 +88,8 @@ fn amounts(folded: &str) -> Vec<(usize, u64)> {
             continue;
         }
         let start = i;
-        let mut value: u64 = 0;
-        while i < bytes.len() {
-            let c = bytes[i];
-            if c.is_ascii_digit() {
-                value = value.saturating_mul(10).saturating_add(u64::from(c - b'0'));
-                i += 1;
-            } else if (c == b'.' || c == b',')
-                && bytes
-                    .get(i + 1..i + 4)
-                    .is_some_and(|d| d.iter().all(u8::is_ascii_digit))
-                && bytes.get(i + 4).is_none_or(|d| !d.is_ascii_digit())
-            {
-                i += 1;
-            } else {
-                break;
-            }
-        }
+        let (value, end) = amount_at(bytes, i);
+        i = end;
         let rest = folded[i..].trim_start();
         if rest.starts_with('%') || !money_context(folded, start, i) {
             continue;

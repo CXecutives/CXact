@@ -14,7 +14,7 @@ use super::contract::{Contract, ContractKind};
 use super::facts::{self, JobFacts, Rate, Segment, Start, fact, parse_start, stated_rate};
 use super::lexicon::engine as lex;
 use super::limits::{self, Workload};
-use super::normalize::contains_word;
+use super::normalize::{clauses, contains_word};
 use super::permanent::{bonus_percent, parse_salary};
 use super::types::KeyFacts;
 use super::wishes::remote_share;
@@ -231,8 +231,7 @@ fn duration_term(folded: &str) -> bool {
 /// amount of time counts; else only duration phrases), or its end date counted from
 /// `reference` in months.
 fn duration_in(folded: &str, term: bool, reference: Option<Date>) -> Option<Duration> {
-    folded
-        .split(lex::DURATION_CLAUSE_BREAKS)
+    clauses(folded, lex::DURATION_CLAUSE_BREAKS)
         .filter_map(|clause| clause_duration(clause, term))
         .max_by_key(|d| d.centi_months())
         .or_else(|| end_months(folded, term, reference?).map(Duration::months))

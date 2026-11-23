@@ -20,7 +20,9 @@ use serde_json::{Value, json};
 use super::atoms::fold;
 use super::contract::{Contract, ContractKind};
 use super::lexicon::engine as lex;
-use super::normalize::{contains_word, sentences, splitlines};
+use super::normalize::{
+    amount_at, clauses, contains_word, find_word, sentences, splitlines, word_bounded,
+};
 use super::params::HOURS_PER_DAY;
 use super::types::{CriterionKey, ReasonCode, ReasonKind};
 use crate::portal::Portal;
@@ -418,7 +420,9 @@ fn anue_topic(folded: &str, named: &dyn Fn(&str) -> bool) -> bool {
     if lex::ANUE_BUSINESS.iter().any(|w| folded.contains(w)) && !placed(folded) {
         return true;
     }
-    let clauses: Vec<&str> = folded.split([',', ';']).filter(|c| mentions(c)).collect();
+    let clauses: Vec<&str> = clauses(folded, &[',', ';'])
+        .filter(|c| mentions(c))
+        .collect();
     if clauses.iter().any(|c| anue_governed(c)) {
         return true;
     }
@@ -439,23 +443,11 @@ fn topic_cue(word: &str) -> bool {
 /// before it with only linking words between (`Erfahrung im Einsatz von`), or a requirement
 /// right after it (`Arbeitnehmerüberlassung von Vorteil`)?
 fn anue_governed(clause: &str) -> bool {
-    let word_at = |w: &str| {
-        clause.match_indices(w).map(|(at, _)| at).find(|&at| {
-            clause[..at]
-                .chars()
-                .next_back()
-                .is_none_or(|c| !c.is_alphanumeric())
-                && clause[at + w.len()..]
-                    .chars()
-                    .next()
-                    .is_none_or(|c| !c.is_alphanumeric())
-        })
-    };
     let parts = lex::ANUE_PARTS.iter().filter_map(|p| clause.find(p));
     let words = lex::ANUE_WORDS
         .iter()
         .chain(lex::ANUE_HIDDEN)
-        .filter_map(|w| word_at(w));
+        .filter_map(|w| find_word(clause, w));
     let Some(at) = parts.chain(words).min() else {
         return false;
     };
@@ -622,8 +614,9 @@ fn places_of_work(
         let home_on_site = here.iter().any(|c| allowed.iter().any(|a| a == c))
             || (!place
                 && home.iter().any(|word| {
-                    f.match_indices(word)
-                        .any(|(at, _)| word_at(f, at, word.len()) && cue_at(at) == Some(true))
+                    f.match_indices(word).any(|(at, _)| {
+                        word_bounded(f, at, at + word.len()) && cue_at(at) == Some(true)
+                    })
                 }));
         if home_on_site {
             here.retain(|c| {
@@ -643,13 +636,6 @@ fn places_of_work(
         travel.extend(away.into_iter().map(|c| (c, range.clone())));
     }
     (onsite, travel)
-}
-
-/// Is `folded[at..at + len]` a whole word?
-fn word_at(folded: &str, at: usize, len: usize) -> bool {
-    let before = folded[..at].chars().next_back();
-    let after = folded[at + len..].chars().next();
-    before.is_none_or(|c| !c.is_alphanumeric()) && after.is_none_or(|c| !c.is_alphanumeric())
 }
 
 fn country(
@@ -822,8 +808,7 @@ pub(crate) fn hourly_pay_in(folded: &str) -> Option<Rate> {
 /// The rates of the clauses of a sentence. A sentence that is employment pay as a whole
 /// (`18,50 € pro Stunde (brutto)`) makes every rate in it a wage.
 fn clause_rates(folded: &str) -> impl Iterator<Item = Rate> {
-    let rates: Vec<Rate> = folded
-        .split([';', '(', ')'])
+    let rates: Vec<Rate> = clauses(folded, &[';', '(', ')'])
         .flat_map(|part| part.split(" oder "))
         .flat_map(|part| part.split(" or "))
         .filter_map(parse_rate)
@@ -942,23 +927,8 @@ pub(crate) fn parse_rate(folded: &str) -> Option<Rate> {
             continue;
         }
         let start = i;
-        let mut value: u64 = 0;
-        while i < bytes.len() {
-            let c = bytes[i];
-            if c.is_ascii_digit() {
-                value = value.saturating_mul(10).saturating_add(u64::from(c - b'0'));
-                i += 1;
-            } else if (c == b'.' || c == b',')
-                && bytes
-                    .get(i + 1..i + 4)
-                    .is_some_and(|d| d.iter().all(u8::is_ascii_digit))
-                && bytes.get(i + 4).is_none_or(|d| !d.is_ascii_digit())
-            {
-                i += 1; // thousands separator
-            } else {
-                break;
-            }
-        }
+        let (value, end) = amount_at(bytes, i);
+        i = end;
         let date = date_part(bytes, start, i);
         // Decimals (",50", ",-") and percentages are no separate amounts.
         if i < bytes.len() && (bytes[i] == b',' || bytes[i] == b'.') && !date {

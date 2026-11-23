@@ -358,6 +358,48 @@ pub(crate) fn phrase_at<S: AsRef<str>>(
     Some(at + parts.len())
 }
 
+/// The amount written from byte `start` of a digit run, thousands separators included
+/// (`1.200`, `95,000`): its value (saturating) and the byte after it.
+pub(crate) fn amount_at(bytes: &[u8], start: usize) -> (u64, usize) {
+    let mut value: u64 = 0;
+    let mut i = start;
+    while i < bytes.len() {
+        let c = bytes[i];
+        if c.is_ascii_digit() {
+            value = value.saturating_mul(10).saturating_add(u64::from(c - b'0'));
+            i += 1;
+        } else if (c == b'.' || c == b',')
+            && bytes
+                .get(i + 1..i + 4)
+                .is_some_and(|d| d.iter().all(u8::is_ascii_digit))
+            && bytes.get(i + 4).is_none_or(|d| !d.is_ascii_digit())
+        {
+            i += 1;
+        } else {
+            break;
+        }
+    }
+    (value, i)
+}
+
+/// Clauses of a sentence, cut at `breaks`, never at a decimal comma (`38,5 Stunden`); a cut
+/// sign belongs to no clause.
+pub(crate) fn clauses<'a>(text: &'a str, breaks: &'a [char]) -> impl Iterator<Item = &'a str> {
+    let bytes = text.as_bytes();
+    let digit = |i: usize| bytes.get(i).is_some_and(u8::is_ascii_digit);
+    let mut start = 0;
+    let mut cuts = Vec::new();
+    for (at, c) in text.char_indices() {
+        let decimal = c == ',' && at > 0 && digit(at - 1) && digit(at + 1);
+        if breaks.contains(&c) && !decimal {
+            cuts.push(&text[start..at]);
+            start = at + c.len_utf8();
+        }
+    }
+    cuts.push(&text[start..]);
+    cuts.into_iter()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
