@@ -21,8 +21,8 @@ use super::atoms::fold;
 use super::contract::{Contract, ContractKind};
 use super::lexicon::engine as lex;
 use super::normalize::{
-    amount_at, clauses, contains_word, find_word, month_named, numeric_date, quarter, sentences,
-    splitlines, word_bounded,
+    amount_at, amount_sides, clauses, contains_word, contains_word_with, ends_word, find_word,
+    month_named, numeric_date, quarter, sentences, splitlines, starts_word, word_bounded,
 };
 use super::params::HOURS_PER_DAY;
 use super::types::{CriterionKey, ReasonCode, ReasonKind};
@@ -516,10 +516,7 @@ fn countries_at(folded: &str) -> Vec<(usize, &'static str)> {
         let at = word.as_ptr() as usize - folded.as_ptr() as usize;
         let rest = &folded[at..];
         for &(name, code) in names {
-            let whole = rest
-                .strip_prefix(name)
-                .is_some_and(|after| after.chars().next().is_none_or(|c| !c.is_alphanumeric()));
-            if whole {
+            if rest.starts_with(name) && ends_word(rest, name.len()) {
                 found.push((at, code));
             }
         }
@@ -542,12 +539,7 @@ fn place_cues(folded: &str) -> Vec<(usize, bool)> {
         .chain(lex::TRAVEL_WORDS.iter().flat_map(|w| {
             folded
                 .match_indices(w)
-                .filter(|(at, _)| {
-                    let before = folded[..*at].chars().next_back();
-                    let after = folded[at + w.len()..].chars().next();
-                    before.is_none_or(|c| !c.is_alphanumeric())
-                        && after.is_none_or(|c| !c.is_alphanumeric())
-                })
+                .filter(|(at, _)| word_bounded(folded, *at, at + w.len()))
                 .map(|(at, _)| (at, false))
         }))
         .collect();
@@ -838,7 +830,7 @@ pub(crate) fn is_wage(folded: &str) -> bool {
     let scale = || {
         lex::PAY_SCALE_WORDS
             .iter()
-            .any(|w| contains_word_form(folded, w))
+            .any(|w| contains_word_with(folded, w, lex::PAY_SCALE_ENDINGS))
             || lex::PAY_SCALE_HEADS.iter().any(|w| ends_a_word(folded, w))
     };
     explicit || (scale() && !names_freelance_rate(folded))
@@ -847,31 +839,9 @@ pub(crate) fn is_wage(folded: &str) -> bool {
 /// A phrase with word boundaries; one that starts with a sign (`/h gross`) needs only the
 /// boundary after it (`€18/h gross`).
 fn contains_phrase(folded: &str, phrase: &str) -> bool {
-    if phrase.starts_with(char::is_alphanumeric) {
-        return contains_word(folded, phrase);
-    }
     folded.match_indices(phrase).any(|(at, _)| {
-        folded[at + phrase.len()..]
-            .chars()
-            .next()
-            .is_none_or(|c| !c.is_alphanumeric())
-    })
-}
-
-/// A word (or phrase) whose last word may take an ending of `PAY_SCALE_ENDINGS`
-/// (`tarifliche`, `nach Tarifvertrages`), never inside another word.
-fn contains_word_form(folded: &str, word: &str) -> bool {
-    folded.match_indices(word).any(|(start, _)| {
-        let end = start + word.len();
-        let before = folded[..start]
-            .chars()
-            .next_back()
-            .is_none_or(|c| !c.is_alphanumeric());
-        let rest = &folded[end..];
-        let tail = &rest[..rest
-            .find(|c: char| !c.is_alphanumeric())
-            .unwrap_or(rest.len())];
-        before && lex::PAY_SCALE_ENDINGS.contains(&tail)
+        (!phrase.starts_with(char::is_alphanumeric) || starts_word(folded, at))
+            && ends_word(folded, at + phrase.len())
     })
 }
 
@@ -996,43 +966,12 @@ fn date_part(bytes: &[u8], start: usize, end: usize) -> bool {
 /// Does a currency or rate unit follow the amount (after a range such as `- 1.100`), or a
 /// currency or rate word precede it (`Tagessatz: bis`, `EUR`)?
 fn rate_context(folded: &str, start: usize, end: usize) -> bool {
-    let after = folded.get(end..).unwrap_or("");
-    let rest = after.trim_start_matches(|c: char| {
-        c.is_whitespace() || c.is_ascii_digit() || matches!(c, '.' | ',' | '-' | '–')
-    });
-    let rest = lex::RATE_RANGE_WORDS
-        .iter()
-        .find_map(|w| rest.strip_prefix(w))
-        .map_or(rest, |r| {
-            r.trim_start_matches(|c: char| {
-                c.is_whitespace() || c.is_ascii_digit() || matches!(c, '.' | ',' | '-')
-            })
-        });
-    if lex::RATE_UNITS.iter().any(|u| rest.starts_with(u)) {
-        return true;
-    }
-    // The upper end of a range looks past the lower one (`EUR 950–1,100`).
-    let before = folded
-        .get(..start)
-        .unwrap_or("")
-        .trim_end_matches(|c: char| {
-            c.is_whitespace()
-                || c.is_ascii_digit()
-                || matches!(c, ':' | '(' | '~' | '-' | '–' | '.' | ',')
-        });
-    let before = lex::RATE_RANGE_WORDS
-        .iter()
-        .find_map(|w| before.strip_suffix(w))
-        .map_or(before, |b| {
-            // `EUR 1,100 to 1,250`: past the lower end of the range to its unit.
-            b.trim_end_matches(|c: char| {
-                c.is_whitespace() || c.is_ascii_digit() || matches!(c, ':' | '(' | '.' | ',')
-            })
-        });
-    lex::RATE_UNITS
-        .iter()
-        .chain(lex::RATE_WORDS)
-        .any(|w| before.ends_with(w))
+    let (after, before) = amount_sides(folded, start, end);
+    lex::RATE_UNITS.iter().any(|u| after.starts_with(u))
+        || lex::RATE_UNITS
+            .iter()
+            .chain(lex::RATE_WORDS)
+            .any(|w| before.ends_with(w))
 }
 
 fn day_rate(

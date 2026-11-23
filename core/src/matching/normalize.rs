@@ -294,7 +294,19 @@ pub(crate) fn sentences(line: &str) -> Vec<&str> {
 
 /// Whole-word (or whole-phrase) containment in a folded text.
 pub(crate) fn contains_word(folded: &str, word: &str) -> bool {
-    find_word(folded, word).is_some()
+    contains_word_with(folded, word, &[""])
+}
+
+/// Is `word` in a text where a word starts, its end followed by one of `endings` and the end
+/// of a word (`""`: right at the end; `tarifliche` for `tariflich` with `e`)?
+pub(crate) fn contains_word_with(text: &str, word: &str, endings: &[&str]) -> bool {
+    text.match_indices(word).any(|(at, _)| {
+        let rest = &text[at + word.len()..];
+        let tail = &rest[..rest
+            .find(|c: char| !c.is_alphanumeric())
+            .unwrap_or(rest.len())];
+        starts_word(text, at) && endings.contains(&tail)
+    })
 }
 
 /// The first whole-word (or whole-phrase) occurrence of `word` in a text: no letter or digit
@@ -307,9 +319,23 @@ pub(crate) fn find_word(text: &str, word: &str) -> Option<usize> {
 
 /// Is `text[start..end]` bounded as a word (no letter or digit right before or after it)?
 pub(crate) fn word_bounded(text: &str, start: usize, end: usize) -> bool {
-    let before = text[..start].chars().next_back();
-    let after = text[end..].chars().next();
-    before.is_none_or(|c| !c.is_alphanumeric()) && after.is_none_or(|c| !c.is_alphanumeric())
+    starts_word(text, start) && ends_word(text, end)
+}
+
+/// Does no letter or digit stand right before byte `at`?
+pub(crate) fn starts_word(text: &str, at: usize) -> bool {
+    text[..at]
+        .chars()
+        .next_back()
+        .is_none_or(|c| !c.is_alphanumeric())
+}
+
+/// Does no letter or digit stand at byte `at`?
+pub(crate) fn ends_word(text: &str, at: usize) -> bool {
+    text[at..]
+        .chars()
+        .next()
+        .is_none_or(|c| !c.is_alphanumeric())
 }
 
 /// The words of a text with their byte offsets: runs of letters and digits, with `inner` signs
@@ -394,6 +420,26 @@ pub(crate) fn number_word(word: &str) -> Option<u32> {
         .iter()
         .find(|(w, _)| *w == word)
         .map(|&(_, n)| n)
+}
+
+/// The text after an amount (`start..end` of `text`) and the text before it, each past a range
+/// (`950 - 1.100`, `bis 1.200`, `1,100 to 1,250`): where its unit or the word for it stands.
+pub(crate) fn amount_sides(text: &str, start: usize, end: usize) -> (&str, &str) {
+    let ranges = lexicon::engine::RATE_RANGE_WORDS;
+    let number =
+        |c: char| c.is_whitespace() || c.is_ascii_digit() || matches!(c, '.' | ',' | '-' | '–');
+    let after = text[end..].trim_start_matches(number);
+    let after = ranges
+        .iter()
+        .find_map(|w| after.strip_prefix(w))
+        .map_or(after, |rest| rest.trim_start_matches(number));
+    let sign = |c: char| number(c) || matches!(c, ':' | '(' | '~');
+    let before = text[..start].trim_end_matches(sign);
+    let before = ranges
+        .iter()
+        .find_map(|w| before.strip_suffix(w))
+        .map_or(before, |rest| rest.trim_end_matches(sign));
+    (after, before)
 }
 
 /// The amount written from byte `start` of a digit run, thousands separators included

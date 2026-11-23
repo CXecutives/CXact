@@ -18,7 +18,7 @@ use super::ad_facts::currency_code;
 use super::contract::{Contract, ContractKind};
 use super::facts::{Finding, HardCriteria, Segment, hourly_pay_in};
 use super::lexicon::engine as lex;
-use super::normalize::amount_at;
+use super::normalize::{amount_at, amount_sides, ends_word};
 use super::params::HOURS_PER_YEAR;
 use super::types::{CriterionKey, ReasonCode};
 
@@ -111,26 +111,10 @@ fn amounts(folded: &str) -> Vec<(usize, u64)> {
 /// currency or salary word before it (`Gehalt: 120.000`, `€ 95.000`)? A count in the same
 /// sentence (`rund 11.000 Beschäftigte`) is none.
 fn money_context(folded: &str, start: usize, end: usize) -> bool {
-    let number = |c: char| c.is_whitespace() || c.is_ascii_digit() || matches!(c, '.' | ',');
-    let after = folded[end..].trim_start_matches(|c: char| number(c) || matches!(c, '-' | '–'));
-    let after = lex::RATE_RANGE_WORDS
-        .iter()
-        .find_map(|w| after.strip_prefix(w))
-        .map_or(after, |rest| rest.trim_start_matches(number));
-    let before = folded[..start]
-        .trim_end_matches(|c: char| number(c) || matches!(c, ':' | '(' | '~' | '-' | '–'));
-    let before = lex::RATE_RANGE_WORDS
-        .iter()
-        .find_map(|w| before.strip_suffix(w))
-        .map_or(before, |rest| {
-            rest.trim_end_matches(|c: char| number(c) || matches!(c, ':' | '(' | '-' | '–'))
-        });
+    let (after, before) = amount_sides(folded, start, end);
     // A unit that ends in a letter is a word of its own (`11.000 Kunden` is no `k`).
     let unit_after = |u: &&str| {
-        after.strip_prefix(*u).is_some_and(|rest| {
-            !u.ends_with(|c: char| c.is_alphabetic())
-                || rest.chars().next().is_none_or(|c| !c.is_alphanumeric())
-        })
+        after.starts_with(*u) && (!u.ends_with(char::is_alphabetic) || ends_word(after, u.len()))
     };
     lex::SALARY_UNITS.iter().any(unit_after)
         || lex::SALARY_UNITS
