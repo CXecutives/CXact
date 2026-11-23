@@ -538,8 +538,9 @@ The penalty round (2026-11-23) took the audit of stacked penalties one lever at 
 measured on top of the ones kept (gold 1+2 tune, the 154, the teacher split, held-out 1 to 10).
 Kept: the formal cap only for a duty the ad makes mandatory (a bug: an optional licence capped at
 40); the core clearly open only when its part, counted with its saturation, is below half;
-`LEVEL_ONE` 950 (rule 6); a near frame condition half a step (`FRAME_NEAR`); hybrid near a remote
-wish (`REMOTE_MARGIN` 40). Not kept, each costing a main number more than 0.01 or a floor: a must
+a near frame condition half a step (`FRAME_NEAR`); hybrid near a remote wish (`REMOTE_MARGIN`
+40). `LEVEL_ONE` 950 was kept at first and taken back on the merged state (850 again: gold tune
+NDCG@10 0.821 -> 0.830, the 154 0.679 -> 0.700). Not kept, each costing a main number more than 0.01 or a floor: a must
 met only through a tool counting half, as the rubric says (teacher 0.739 -> 0.717, held-out 6, 9
 and 10 below their floors; the engine counts it as met in part, an open point for the rubric); a
 half target role whose topic the title meets as the same field (gold tune NDCG@10 -0.019, also

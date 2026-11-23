@@ -142,8 +142,8 @@ mod tests {
                 (800..1000).contains(&PARTIAL),
             ),
             (
-                "Eine Ebene über oder unter dem Profil kostet kaum etwas",
-                LEVEL_ONE >= 900,
+                "Eine Ebene über oder unter dem Profil kostet wenig",
+                LEVEL_ONE >= 800,
             ),
             (
                 "Zwei Ebenen über dem Profil halbieren Rolle und Fach",

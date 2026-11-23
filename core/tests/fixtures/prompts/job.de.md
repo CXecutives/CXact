@@ -252,7 +252,7 @@ Ab 80 Punkten ist die Übereinstimmung hoch, ab 40 mittel, darunter gering.
   Vertragsform, keine Ebene. Disziplinarische Führung in der Anzeige macht eine Rolle zur
   Führungsrolle, ohne Personalverantwortung ist sie keine.
 - Nennt eine Wunschrolle die Ebene der Anzeige, passt die Ebene voll.
-- Eine Ebene über oder unter dem Profil kostet kaum etwas (Rolle und Fach zählen zu 95 %).
+- Eine Ebene über oder unter dem Profil kostet wenig (Rolle und Fach zählen zu 85 %).
 - Zwei Ebenen über dem Profil halbieren Rolle und Fach.
 - Zwei oder mehr Ebenen unter dem Profil heißen höchstens 40, außer eine Wunschrolle nennt diese
   Ebene. Das ist nie ein Ausschluss.

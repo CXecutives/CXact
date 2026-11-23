@@ -78,10 +78,10 @@ pub(crate) const UNNAMED: u64 = 700;
 /// count as role and field and the other musts do on average (a short ad is judged from its
 /// title and field, the rubric's rule 8).
 pub(crate) const CORE_SATURATION: u64 = 3;
-/// Role and field at a level one above or one below the target roles (one level costs hardly
-/// anything, the rubric's rule 6), and two or more above (per-mille of the part); two or more
+/// Role and field at a level one above or one below the target roles (one level costs
+/// little, the rubric's rule 6), and two or more above (per-mille of the part); two or more
 /// below caps at `LEVEL_CAP`.
-pub(crate) const LEVEL_ONE: u64 = 950;
+pub(crate) const LEVEL_ONE: u64 = 850;
 pub(crate) const LEVEL_TWO_ABOVE: u64 = 500;
 /// Role and field by the field of the role (per-mille): the same field, near, far, foreign.
 pub(crate) const FIELD_VALUES: [u64; 4] = [1000, 700, 200, 0];
