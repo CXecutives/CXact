@@ -1,5 +1,5 @@
 use super::*;
-use crate::matching::params::{FORMAL_CAP, OFF_FIELD_CAP};
+use crate::matching::params::FORMAL_CAP;
 
 fn must(value: u16) -> Scored {
     Scored {
@@ -81,11 +81,4 @@ fn the_cap_holds_the_score_and_the_rank_keeps_the_points() {
     };
     assert_eq!(final_score(&low, cap, false), (30, 300, None));
     assert_eq!(final_score(&percent, cap, true), (0, 0, None));
-    assert_eq!(
-        lower(
-            (FORMAL_CAP, CapCode::Formal),
-            (OFF_FIELD_CAP, CapCode::OffField)
-        ),
-        (OFF_FIELD_CAP, CapCode::OffField)
-    );
 }

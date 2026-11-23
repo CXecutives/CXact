@@ -140,12 +140,8 @@ pub(crate) struct Evaluation {
     pub caps: Vec<Cap>,
 }
 
-/// A cap with its kind; the lower of two, the first of two alike.
+/// A cap with its kind: the highest score it allows.
 pub(crate) type Cap = (u8, CapCode);
-
-fn lower(a: Cap, b: Cap) -> Cap {
-    if b.0 < a.0 { b } else { a }
-}
 
 fn weight(item: &Item) -> u64 {
     match (&item.class, item.stage) {
@@ -727,7 +723,8 @@ fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluation {
     }
     let percent = scorer::percent(&signals);
     let caps = scorer::caps(&signals);
-    let cap = caps.iter().copied().reduce(lower);
+    // The lowest cap holds, the first of two alike.
+    let cap = caps.iter().copied().min_by_key(|c| c.0);
     let (score, rank, capped) = final_score(&percent, cap, unscorable);
     Evaluation {
         items,

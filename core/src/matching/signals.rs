@@ -89,136 +89,40 @@ struct Row {
     max: u16,
 }
 
+const fn row(sig: Sig, name: &'static str, sign: i8, max: u16) -> Row {
+    Row {
+        sig,
+        name,
+        sign,
+        max,
+    }
+}
+
 /// The signal table, in the order of [`Sig`]: the signal, its name (the fitter's and the dump's),
 /// its direction (+1 up, -1 down, 0 either) and its highest value. [`Sig::ALL`], [`SIGN`],
 /// [`NAMES`] and [`MAX`] are derived from it.
 const TABLE: [Row; N] = [
-    Row {
-        sig: Sig::Role,
-        name: "role",
-        sign: 1,
-        max: 2,
-    },
-    Row {
-        sig: Sig::TitleField,
-        name: "title_field",
-        sign: 1,
-        max: 1000,
-    },
-    Row {
-        sig: Sig::Relevance,
-        name: "relevance",
-        sign: 1,
-        max: 1000,
-    },
-    Row {
-        sig: Sig::OffField,
-        name: "off_field",
-        sign: -1,
-        max: 1,
-    },
-    Row {
-        sig: Sig::Level,
-        name: "level",
-        sign: 0,
-        max: 4,
-    },
-    Row {
-        sig: Sig::CoreMet,
-        name: "core_met",
-        sign: 1,
-        max: COUNT_MAX,
-    },
-    Row {
-        sig: Sig::CorePartial,
-        name: "core_partial",
-        sign: 0,
-        max: COUNT_MAX,
-    },
-    Row {
-        sig: Sig::CoreOpen,
-        name: "core_open",
-        sign: -1,
-        max: COUNT_MAX,
-    },
-    Row {
-        sig: Sig::OtherMet,
-        name: "other_met",
-        sign: 1,
-        max: COUNT_MAX,
-    },
-    Row {
-        sig: Sig::OtherPartial,
-        name: "other_partial",
-        sign: 0,
-        max: COUNT_MAX,
-    },
-    Row {
-        sig: Sig::OtherOpen,
-        name: "other_open",
-        sign: -1,
-        max: COUNT_MAX,
-    },
-    Row {
-        sig: Sig::FrameNear,
-        name: "frame_near",
-        sign: -1,
-        max: FRAME_ASPECTS,
-    },
-    Row {
-        sig: Sig::FrameMissed,
-        name: "frame_missed",
-        sign: -1,
-        max: FRAME_ASPECTS,
-    },
-    Row {
-        sig: Sig::NiceMet,
-        name: "nice_met",
-        sign: 1,
-        max: COUNT_MAX,
-    },
-    Row {
-        sig: Sig::NicePartial,
-        name: "nice_partial",
-        sign: 0,
-        max: COUNT_MAX,
-    },
-    Row {
-        sig: Sig::NiceOpen,
-        name: "nice_open",
-        sign: -1,
-        max: COUNT_MAX,
-    },
-    Row {
-        sig: Sig::FormalOpen,
-        name: "formal_open",
-        sign: -1,
-        max: 1,
-    },
-    Row {
-        sig: Sig::Junior,
-        name: "junior",
-        sign: -1,
-        max: 1,
-    },
-    Row {
-        sig: Sig::Permanent,
-        name: "permanent",
-        sign: -1,
-        max: 1,
-    },
-    Row {
-        sig: Sig::CoreHits,
-        name: "core_hits",
-        sign: 1,
-        max: 8,
-    },
-    Row {
-        sig: Sig::Family,
-        name: "family",
-        sign: 1,
-        max: 3,
-    },
+    row(Sig::Role, "role", 1, 2),
+    row(Sig::TitleField, "title_field", 1, 1000),
+    row(Sig::Relevance, "relevance", 1, 1000),
+    row(Sig::OffField, "off_field", -1, 1),
+    row(Sig::Level, "level", 0, 4),
+    row(Sig::CoreMet, "core_met", 1, COUNT_MAX),
+    row(Sig::CorePartial, "core_partial", 0, COUNT_MAX),
+    row(Sig::CoreOpen, "core_open", -1, COUNT_MAX),
+    row(Sig::OtherMet, "other_met", 1, COUNT_MAX),
+    row(Sig::OtherPartial, "other_partial", 0, COUNT_MAX),
+    row(Sig::OtherOpen, "other_open", -1, COUNT_MAX),
+    row(Sig::FrameNear, "frame_near", -1, FRAME_ASPECTS),
+    row(Sig::FrameMissed, "frame_missed", -1, FRAME_ASPECTS),
+    row(Sig::NiceMet, "nice_met", 1, COUNT_MAX),
+    row(Sig::NicePartial, "nice_partial", 0, COUNT_MAX),
+    row(Sig::NiceOpen, "nice_open", -1, COUNT_MAX),
+    row(Sig::FormalOpen, "formal_open", -1, 1),
+    row(Sig::Junior, "junior", -1, 1),
+    row(Sig::Permanent, "permanent", -1, 1),
+    row(Sig::CoreHits, "core_hits", 1, 8),
+    row(Sig::Family, "family", 1, 3),
 ];
 
 /// One column of the table, in table order (a row sits at its signal's index).
