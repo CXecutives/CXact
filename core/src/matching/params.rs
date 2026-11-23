@@ -49,8 +49,8 @@ pub(crate) const SENTENCE_ATOMS: usize = 4;
 /// (per-mille), shown as a line of its own after the frame.
 pub(crate) const PERMANENT_FACTOR: u64 = 900;
 /// Score caps of the Passungsgrad, each with its reason: a formal must the ad makes mandatory
-/// open (degree field, licence, certificate) at most 40; the core of the role clearly open (less than
-/// half of it met, a must on it open) at most 49; a foreign field at most 24.
+/// open (degree field, licence, certificate) at most 40; the core of the role clearly open (a
+/// must on it open, less than half of its part met) at most 49; a foreign field at most 24.
 pub(crate) const FORMAL_CAP: u8 = 40;
 pub(crate) const CORE_OPEN_CAP: u8 = 49;
 pub(crate) const OFF_FIELD_CAP: u8 = 24;

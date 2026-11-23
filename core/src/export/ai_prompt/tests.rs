@@ -604,7 +604,7 @@ fn the_rubric_is_filled_with_the_numbers_of_the_app() {
         format!("(CXact rechnet {} %)", PARTIAL / 10),
         format!("kostet {} % der Zahl", (1000 - FRAME_STEP) / 10),
         format!("(CXact rechnet sie mit {} %)", PERMANENT_FACTOR / 10),
-        format!("Der Kern der Rolle ist klar offen: höchstens {CORE_OPEN_CAP}"),
+        format!("Muss-Punkt zum Kern offen: höchstens {CORE_OPEN_CAP}"),
         format!("bei mindestens {SENIOR_YEARS} Jahren Berufserfahrung: höchstens {JUNIOR_CAP}"),
     ] {
         assert!(flat.contains(&part), "{part}");

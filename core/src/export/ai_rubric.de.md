@@ -93,7 +93,8 @@ Ab {HIGH_FROM} Punkten ist die Übereinstimmung hoch, ab {MID_FROM} mittel, daru
 
 Jede Grenze braucht einen klaren Grund in der Anzeige.
 
-- Der Kern der Rolle ist klar offen: höchstens {CORE_OPEN_CAP}
+- Der Kern der Rolle ist klar offen, also weniger als die Hälfte seiner Punkte erreicht und ein
+  Muss-Punkt zum Kern offen: höchstens {CORE_OPEN_CAP}
 - Das Fachgebiet ist fremd: höchstens {OFF_FIELD_CAP}
 - Eine zwingende formale Pflicht ist offen (Abschluss, Zulassung, Zertifikat): höchstens {FORMAL_CAP}
 - Eine Junior- oder Einstiegsrolle bei mindestens {SENIOR_YEARS} Jahren Berufserfahrung: höchstens {JUNIOR_CAP}

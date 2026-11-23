@@ -260,7 +260,8 @@ Ab 80 Punkten ist die Übereinstimmung hoch, ab 40 mittel, darunter gering.
 
 Jede Grenze braucht einen klaren Grund in der Anzeige.
 
-- Der Kern der Rolle ist klar offen: höchstens 49
+- Der Kern der Rolle ist klar offen, also weniger als die Hälfte seiner Punkte erreicht und ein
+  Muss-Punkt zum Kern offen: höchstens 49
 - Das Fachgebiet ist fremd: höchstens 24
 - Eine zwingende formale Pflicht ist offen (Abschluss, Zulassung, Zertifikat): höchstens 40
 - Eine Junior- oder Einstiegsrolle bei mindestens 10 Jahren Berufserfahrung: höchstens 40

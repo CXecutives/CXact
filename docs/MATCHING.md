@@ -458,7 +458,8 @@ this section names the constants.
 - A requirement met in part counts `PARTIAL`; what is unclear or missing never counts
   against; soft skills and phrases count nothing.
 - Caps, each a line with its reason (`CapLine`): the core of the role clearly open (a core must
-  open and less than half of the core met) `CORE_OPEN_CAP`, a foreign field `OFF_FIELD_CAP`, a
+  open and less than half of the core part met, counted as the part counts it: one open must
+  among few does not cap) `CORE_OPEN_CAP`, a foreign field `OFF_FIELD_CAP`, a
   formal must the ad makes mandatory open (degree, licence, certificate; without that word it is
   an open must like any other) `FORMAL_CAP`, a junior role for a senior profile `JUNIOR_CAP`, two or more
   levels below the target roles `LEVEL_CAP`.

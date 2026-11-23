@@ -287,14 +287,11 @@ fn percent_with(s: &Signals, p: ScoreParams) -> Percent {
     }
 }
 
-/// The core of the role clearly open: a must on it open and less than half of the core met.
+/// The core of the role clearly open: a must on it open and less than half of the core part
+/// met, counted as the part counts it (at least `CORE_SATURATION`, the musts the ad does not
+/// name as the part fills them), so one open must among few does not cap a good fit.
 fn core_open(s: &Signals, p: ScoreParams) -> bool {
-    let (met, partial, open) = (
-        s.get(Sig::CoreMet),
-        s.get(Sig::CorePartial),
-        s.get(Sig::CoreOpen),
-    );
-    open >= 1 && 2 * share(met, partial, open, 0, 0, p) < u64::from(E_FULL)
+    s.get(Sig::CoreOpen) >= 1 && 2 * shares(s, class(s), p)[1] < u64::from(E_FULL)
 }
 
 /// Every cap the signals give, with the highest score it allows: a mandatory formal must open,
@@ -609,7 +606,7 @@ mod tests {
         );
     }
 
-    /// A foreign field caps at 24, the core clearly open (less than half of it met) at 49.
+    /// A foreign field caps at 24, the core clearly open (less than half of its part met) at 49.
     #[test]
     fn the_caps_hold_with_their_reasons() {
         let foreign = sig(&[(Sig::OffField, 1), (Sig::OtherOpen, 3)]);
@@ -618,5 +615,8 @@ mod tests {
         assert_eq!(caps(&core_open), vec![(CORE_OPEN_CAP, CapCode::CoreOpen)]);
         let half_met = sig(&[(Sig::Role, 2), (Sig::CoreMet, 1), (Sig::CoreOpen, 1)]);
         assert!(caps(&half_met).is_empty());
+        // One open must of a core the ad barely names: the unnamed ones count as the role.
+        let one_open = sig(&[(Sig::Role, 2), (Sig::CoreOpen, 1)]);
+        assert!(caps(&one_open).is_empty());
     }
 }
