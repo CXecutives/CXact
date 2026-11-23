@@ -358,6 +358,36 @@ pub(crate) fn phrase_at<S: AsRef<str>>(
     Some(at + parts.len())
 }
 
+/// A date written as one word: a day (`31.03.2027`, `2027-03-31`) or a month (`03/2027`), as
+/// (year, month, the day if it names one). A year has four digits.
+pub(crate) fn numeric_date(word: &str) -> Option<(i16, i8, Option<i8>)> {
+    let year = |s: &str| s.parse::<i16>().ok().filter(|_| s.len() == 4);
+    let small = |s: &str| s.parse::<i8>().ok().filter(|_| s.len() <= 2);
+    match word.split(['.', '/', '-']).collect::<Vec<_>>().as_slice() {
+        [y, m, d] if word.contains('-') && y.len() == 4 => {
+            Some((year(y)?, small(m)?, Some(small(d)?)))
+        }
+        [d, m, y] => Some((year(y)?, small(m)?, Some(small(d)?))),
+        [m, y] => Some((year(y)?, small(m)?, None)),
+        _ => None,
+    }
+}
+
+/// The month a folded word names (`marz`, `march`, `mar`: `lex::MONTHS`).
+pub(crate) fn month_named(word: &str) -> Option<i8> {
+    lexicon::engine::MONTHS
+        .iter()
+        .find(|(name, _)| *name == word)
+        .map(|&(_, month)| month)
+}
+
+/// The quarter a folded word names (`q2`).
+pub(crate) fn quarter(word: &str) -> Option<i8> {
+    word.strip_prefix('q')
+        .and_then(|q| q.parse::<i8>().ok())
+        .filter(|q| (1..=4).contains(q))
+}
+
 /// The number a word names (`zwei`, `five`, `NUMBER_WORDS`).
 pub(crate) fn number_word(word: &str) -> Option<u32> {
     lexicon::engine::NUMBER_WORDS
@@ -460,5 +490,17 @@ mod tests {
             ["sap", "s/4hana", "ki", "power", "bi"]
         );
         assert_eq!(raw_canonical("Project Management"), ["projektmanagement"]);
+    }
+
+    #[test]
+    fn dates_written_as_one_word() {
+        assert_eq!(numeric_date("31.03.2027"), Some((2027, 3, Some(31))));
+        assert_eq!(numeric_date("2027-03-31"), Some((2027, 3, Some(31))));
+        assert_eq!(numeric_date("03/2027"), Some((2027, 3, None)));
+        assert_eq!(numeric_date("0170.1234.5678"), None);
+        assert_eq!(numeric_date("3-6"), None);
+        assert_eq!(month_named("marz"), Some(3));
+        assert_eq!(quarter("q2"), Some(2));
+        assert_eq!(quarter("q5"), None);
     }
 }

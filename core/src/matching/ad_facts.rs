@@ -14,7 +14,7 @@ use super::contract::{Contract, ContractKind};
 use super::facts::{self, JobFacts, Rate, Segment, Start, fact, parse_start, stated_rate};
 use super::lexicon::engine as lex;
 use super::limits::{self, Workload};
-use super::normalize::{clauses, contains_word};
+use super::normalize::{clauses, contains_word, month_named, numeric_date, quarter};
 use super::permanent::{bonus_percent, parse_salary};
 use super::types::KeyFacts;
 use super::wishes::remote_share;
@@ -371,35 +371,20 @@ fn end_date(after: &str) -> Option<Date> {
         .take(END_DATE_WORDS)
         .collect();
     let year = |s: &str| s.parse::<i16>().ok().filter(|y| s.len() == 4 && *y > 2000);
-    let small = |s: &str| s.parse::<i8>().ok().filter(|_| s.len() <= 2);
     let last_of = |y: i16, m: i8| Date::new(y, m, 1).ok().map(Date::last_of_month);
     for (i, word) in words.iter().enumerate() {
-        let parts: Vec<&str> = word.split(['.', '/']).collect();
-        let found = match parts.as_slice() {
-            [d, m, y] => year(y)
-                .zip(small(m))
-                .zip(small(d))
-                .and_then(|((y, m), d)| Date::new(y, m, d).ok()),
-            [m, y] => year(y).zip(small(m)).and_then(|(y, m)| last_of(y, m)),
-            [y] => year(y).and_then(|y| Date::new(y, 12, 31).ok()),
-            _ => None,
+        let found = match numeric_date(word) {
+            Some((y, m, Some(d))) if y > 2000 => Date::new(y, m, d).ok(),
+            Some((y, m, None)) if y > 2000 => last_of(y, m),
+            _ => year(word).and_then(|y| Date::new(y, 12, 31).ok()),
         };
         if found.is_some() {
             return found;
         }
         let next_year = words.get(i + 1).and_then(|w| year(w));
-        if let Some(&(_, month)) = lex::MONTHS.iter().find(|(name, _)| name == word)
-            && let Some(y) = next_year
-        {
+        let month = month_named(word).or_else(|| quarter(word).map(|q| 3 * q));
+        if let (Some(y), Some(month)) = (next_year, month) {
             return last_of(y, month);
-        }
-        if let Some(quarter) = word
-            .strip_prefix('q')
-            .and_then(|q| q.parse::<i8>().ok())
-            .filter(|q| (1..=4).contains(q))
-            && let Some(y) = next_year
-        {
-            return last_of(y, 3 * quarter);
         }
     }
     None

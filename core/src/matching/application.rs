@@ -13,7 +13,7 @@ use regex::Regex;
 
 use super::atoms::fold;
 use super::lexicon::engine as lex;
-use super::normalize::{phrase_at, word_spans};
+use super::normalize::{month_named, phrase_at, word_spans};
 
 /// Longest contact value kept, in characters.
 const MAX_CONTACT_CHARS: usize = 80;
@@ -109,13 +109,6 @@ fn day_of(word: &str) -> Option<i8> {
     small(bare).filter(|d| (1..=31).contains(d))
 }
 
-fn month_of(word: &str) -> Option<i8> {
-    lex::MONTHS
-        .iter()
-        .find(|(name, _)| *name == word)
-        .map(|&(_, month)| month)
-}
-
 /// The date the words start with: `15.10.2026`, `15.10.26`, `2026-10-15`, `15.10.`,
 /// `30. Oktober (2026)`, `31st October`, `October 31(, 2026)` or `Ende Oktober (2026)`.
 fn date_at(words: &[&str], posted: Option<Date>) -> Option<Date> {
@@ -129,16 +122,16 @@ fn date_at(words: &[&str], posted: Option<Date>) -> Option<Date> {
         [d, m] => (small(m)?, day_of(d)?, None),
         [word] => {
             if let Some(day) = day_of(word) {
-                let month = month_of(words.get(1)?)?;
+                let month = month_named(words.get(1)?)?;
                 (month, day, words.get(2).and_then(|w| year_of(w)))
-            } else if let Some(month) = month_of(word) {
+            } else if let Some(month) = month_named(word) {
                 (
                     month,
                     day_of(words.get(1)?)?,
                     words.get(2).and_then(|w| year_of(w)),
                 )
             } else if lex::MONTH_END_WORDS.contains(word) {
-                let month = month_of(words.get(1)?)?;
+                let month = month_named(words.get(1)?)?;
                 let year = words.get(2).and_then(|w| year_of(w));
                 let first_day = dated(month, 1, year, posted)?;
                 return Some(first_day.last_of_month());

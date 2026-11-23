@@ -21,7 +21,8 @@ use super::atoms::fold;
 use super::contract::{Contract, ContractKind};
 use super::lexicon::engine as lex;
 use super::normalize::{
-    amount_at, clauses, contains_word, find_word, sentences, splitlines, word_bounded,
+    amount_at, clauses, contains_word, find_word, month_named, numeric_date, quarter, sentences,
+    splitlines, word_bounded,
 };
 use super::params::HOURS_PER_DAY;
 use super::types::{CriterionKey, ReasonCode, ReasonKind};
@@ -1105,45 +1106,20 @@ pub(crate) fn parse_start(text: &str) -> Option<Start> {
         .filter(|w| !w.is_empty())
         .collect();
     for (i, word) in words.iter().enumerate() {
-        let parts: Vec<&str> = word.split(['.', '/', '-']).collect();
-        let year_of = |s: &str| s.parse::<i16>().ok().filter(|_| s.len() == 4);
-        let small = |s: &str| s.parse::<i8>().ok().filter(|_| s.len() <= 2);
-        // A part that is no date (a phone number `0170.1234.5678`) is skipped, it does not
+        // A word that is no date (a phone number `0170.1234.5678`) is skipped, it does not
         // end the search.
-        let date = match parts.as_slice() {
-            // ISO: 2026-11-01.
-            [y, m, d] if word.contains('-') => year_of(y)
-                .zip(small(m))
-                .zip(small(d))
-                .and_then(|((y, m), d)| Date::new(y, m, d).ok()),
-            [d, m, y] => year_of(y)
-                .zip(small(m))
-                .zip(small(d))
-                .and_then(|((y, m), d)| Date::new(y, m, d).ok()),
-            [m, y] => year_of(y)
-                .zip(small(m))
-                .and_then(|(y, m)| Date::new(y, m, 1).ok()),
-            _ => None,
-        };
-        if let Some(date) = date {
+        if let Some((year, month, day)) = numeric_date(word)
+            && let Ok(date) = Date::new(year, month, day.unwrap_or(1))
+        {
             return Some(Start::Date(date));
         }
         let year = words
             .get(i + 1)
             .and_then(|w| w.parse::<i16>().ok())
             .filter(|y| *y > 2000);
-        if let Some(&(_, month)) = lex::MONTHS.iter().find(|(name, _)| name == word)
-            && let Some(year) = year
+        let month = month_named(word).or_else(|| quarter(word).map(|q| 3 * q - 2));
+        if let (Some(year), Some(month)) = (year, month)
             && let Ok(date) = Date::new(year, month, 1)
-        {
-            return Some(Start::Date(date));
-        }
-        if let Some(quarter) = word
-            .strip_prefix('q')
-            .and_then(|q| q.parse::<i8>().ok())
-            .filter(|q| (1..=4).contains(q))
-            && let Some(year) = year
-            && let Ok(date) = Date::new(year, 3 * quarter - 2, 1)
         {
             return Some(Start::Date(date));
         }
