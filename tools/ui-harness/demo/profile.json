@@ -36,17 +36,7 @@
       "jahre": 8
     }
   ],
-  "methoden_tools": [
-    "SAP S/4HANA",
-    "LucaNet",
-    "Power BI",
-    "IFRS",
-    "HGB",
-    "Konzernabschluss",
-    "Financial Controlling",
-    "FP&A",
-    "Sanierung"
-  ],
+  "methoden_tools": ["SAP S/4HANA", "LucaNet", "Power BI", "IFRS", "HGB", "Konzernabschluss"],
   "berufserfahrung_jahre": 20,
   "branchen": ["Maschinenbau", "Automotive", "Chemie"],
   "sprachen": [
