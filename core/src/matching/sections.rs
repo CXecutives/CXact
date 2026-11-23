@@ -2,6 +2,7 @@
 //! after a colon, a closing line, a pick list's opener or text), the one heading folding, and
 //! the requirement cues of a sentence.
 
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::ops::Range;
 use std::sync::LazyLock;
@@ -13,7 +14,7 @@ use super::lexicon::domains::DOMAINS;
 use super::lexicon::engine::{self as lex, CueScope};
 use super::lexicon::{self, HeadingKind};
 use super::normalize::{
-    char_len, decimal, is_space, phrase_at, split_whitespace, strip, word_spans,
+    Phrases, char_len, decimal, folded_word, is_space, split_whitespace, strip, word_spans,
 };
 use super::pyre;
 
@@ -277,21 +278,22 @@ pub(crate) struct Cue {
     pub at: Range<usize>,
 }
 
+static NICE_CUES: LazyLock<Phrases<CueScope>> =
+    LazyLock::new(|| Phrases::new(lex::NICE_CUES.iter().copied(), lex::DECLENSION_ENDINGS));
+
 /// The nice cues of a text, left to right, the longest at each word (`lex::NICE_CUES`: whole
 /// words, `Bonussysteme` holds no `bonus`).
 pub(crate) fn nice_cues(text: &str) -> Vec<Cue> {
     let words = word_spans(text, &[]);
-    let folded: Vec<String> = words.iter().map(|(_, w)| fold(w)).collect();
+    let folded: Vec<Cow<'_, str>> = words.iter().map(|(_, w)| folded_word(w)).collect();
     let mut cues = Vec::new();
     let mut i = 0;
     while i < words.len() {
-        let found = lex::NICE_CUES
-            .iter()
-            .filter_map(|&(cue, scope)| {
-                phrase_at(&folded, i, cue, lex::DECLENSION_ENDINGS).map(|end| (end, scope))
-            })
-            .max_by_key(|(end, _)| *end);
-        let Some((end, scope)) = found else {
+        // Of two cues of the same length the later one of the table.
+        let found = NICE_CUES
+            .at(&folded, i)
+            .max_by_key(|&(place, end, _)| (end, place));
+        let Some((_, end, scope)) = found else {
             i += 1;
             continue;
         };

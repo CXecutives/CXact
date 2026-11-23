@@ -6,7 +6,10 @@
 //! toolchain.
 
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::sync::LazyLock;
+
+use regex::Regex;
 
 use super::lexicon;
 
@@ -362,26 +365,126 @@ pub(crate) fn word_spans<'a>(text: &'a str, inner: &[char]) -> Vec<(usize, &'a s
 
 /// Whether the words from `at` are `phrase` (words separated by single spaces), its last word
 /// perhaps with one of `endings`; the index after it.
-pub(crate) fn phrase_at<S: AsRef<str>>(
+fn phrase_at<S: AsRef<str>>(
     words: &[S],
     at: usize,
     phrase: &str,
     endings: &[&str],
 ) -> Option<usize> {
-    let parts: Vec<&str> = phrase.split(' ').collect();
-    for (i, part) in parts.iter().enumerate() {
-        let word = words.get(at + i)?.as_ref();
+    let mut parts = phrase.split(' ').peekable();
+    let mut next = at;
+    while let Some(part) = parts.next() {
+        let word = words.get(next)?.as_ref();
+        let last = parts.peek().is_none();
         let ending = || {
-            i + 1 == parts.len()
-                && word
-                    .strip_prefix(part)
-                    .is_some_and(|rest| endings.contains(&rest))
+            word.strip_prefix(part)
+                .is_some_and(|rest| endings.contains(&rest))
         };
-        if word != *part && !ending() {
+        if word != part && !(last && ending()) {
             return None;
         }
+        next += 1;
     }
-    Some(at + parts.len())
+    Some(next)
+}
+
+/// A table of phrases (words separated by single spaces, the last word perhaps with one of
+/// `endings`), kept by their first word: the phrases that stand at a word of a text are
+/// looked up, not searched for one by one.
+pub(crate) struct Phrases<T> {
+    /// By the first word: the phrase's place in the table, its words after the first (empty
+    /// for one word) and its value.
+    by_first: HashMap<&'static str, Vec<(usize, &'static str, T)>>,
+    endings: &'static [&'static str],
+}
+
+impl<T: Copy> Phrases<T> {
+    pub(crate) fn new(
+        table: impl IntoIterator<Item = (&'static str, T)>,
+        endings: &'static [&'static str],
+    ) -> Self {
+        let mut by_first: HashMap<&'static str, Vec<(usize, &'static str, T)>> = HashMap::new();
+        for (place, (phrase, value)) in table.into_iter().enumerate() {
+            let (first, rest) = phrase.split_once(' ').unwrap_or((phrase, ""));
+            by_first
+                .entry(first)
+                .or_default()
+                .push((place, rest, value));
+        }
+        Self { by_first, endings }
+    }
+
+    /// The phrases that stand at `words[at]`: their place in the table, the index after them
+    /// and their value.
+    pub(crate) fn at<'a, S: AsRef<str>>(
+        &'a self,
+        words: &'a [S],
+        at: usize,
+    ) -> impl Iterator<Item = (usize, usize, T)> + 'a {
+        let word = words[at].as_ref();
+        let written = self.by_first.get(word).into_iter().flatten();
+        let whole = written.filter_map(move |&(place, rest, value)| {
+            let end = if rest.is_empty() {
+                at + 1
+            } else {
+                phrase_at(words, at + 1, rest, self.endings)?
+            };
+            Some((place, end, value))
+        });
+        // One word with an ending.
+        let stems = self
+            .endings
+            .iter()
+            .filter_map(move |e| word.strip_suffix(e));
+        let ended = stems
+            .filter_map(|stem| self.by_first.get(stem))
+            .flatten()
+            .filter(|(_, rest, _)| rest.is_empty())
+            .map(move |&(place, _, value)| (place, at + 1, value));
+        whole.chain(ended)
+    }
+
+    /// Where the first phrase of the table that stands at `words[at]` ends.
+    pub(crate) fn first_at<S: AsRef<str>>(&self, words: &[S], at: usize) -> Option<usize> {
+        self.at(words, at)
+            .min_by_key(|&(place, ..)| place)
+            .map(|(_, end, _)| end)
+    }
+}
+
+/// One pattern for a list of words: whether (and where) a text holds any of them, in one pass
+/// over the text instead of one per word.
+pub(crate) fn any_word<'a>(words: impl IntoIterator<Item = &'a str>) -> Regex {
+    let pattern: Vec<String> = words.into_iter().map(regex::escape).collect();
+    Regex::new(&pattern.join("|")).expect("a list of literal words")
+}
+
+/// The lines of a text that `pattern` matches in (a match lies in one line), in their order.
+pub(crate) fn lines_with<'t>(text: &'t str, pattern: &'t Regex) -> impl Iterator<Item = &'t str> {
+    let mut next = 0;
+    pattern.find_iter(text).filter_map(move |found| {
+        if found.start() < next {
+            return None;
+        }
+        let start = text[..found.start()].rfind('\n').map_or(0, |i| i + 1);
+        let end = text[found.end()..]
+            .find('\n')
+            .map_or(text.len(), |i| found.end() + i);
+        next = end;
+        Some(text[start..end].trim_end_matches('\r'))
+    })
+}
+
+/// A word in the engine's folding (`atoms::fold`), borrowed where it is folded as written.
+pub(crate) fn folded_word(word: &str) -> Cow<'_, str> {
+    if word
+        .bytes()
+        .all(|b| b.is_ascii() && !b.is_ascii_uppercase())
+    {
+        Cow::Borrowed(word)
+    } else {
+        Cow::Owned(super::atoms::fold(word))
+    }
 }
 
 /// A date written as one word: a day (`31.03.2027`, `2027-03-31`) or a month (`03/2027`), as

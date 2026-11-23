@@ -172,8 +172,8 @@ pub(crate) fn read(
             .and_then(|(s, ..)| s.currency)
             .map(currency_code),
         workload: limits::read(job, segments),
-        deadline: application::deadline(job.text, job.posted),
-        contact: application::contact(job.text),
+        deadline: application::deadline_in(folded, job.posted),
+        contact: application::contact_in(job.text, folded),
     }
 }
 

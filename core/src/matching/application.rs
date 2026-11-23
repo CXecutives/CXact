@@ -11,9 +11,11 @@ use jiff::ToSpan;
 use jiff::civil::Date;
 use regex::Regex;
 
+use std::borrow::Cow;
+
 use super::atoms::fold;
 use super::lexicon::engine as lex;
-use super::normalize::{month_named, phrase_at, word_spans};
+use super::normalize::{Phrases, any_word, folded_word, lines_with, month_named, word_spans};
 
 /// Longest contact value kept, in characters.
 const MAX_CONTACT_CHARS: usize = 80;
@@ -35,11 +37,35 @@ pub(crate) struct Contact {
     pub phone: Option<String>,
 }
 
+fn phrases(table: &[&'static str]) -> Phrases<()> {
+    Phrases::new(table.iter().map(|phrase| (*phrase, ())), &[])
+}
+
+/// The first word of a phrase.
+fn first_word(phrase: &&'static str) -> &'static str {
+    phrase.split(' ').next().unwrap_or(phrase)
+}
+
+static DEADLINE_MARKERS: LazyLock<Phrases<()>> = LazyLock::new(|| phrases(lex::DEADLINE_MARKERS));
+/// A line names a deadline only with one of these words in it.
+static DEADLINE_WORD: LazyLock<Regex> = LazyLock::new(|| {
+    any_word(
+        lex::DEADLINE_MARKERS
+            .iter()
+            .map(first_word)
+            .chain(lex::APPLY_WORDS.iter().copied()),
+    )
+});
+
 /// The application deadline of an ad; `posted` (the alert mail's day) gives a date without a
 /// year its year.
 pub(crate) fn deadline(text: &str, posted: Option<Date>) -> Option<Date> {
-    text.lines()
-        .find_map(|line| line_deadline(&tokens(&fold(line)), posted))
+    deadline_in(&fold(text), posted)
+}
+
+/// The application deadline of a folded ad.
+pub(crate) fn deadline_in(folded: &str, posted: Option<Date>) -> Option<Date> {
+    lines_with(folded, &DEADLINE_WORD).find_map(|line| line_deadline(&tokens(line), posted))
 }
 
 /// The words of a folded line; a date keeps its dots, slashes and dashes (`15.10.2026`).
@@ -61,10 +87,7 @@ fn past(words: &[&str], mut at: usize, fillers: &[&str]) -> usize {
 
 fn line_deadline(words: &[&str], posted: Option<Date>) -> Option<Date> {
     (0..words.len()).find_map(|at| {
-        let named = lex::DEADLINE_MARKERS
-            .iter()
-            .find_map(|marker| phrase_at(words, at, marker, &[]));
-        let from = match named {
+        let from = match DEADLINE_MARKERS.first_at(words, at) {
             Some(end) => end,
             None if lex::APPLY_WORDS.contains(&words[at]) => {
                 let until = past(words, at + 1, lex::APPLY_FILLERS);
@@ -163,21 +186,34 @@ fn dated(month: i8, day: i8, year: Option<i16>, posted: Option<Date>) -> Option<
 /// a line with a contact word first), the first phone number after a phone word or written
 /// with its country code.
 pub(crate) fn contact(text: &str) -> Contact {
-    let lines: Vec<&str> = text.lines().collect();
-    let names: Vec<(usize, String)> = lines
-        .iter()
-        .enumerate()
-        .filter_map(|(i, line)| person(line).map(|name| (i, name)))
-        .collect();
-    let named_line = names.first().map(|(i, _)| *i);
-    let email = named_line
-        .and_then(|i| lines.get(i).and_then(|line| email_in(line)))
-        .or_else(|| lines.iter().find_map(|line| email_in(line)));
-    let phone = lines.iter().find_map(|line| phone_in(line));
+    contact_in(text, &fold(text))
+}
+
+/// The contact of an ad with its folded text.
+pub(crate) fn contact_in(text: &str, folded: &str) -> Contact {
+    // A line without any contact word names no person (folding a text folds its lines).
+    let named = CONTACT_WORD
+        .is_match(folded)
+        .then(|| {
+            text.lines()
+                .zip(folded.lines())
+                .filter(|(_, folded)| CONTACT_WORD.is_match(folded))
+                .find_map(|(line, _)| person(line).map(|name| (line, name)))
+        })
+        .flatten();
+    let email = text
+        .contains('@')
+        .then(|| {
+            named
+                .as_ref()
+                .and_then(|(line, _)| email_in(line))
+                .or_else(|| email_in(text))
+        })
+        .flatten();
     Contact {
-        name: names.into_iter().next().map(|(_, name)| name),
+        name: named.map(|(_, name)| name),
         email,
-        phone,
+        phone: lines_with(text, &PHONE).find_map(phone_in),
     }
 }
 
@@ -193,37 +229,29 @@ fn spans(line: &str) -> Vec<(usize, &str)> {
 }
 
 /// The folded words of `spans`, for comparing with the lexicon.
-fn folded(words: &[(usize, &str)]) -> Vec<String> {
-    words.iter().map(|(_, w)| fold(w)).collect()
+fn folded<'a>(words: &[(usize, &'a str)]) -> Vec<Cow<'a, str>> {
+    words.iter().map(|(_, w)| folded_word(w)).collect()
 }
+
+static CONTACT_PERSON_WORDS: LazyLock<Phrases<()>> =
+    LazyLock::new(|| phrases(lex::CONTACT_PERSON_WORDS));
+static CONTACT_LABELS: LazyLock<Phrases<()>> = LazyLock::new(|| phrases(lex::CONTACT_LABELS));
+/// A line names a person only with one of these words in it.
+static CONTACT_WORD: LazyLock<Regex> = LazyLock::new(|| {
+    let markers = lex::CONTACT_PERSON_WORDS.iter().chain(lex::CONTACT_LABELS);
+    any_word(markers.map(first_word))
+});
 
 /// The person a line names after a contact word (a label only at the line's start).
 fn person(line: &str) -> Option<String> {
-    // A line without any contact word names no person (folding a line folds its words).
-    let folded_line = fold(line);
-    let first = |marker: &'static str| marker.split(' ').next().unwrap_or(marker);
-    if !lex::CONTACT_PERSON_WORDS
-        .iter()
-        .chain(lex::CONTACT_LABELS)
-        .any(|&m| folded_line.contains(first(m)))
-    {
-        return None;
-    }
     let words = spans(line);
     let folds = folded(&words);
     (0..words.len()).find_map(|at| {
-        let after = lex::CONTACT_PERSON_WORDS
-            .iter()
-            .find_map(|marker| phrase_at(&folds, at, marker, &[]))
-            .or_else(|| {
-                (at == 0)
-                    .then(|| {
-                        lex::CONTACT_LABELS
-                            .iter()
-                            .find_map(|marker| phrase_at(&folds, at, marker, &[]))
-                    })
-                    .flatten()
-            })?;
+        let after = CONTACT_PERSON_WORDS.first_at(&folds, at).or_else(|| {
+            (at == 0)
+                .then(|| CONTACT_LABELS.first_at(&folds, at))
+                .flatten()
+        })?;
         name_from(line, &words, &folds, after)
     })
 }
@@ -243,11 +271,16 @@ fn name_word(word: &str, folded: &str) -> bool {
 /// The name from the word at `from`: an optional title and form of address, then up to
 /// `NAME_WORDS` name words in a row (nothing but spaces between them). Two name words, or a
 /// form of address and one, make a name.
-fn name_from(line: &str, words: &[(usize, &str)], folds: &[String], from: usize) -> Option<String> {
+fn name_from(
+    line: &str,
+    words: &[(usize, &str)],
+    folds: &[Cow<'_, str>],
+    from: usize,
+) -> Option<String> {
     let mut at = from;
     while folds
         .get(at)
-        .is_some_and(|w| lex::CONTACT_FILLERS.contains(&w.as_str()))
+        .is_some_and(|w| lex::CONTACT_FILLERS.contains(&w.as_ref()))
     {
         at += 1;
     }
@@ -261,9 +294,9 @@ fn name_from(line: &str, words: &[(usize, &str)], folds: &[String], from: usize)
         if end != start && !line[end..offset].chars().all(|c| c == ' ' || c == '.') {
             break;
         }
-        if names == 0 && lex::HONORIFICS.contains(&fold.as_str()) {
+        if names == 0 && lex::HONORIFICS.contains(&fold.as_ref()) {
             honorific = true;
-        } else if names == 0 && lex::NAME_TITLES.contains(&fold.as_str()) {
+        } else if names == 0 && lex::NAME_TITLES.contains(&fold.as_ref()) {
             titled = true;
         } else if names < NAME_WORDS && name_word(word, fold) {
             names += 1;
@@ -293,7 +326,7 @@ static EMAIL: LazyLock<Regex> = LazyLock::new(|| {
         .expect("e-mail pattern")
 });
 
-/// The first e-mail address of a line that somebody answers.
+/// The first e-mail address of a text that somebody answers (an address lies in one line).
 fn email_in(line: &str) -> Option<String> {
     EMAIL
         .captures_iter(line)
@@ -323,7 +356,7 @@ fn phone_in(line: &str) -> Option<String> {
     let folds = folded(&words);
     let after = folds
         .iter()
-        .position(|w| lex::PHONE_WORDS.contains(&w.as_str()))
+        .position(|w| lex::PHONE_WORDS.contains(&w.as_ref()))
         .and_then(|i| words.get(i).map(|(offset, word)| offset + word.len()));
     if let Some(from) = after
         && let Some(found) = PHONE
