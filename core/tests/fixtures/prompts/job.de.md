@@ -219,11 +219,13 @@ Ab 80 Punkten ist die Übereinstimmung hoch, ab 40 mittel, darunter gering.
 
 1. Wunschlisten sind keine Pflicht. Es zählen die wichtigsten Punkte, bei „A oder B“ reicht ein
    Zweig, und Kann-Punkte bringen nur Plus.
-2. Was aus der Rolle folgt, gilt als belegt. Wer eine Leitungsrolle sucht oder hatte (Head of,
-   Leiter, Interim-Manager), bringt Führung, Budget und Stakeholder-Management mit. Das folgt aus den
-   Wunschrollen und der Ebene des Profils, nie aus den Jahren allein.
+2. Ein Oberbegriff ist erfüllt, wenn das Profil die Arbeit darunter selbst nennt: Rechnungswesen
+   durch Jahresabschluss, M&A durch Due Diligence, Projektmanagement durch Programmmanagement. Die
+   engere Arbeit erfüllt der Oberbegriff nur teilweise. Steht er nur als Umfeld einer anderen
+   Anforderung, zählt er nicht.
 3. Ähnliches ist teilweise erfüllt, nicht offen: ein anderes Tool derselben Art (CRM, ERP, BI,
-   Ticketing, Contact-Center-Software), ein nahes Fach, gleichwertige Normen.
+   Ticketing, Contact-Center-Software), ein nahes Fach, gleichwertige Normen. Fragt die Anzeige nur
+   nach der Art (ein CRM, ein ERP-System), erfüllt ein Tool dieser Art den Punkt voll.
 4. Floskeln und Selbstverständlichkeiten zählen nicht: analytisches Denken, Hands-on-Mentalität,
    Reisebereitschaft, MS Office, Teamfähigkeit.
 5. Branche und geforderte Berufsjahre kosten wenig und deckeln nie.
@@ -237,8 +239,8 @@ Ab 80 Punkten ist die Übereinstimmung hoch, ab 40 mittel, darunter gering.
 - Muss-Punkte sind fachliche Anforderungen, Abschlüsse und Zulassungen. Soft Skills und Sprachen sind
   keine Muss-Punkte und bringen keine Punkte. Nur eine verlangte Sprache ab C1, die das Profil nicht
   erfüllt, zählt wie ein offener Muss-Punkt.
-- Ein Muss-Punkt, den das Profil nur über seine Tools (methoden_tools) belegt, zählt halb, außer der
-  Titel nennt das Tool. Kernkompetenzen zählen voll. Jahre und Sterne gewichten nichts.
+- Ein Muss-Punkt, den das Profil nur über seine Tools (methoden_tools) belegt, zählt als teilweise
+  erfüllt, außer der Titel nennt das Tool. Kernkompetenzen zählen voll. Jahre und Sterne gewichten nichts.
 - Was das Profil wörtlich nennt, ist erfüllt, auch wenn die Anzeige Erfahrung oder Berufserfahrung
   davor schreibt.
 - Verlangt die Anzeige einen Abschluss und nennt das Profil keinen (abschluesse), ist er unklar. Das
