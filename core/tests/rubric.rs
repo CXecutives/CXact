@@ -1,7 +1,8 @@
 //! The scoring rubric of the AI prompts: `core/src/export/ai_rubric.de.md` covers the app's
-//! own scale of 0 to 100 in bands that leave no gap, takes the app's high and mid limits as
-//! placeholders (the prompt fills them in from `model`, so the text cannot drift from the
-//! bands) and names the profile keys it rules on.
+//! own scale of 0 to 100 in bands that leave no gap, takes the app's high and mid limits and
+//! the engine's numbers as placeholders (the prompt fills them in from their one source,
+//! `export/ai_prompt/rubric.rs`, so the text cannot drift from the app) and names the profile
+//! keys it rules on.
 
 use std::path::{Path, PathBuf};
 
@@ -53,7 +54,8 @@ fn the_bands_cover_zero_to_one_hundred() {
 }
 
 /// The limits of the app's bands are placeholders (the prompt fills them in), no number
-/// that could differ from `model::HIGH_FROM` and `MID_FROM`.
+/// that could differ from `model::HIGH_FROM` and `MID_FROM`; every placeholder is the name
+/// of a number (which ones: `export/ai_prompt/rubric.rs`).
 #[test]
 fn the_limits_of_the_app_are_placeholders() {
     let rubric = read(RUBRIC);
@@ -70,7 +72,10 @@ fn the_limits_of_the_app_are_placeholders() {
     while let Some(at) = rest.find('{') {
         let end = rest[at..].find('}').expect("a closed placeholder") + at;
         let name = &rest[at + 1..end];
-        assert!(matches!(name, "HIGH_FROM" | "MID_FROM"), "{name}");
+        assert!(
+            !name.is_empty() && name.chars().all(|c| c.is_ascii_uppercase() || c == '_'),
+            "{name}"
+        );
         rest = &rest[end..];
     }
 }

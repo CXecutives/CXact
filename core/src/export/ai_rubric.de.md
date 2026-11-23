@@ -17,24 +17,24 @@ nichts, denn man kann nachfragen. Punkte kostet nur, was klar nicht passt.
 Die Zahl ist der Anteil dessen, worauf es bei der Stelle ankommt, den das Profil erfüllt, mal dem
 Rahmen. Der Inhalt setzt sich aus drei Teilen zusammen, jeder mit seinem festen Gewicht:
 
-- Rolle und Fach (40): Passen Titel und Fachgebiet zu den Wunschrollen (wunschrollen) und zum
-  Profil? Gleiches Fach zählt voll, ein nahes 0,7, ein fernes 0,2, ein fremdes nichts. Dazu die
+- Rolle und Fach ({W_ROLE}): Passen Titel und Fachgebiet zu den Wunschrollen (wunschrollen) und zum
+  Profil? Gleiches Fach zählt voll, ein nahes {FIELD_NEAR}, ein fernes {FIELD_FAR}, ein fremdes nichts. Dazu die
   Ebene (siehe unten). Ein Titel, der eine Wunschrolle trifft, ist nie ein fremdes Fach. Eine
   Anzeige ohne Muss-Punkte im Fach des Profils zählt mindestens als nahes Fach.
   Allgemeine Methoden wie Projekt- oder Stakeholder-Management erfüllen Muss-Punkte, zeigen aber
   kein Fachgebiet.
-- Kern der Rolle (40): der Anteil der erfüllten Muss-Punkte zum Thema der Rolle, gezählt als
-  mindestens drei. Was die Anzeige zum Kern nicht nennt, zählt wie Rolle und Fach und die übrigen
+- Kern der Rolle ({W_CORE}): der Anteil der erfüllten Muss-Punkte zum Thema der Rolle, gezählt als
+  mindestens {CORE_SATURATION}. Was die Anzeige zum Kern nicht nennt, zählt wie Rolle und Fach und die übrigen
   Muss-Punkte im Mittel.
-- Weitere Muss-Punkte (20): der Anteil der übrigen erfüllten Muss-Punkte, gezählt als mindestens
-  sieben. Was eine kurze Liste nicht nennt, zählt zu 70 % wie Rolle und Fach.
+- Weitere Muss-Punkte ({W_MUSTS}): der Anteil der übrigen erfüllten Muss-Punkte, gezählt als mindestens
+  {MUST_SATURATION}. Was eine kurze Liste nicht nennt, zählt zu {UNNAMED} wie Rolle und Fach.
 
-Ein teilweise erfüllter Punkt zählt fast voll (CXact rechnet 90 %). Was unklar ist, zählt nicht mit.
-Erfüllte Kann-Punkte bringen bis zu 5 Punkte dazu, offene kosten nichts.
+Ein teilweise erfüllter Punkt zählt fast voll (CXact rechnet {PARTIAL}). Was unklar ist, zählt nicht mit.
+Erfüllte Kann-Punkte bringen bis zu {NICE_MAX} Punkte dazu, offene kosten nichts.
 
 Dann der Rahmen: Tagessatz, Arbeitsmodell und Ort, Start, Dauer und Auslastung gegen die Wünsche. Was
 die Anzeige nicht nennt, passt. Jede genannte Bedingung, die schlechter ist als gewünscht, aber kein
-hartes Kriterium verletzt, kostet 5 % der Zahl. Eine Festanstellung kostet danach 10 %, solange das
+hartes Kriterium verletzt, kostet {FRAME_STEP_COST} der Zahl. Eine Festanstellung kostet danach {PERMANENT_COST}, solange das
 Profil sie nicht ausschließt. Zuletzt gilt die niedrigste Grenze (siehe unten).
 
 So liest sich die Zahl:
@@ -67,7 +67,7 @@ Ab {HIGH_FROM} Punkten ist die Übereinstimmung hoch, ab {MID_FROM} mittel, daru
 ## Muss-Punkte
 
 - Muss-Punkte sind fachliche Anforderungen, Abschlüsse und Zulassungen. Soft Skills und Sprachen sind
-  keine Muss-Punkte und bringen keine Punkte. Nur eine verlangte Sprache ab C1, die das Profil nicht
+  keine Muss-Punkte und bringen keine Punkte. Nur eine verlangte Sprache ab {LANGUAGE_MUST_LEVEL}, die das Profil nicht
   erfüllt, zählt wie ein offener Muss-Punkt.
 - Ein Muss-Punkt, den das Profil nur über seine Tools (methoden_tools) belegt, zählt halb, außer der
   Titel nennt das Tool. Kernkompetenzen zählen voll. Jahre und Sterne gewichten nichts.
@@ -84,26 +84,26 @@ Ab {HIGH_FROM} Punkten ist die Übereinstimmung hoch, ab {MID_FROM} mittel, daru
   Vertragsform, keine Ebene. Disziplinarische Führung in der Anzeige macht eine Rolle zur
   Führungsrolle, ohne Personalverantwortung ist sie keine.
 - Nennt eine Wunschrolle die Ebene der Anzeige, passt die Ebene voll.
-- Eine Ebene über oder unter dem Profil kostet wenig (Rolle und Fach zählen zu 85 %).
+- Eine Ebene über oder unter dem Profil kostet wenig (Rolle und Fach zählen zu {LEVEL_ONE}).
 - Zwei Ebenen über dem Profil halbieren Rolle und Fach.
-- Zwei oder mehr Ebenen unter dem Profil heißen höchstens 40, außer eine Wunschrolle nennt diese
+- Zwei oder mehr Ebenen unter dem Profil heißen höchstens {LEVEL_CAP}, außer eine Wunschrolle nennt diese
   Ebene. Das ist nie ein Ausschluss.
 
 ## Grenzen
 
 Jede Grenze braucht einen klaren Grund in der Anzeige.
 
-- Der Kern der Rolle ist klar offen: höchstens 49
-- Das Fachgebiet ist fremd: höchstens 24
-- Eine zwingende formale Pflicht ist offen (Abschluss, Zulassung, Zertifikat): höchstens 40
-- Eine Junior- oder Einstiegsrolle bei mindestens 10 Jahren Berufserfahrung: höchstens 40
-- Zwei oder mehr Ebenen unter dem Profil: höchstens 40
+- Der Kern der Rolle ist klar offen: höchstens {CORE_OPEN_CAP}
+- Das Fachgebiet ist fremd: höchstens {OFF_FIELD_CAP}
+- Eine zwingende formale Pflicht ist offen (Abschluss, Zulassung, Zertifikat): höchstens {FORMAL_CAP}
+- Eine Junior- oder Einstiegsrolle bei mindestens {SENIOR_YEARS} Jahren Berufserfahrung: höchstens {JUNIOR_CAP}
+- Zwei oder mehr Ebenen unter dem Profil: höchstens {LEVEL_CAP}
 
 ## Vertragsart und ANÜ
 
 - Die Vertragsart zählt so, wie das Profil sucht: Interim und Projekte (Tagessatz, freiberuflich,
   Werkvertrag, Contract) zählen voll, eine Festanstellung ein Zehntel weniger (CXact rechnet sie mit
-  90 %), solange das Profil keine ausschließt.
+  {PERMANENT_FACTOR}), solange das Profil keine ausschließt.
 - Eine unklare Vertragsart ist ein Punkt zum Prüfen, nie ein Ausschluss, auch wenn das Profil
   Festanstellungen ausschließt.
 - Eine Personalagentur ohne Angaben zur Vertragsart ist unklar. Das Gehalt wird wie bei einer
