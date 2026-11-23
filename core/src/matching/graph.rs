@@ -20,6 +20,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use super::atoms::{self, Fit, Memo, stem};
 use super::lexicon::domains::DOMAINS;
 use super::lexicon::engine as lex;
+use super::normalize::contains_word;
 
 /// How an ad atom relates to a profile atom: by their words, then through the graph. A
 /// node of ten letters or more stands for its compounds too (`Projektleitungskompetenz` is
@@ -117,6 +118,35 @@ pub(crate) fn packs(atom: &str) -> u32 {
 /// ([`packs`]).
 pub(crate) fn other_field(job: u32, profile: u32) -> bool {
     profile != 0 && profile & job == 0
+}
+
+/// The kinds of tool a text names (`lexicon::engine::TOOL_KINDS`, by index), each with
+/// whether it names a tool of the kind (`Salesforce`) or the kind alone (`CRM`); read once
+/// per text and thread.
+pub(crate) fn tool_kinds(text: &str) -> ToolKinds {
+    if let Some(found) = KINDS.with(|kinds| kinds.borrow().get(0, text)) {
+        return found;
+    }
+    let folded = atoms::fold(text).replace('-', " ");
+    let named = |names: &[&str]| names.iter().any(|n| contains_word(&folded, n));
+    let found: ToolKinds = lex::TOOL_KINDS
+        .iter()
+        .enumerate()
+        .filter_map(|(kind, (_, own, tools))| {
+            let tool = named(tools);
+            (tool || named(own)).then_some((kind, tool))
+        })
+        .collect();
+    KINDS.with(|kinds| kinds.borrow_mut().put(0, text, found.clone()));
+    found
+}
+
+/// The kinds of tool a text names ([`tool_kinds`]).
+pub(crate) type ToolKinds = Rc<[(usize, bool)]>;
+
+thread_local! {
+    /// The kinds of tool of the texts read so far.
+    static KINDS: RefCell<Memo<ToolKinds>> = const { RefCell::new(Memo::new(1 << 14)) };
 }
 
 /// Atoms a profile names, numbered: the entries' atoms, or a query's.

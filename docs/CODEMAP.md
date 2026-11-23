@@ -119,9 +119,9 @@ is the pure integer engine
 - exclusion.rs 614 · Exclusion words of the profile: a word excludes the ad… · check
 - explain.rs 713 · Turns an engine evaluation into an `Assessment`: codes and… · assessment
 - facts.rs 1274 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +20
-- fit.rs 996 · The profile the engine matches against, and the match… · Entry, Broad, Skills, degree_fields_in +9
+- fit.rs 1002 · The profile the engine matches against, and the match… · Entry, Broad, Skills, degree_fields_in +9
 - gaps.rs 193 · The gap finder's view of a job: the words of its… · Gap, JobGaps, vocabulary_gaps
-- graph.rs 195 · The engine's knowledge graph: how the atoms of an ad… · fit, packs, other_field, Known +1
+- graph.rs 225 · The engine's knowledge graph: how the atoms of an ad… · fit, packs, other_field, tool_kinds +3
 - layout.rs 116 · The layout of an ad's text for the reader: the lines that… · TextLayout, text_layout
 - limits.rs 573 · The limits of an engagement the profile sets, checked and… · Workload, read, workload, workload_fits +4
 - mod.rs 466 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +19
@@ -160,7 +160,7 @@ is the pure integer engine
 - tests.rs 549 · (no header)
 
 ### core/src/matching/fit
-- tests.rs 204 · (no header)
+- tests.rs 233 · (no header)
 
 ### core/src/matching/job
 - classify.rs 271 · The kind of every item: skill, language, degree, soft,… · known_skill, language_of, frame_word, names_degree
@@ -174,7 +174,7 @@ is the pure integer engine
 ### core/src/matching/lexicon
 - esco.rs 859 · ESCO, the European Commission's classification of skills,… · Kind, Concept, Lang, Hit +6
 - mod.rs 79 · Words and patterns the engine looks for in job ads and… · HeadingKind, contains, synonym, synonym_pair +7
-- tables.rs 1037 · Word lists of the matching engine. · STOPWORDS, SYNONYM_WORDS, SYNONYM_PAIRS, MUST_HEADINGS +6
+- tables.rs 836 · Word lists of the matching engine. · STOPWORDS, SYNONYM_WORDS, SYNONYM_PAIRS, MUST_HEADINGS +5
 - terms.rs 844 · Words around a term of an ad and the words that name the… · LEADS, GERMAN_QUALIFIERS, QUALIFIER_ENDINGS, ENGLISH_QUALIFIERS +24
 - wishes.rs 463 · Word lists of the consultant's wishes and the industries… · LEAD_WORDS, LEAD_ENDINGS, LEVEL_WORDS, ROLE_SHAPE_WORDS +12
 
@@ -205,7 +205,7 @@ is the pure integer engine
 - contract.rs 356 · Contract kinds: agency work (ANUE), interim and permanent. · CONTRACT_DENIED, ANUE_WORDS, ANUE_PARTS, ANUE_HIDDEN +20
 - cues.rs 255 · Nice and must cues, separators, examples, lead verbs and… · SOFT_ALONE, PRONOUN_STARTS, DESCRIPTION_STARTS, MANDATORY_WORDS +17
 - exclusion.rs 259 · Exclusion roles, mentions and denials. · EXCLUSION_WORD_FAMILIES, EXCLUSION_ROLE_WORDS, EXCLUSION_ROLE_ENDINGS, EXCLUSION_ROLE_HEADS +14
-- graph.rs 47 · Relations of the knowledge graph for every profile:… · CORE_COVERS, CORE_NEAR, METHODS
+- graph.rs 250 · Relations of the knowledge graph for every profile:… · CORE_COVERS, CORE_NEAR, METHODS, TOOL_KINDS
 - level.rs 127 · Seniority and role levels. · ROLE_BRINGS, ENTRY_LEVEL_VALUES, LOW_LEVEL_VALUES, ENTRY_LEVEL_MUSTS +2
 - mod.rs 34 · Word lists of the engine, split by topic.
 - morphology.rs 67 · Word endings, linkers, adjective stems and particles. · WORD_ENDINGS, LINKERS, ADJECTIVE_ENDINGS, DECLINED_ENDINGS +7

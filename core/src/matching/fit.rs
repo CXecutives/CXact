@@ -7,7 +7,7 @@ use std::rc::Rc;
 use std::sync::LazyLock;
 
 use super::atoms::{self, Fit, Vocab, fold};
-use super::graph::{Known, Row};
+use super::graph::{self, Known, Row};
 use super::job::{Class, Item, language_of, names_degree};
 use super::lexicon::engine as lex;
 use super::lexicon::esco::{self, Kind};
@@ -31,8 +31,9 @@ pub(crate) struct Entry {
     /// General business work any field does (`Projektmanagement`, `Stakeholder Management`;
     /// `atoms::general_work`): it meets requirements, but it shows no field.
     pub method: bool,
-    /// The kinds of tool it names (`TOOL_KINDS`).
-    pub tools: Vec<&'static str>,
+    /// The kinds of tool it names, each with whether it names a tool of the kind
+    /// (`graph::tool_kinds`).
+    pub tools: Vec<(usize, bool)>,
     /// An industry of the profile (`branchen`): a setting, no skill.
     pub industry: bool,
 }
@@ -259,7 +260,7 @@ impl Skills {
                         Broad::default()
                     },
                     method: atoms::general_work(&entry.text),
-                    tools: tool_kinds(&entry.text),
+                    tools: graph::tool_kinds(&entry.text).to_vec(),
                     industry: entry.path.starts_with(key::INDUSTRIES),
                     ids: Vec::new(),
                     atoms,
@@ -606,17 +607,13 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
             best.via = Via::General;
         }
     }
-    // Another tool of the same kind (`HubSpot` for `Salesforce`, both CRM) is similar:
-    // partly met, never open (the rubric's rule 3).
-    if broad
-        && best.value < E_HALF
-        && let Some(index) = same_kind(skills, text)
-    {
-        best = ItemFit {
-            value: E_HALF,
-            entry: Some(index),
-            via: Via::General,
-        };
+    // A kind of tool and its tools (`kind_fit`), for what the entries leave open: a half
+    // fit through a competence shows more than a tool does.
+    if broad && best.value < E_HALF {
+        let kind = kind_fit(skills, text);
+        if kind.value > best.value {
+            best = kind;
+        }
     }
     // ESCO, the broad layer: a concept the item and an entry both name.
     if broad && best.value < E_FULL && skills.entries.iter().any(|e| !e.broad.terms.is_empty()) {
@@ -694,26 +691,26 @@ static EXPERIENCE_STEMS: LazyLock<Vec<String>> = LazyLock::new(|| {
         .collect()
 });
 
-/// The kinds of tool a text names (`TOOL_KINDS`).
-fn tool_kinds(text: &str) -> Vec<&'static str> {
-    let folded = fold(text).replace('-', " ");
-    super::lexicon::TOOL_KINDS
-        .iter()
-        .filter(|(_, names)| names.iter().any(|n| contains_word(&folded, n)))
-        .map(|(kind, _)| *kind)
-        .collect()
-}
-
-/// The first profile entry that names a tool of a kind the text names.
-fn same_kind(skills: &Skills, text: &str) -> Option<usize> {
-    let kinds = tool_kinds(text);
-    if kinds.is_empty() {
-        return None;
+/// A kind of tool asked for (`CRM-System`) is met by an entry naming a tool of the kind
+/// (`Salesforce`, the profile more specific); a tool asked for is met in part by an entry
+/// naming another tool of its kind or the kind alone (`HubSpot` for `Salesforce`, the
+/// rubric's rule 3). The first entry of a kind the text names.
+fn kind_fit(skills: &Skills, text: &str) -> ItemFit {
+    let asked = graph::tool_kinds(text);
+    for (index, entry) in skills.entries.iter().enumerate() {
+        let shared = entry.tools.iter().filter_map(|&(kind, named)| {
+            let &(_, tool) = asked.iter().find(|(k, _)| *k == kind)?;
+            Some(named && !tool)
+        });
+        if let Some(full) = shared.max() {
+            return ItemFit {
+                value: if full { E_FULL } else { E_HALF },
+                entry: Some(index),
+                via: if full { Via::Specific } else { Via::General },
+            };
+        }
     }
-    skills
-        .entries
-        .iter()
-        .position(|e| e.tools.iter().any(|k| kinds.contains(k)))
+    NONE
 }
 
 /// An atom that only says experience (`berufserfahr`, `projekterfahr`, `praxis`), not

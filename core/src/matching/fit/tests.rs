@@ -173,3 +173,32 @@ fn esco_relates_what_the_own_words_do_not() {
     // A soft skill is no concept to match.
     assert_eq!(fit("Kommunikation", "Gesprächsführung").0, E_NONE);
 }
+
+/// A kind of tool asked for is met by a tool of it the profile names (`Salesforce` for a
+/// CRM); a tool asked for in part by another tool of its kind or by the kind alone.
+#[test]
+fn a_kind_of_tool_is_met_by_its_tools() {
+    let data = of_json(&json!({
+        "kernkompetenzen": [{"kompetenz": "Controlling"}],
+        "methoden_tools": ["Salesforce", "SAP S/4HANA", "Power BI"]
+    }));
+    let skills = Skills::new(&core_texts(&data), &data);
+    let fit = |text: &str| skill_fit_in(&skills, text, true);
+    for met in [
+        "Erfahrung mit CRM-Systemen",
+        "Sicherer Umgang mit ERP-Systemen",
+        "Kenntnisse in Business Intelligence",
+    ] {
+        assert_eq!(fit(met).value, E_FULL, "{met}");
+        assert_eq!(fit(met).via, Via::Specific, "{met}");
+    }
+    assert_eq!(fit("Erfahrung mit HubSpot").value, E_HALF);
+    assert_eq!(fit("Kenntnisse in Tableau").value, E_HALF);
+    assert_eq!(fit("Erfahrung mit Jira").value, E_NONE);
+    let data = of_json(&json!({"kernkompetenzen": [{"kompetenz": "CRM-Einführung"}]}));
+    let skills = Skills::new(&core_texts(&data), &data);
+    assert_eq!(
+        skill_fit_in(&skills, "Erfahrung mit Salesforce", true).value,
+        E_HALF
+    );
+}
