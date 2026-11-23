@@ -22,6 +22,7 @@
 //!   remote; no known place (a country of the profile only, a small town) is unknown.
 
 use std::cell::LazyCell;
+use std::collections::HashMap;
 use std::ops::Range;
 use std::sync::LazyLock;
 
@@ -84,34 +85,131 @@ pub(crate) struct Wishes {
     /// Regions as written.
     pub regions: Option<Vec<String>>,
     /// The regions folded, with the places of states, regions and countries.
-    places: Vec<String>,
+    places: Places,
     /// Per wish reason: the profile value as written and its JSON path.
     sources: Vec<(ReasonCode, String, String)>,
 }
 
 /// Every place a known region, state or country stands for, and all known places.
-static KNOWN_PLACES: LazyLock<Vec<&'static str>> = LazyLock::new(|| {
-    let mut places: Vec<&'static str> = core_lex::GERMAN_CITIES
-        .iter()
-        .copied()
-        .chain(lex::REGION_PLACES.iter().map(|(region, _)| *region))
-        .chain(
-            lex::REGION_PLACES
-                .iter()
-                .flat_map(|(_, p)| p.iter().copied()),
-        )
-        .chain(core_lex::CITIES.iter().map(|(city, _)| *city))
-        .chain(
-            core_lex::COUNTRIES
-                .iter()
-                .filter(|(_, code)| *code != "DE")
-                .map(|(name, _)| *name),
-        )
-        .collect();
-    places.sort_unstable();
-    places.dedup();
-    places
+static KNOWN_PLACES: LazyLock<Places> = LazyLock::new(|| {
+    Places::new(
+        core_lex::GERMAN_CITIES
+            .iter()
+            .copied()
+            .chain(lex::REGION_PLACES.iter().map(|(region, _)| *region))
+            .chain(
+                lex::REGION_PLACES
+                    .iter()
+                    .flat_map(|(_, p)| p.iter().copied()),
+            )
+            .chain(core_lex::CITIES.iter().map(|(city, _)| *city))
+            .chain(
+                core_lex::COUNTRIES
+                    .iter()
+                    .filter(|(_, code)| *code != "DE")
+                    .map(|(name, _)| *name),
+            ),
+    )
 });
+
+/// Folded places to look for in a text: one pass over the words of a text finds the place
+/// it names first, where a search per place would read the text once for each of them.
+#[derive(Debug, Clone, Default)]
+struct Places {
+    /// The places that start with a letter or digit, by their first word, the longest first.
+    by_word: HashMap<String, Vec<String>>,
+    /// The places that start with another sign (a region written so), searched one by one.
+    others: Vec<String>,
+}
+
+impl Places {
+    fn new<S: AsRef<str>>(places: impl IntoIterator<Item = S>) -> Self {
+        let mut index = Places::default();
+        for place in places {
+            let place = place.as_ref();
+            if place.is_empty() {
+                continue;
+            }
+            match place.split(|c: char| !c.is_alphanumeric()).next() {
+                Some(word) if !word.is_empty() => index
+                    .by_word
+                    .entry(word.to_owned())
+                    .or_default()
+                    .push(place.to_owned()),
+                _ => index.others.push(place.to_owned()),
+            }
+        }
+        for list in index.by_word.values_mut() {
+            list.sort_by(|a, b| b.len().cmp(&a.len()).then_with(|| a.cmp(b)));
+            list.dedup();
+        }
+        index.others.sort();
+        index.others.dedup();
+        index
+    }
+
+    /// The place a folded text names first as a whole word (`München, Bayern` names
+    /// München), the longest of those that start there.
+    fn first_named(&self, folded: &str) -> Option<&str> {
+        let indexed = words_at(folded).find_map(|(start, word)| {
+            let places = self.by_word.get(word)?;
+            let place = places.iter().find(|p| whole_at(folded, start, p))?;
+            Some((start, place.as_str()))
+        });
+        self.others
+            .iter()
+            .filter_map(|place| first_whole(folded, place).map(|start| (start, place.as_str())))
+            .chain(indexed)
+            .min_by_key(|(start, place)| (*start, std::cmp::Reverse(place.len())))
+            .map(|(_, place)| place)
+    }
+}
+
+/// The words of a folded text (letters and digits) with their byte offsets.
+fn words_at(folded: &str) -> impl Iterator<Item = (usize, &str)> {
+    let mut start = None;
+    folded
+        .char_indices()
+        .chain(std::iter::once((folded.len(), ' ')))
+        .filter_map(move |(at, c)| match (c.is_alphanumeric(), start) {
+            (true, None) => {
+                start = Some(at);
+                None
+            }
+            (false, Some(from)) => {
+                start = None;
+                Some((from, &folded[from..at]))
+            }
+            _ => None,
+        })
+}
+
+/// Does `place` stand in the folded text at `start` as a whole word?
+fn whole_at(folded: &str, start: usize, place: &str) -> bool {
+    let end = start + place.len();
+    folded[start..].starts_with(place)
+        && folded[..start]
+            .chars()
+            .next_back()
+            .is_none_or(|c| !c.is_alphanumeric())
+        && folded[end..]
+            .chars()
+            .next()
+            .is_none_or(|c| !c.is_alphanumeric())
+}
+
+/// Where a folded text first names `place` as a whole word.
+fn first_whole(folded: &str, place: &str) -> Option<usize> {
+    let mut from = 0;
+    while let Some(at) = folded[from..].find(place) {
+        let start = from + at;
+        if whole_at(folded, start, place) {
+            return Some(start);
+        }
+        from = start + place.len();
+    }
+    None
+}
 
 /// German places (cities and states) for a region `Deutschland`.
 fn german_places() -> impl Iterator<Item = &'static str> {
@@ -203,15 +301,13 @@ impl Wishes {
                 key::REGIONS.to_owned(),
             ));
         }
-        let mut places: Vec<String> = wishes
-            .regions
-            .iter()
-            .flatten()
-            .flat_map(|r| expand(&fold(r)))
-            .collect();
-        places.sort();
-        places.dedup();
-        wishes.places = places;
+        wishes.places = Places::new(
+            wishes
+                .regions
+                .iter()
+                .flatten()
+                .flat_map(|r| expand(&fold(r))),
+        );
         wishes
     }
 
@@ -564,33 +660,6 @@ fn remote(wish: RemoteWish, share: Option<(u64, u64)>) -> WishResult {
     result(code, state, params, Vec::new())
 }
 
-/// The place of `places` a folded text names first (`München, Bayern` names München).
-fn first_named<'p>(folded: &str, places: impl Iterator<Item = &'p str>) -> Option<&'p str> {
-    places
-        .filter_map(|place| {
-            let mut from = 0;
-            while let Some(at) = folded[from..].find(place) {
-                let start = from + at;
-                let end = start + place.len();
-                let before = folded[..start]
-                    .chars()
-                    .next_back()
-                    .is_none_or(|c| !c.is_alphanumeric());
-                let after = folded[end..]
-                    .chars()
-                    .next()
-                    .is_none_or(|c| !c.is_alphanumeric());
-                if before && after {
-                    return Some((start, place));
-                }
-                from = end;
-            }
-            None
-        })
-        .min_by_key(|(start, place)| (*start, std::cmp::Reverse(place.len())))
-        .map(|(_, place)| place)
-}
-
 /// The first word of `text` whose folded form is `place` (else `place` itself).
 fn as_written(text: &str, place: &str) -> String {
     words(text)
@@ -598,7 +667,7 @@ fn as_written(text: &str, place: &str) -> String {
         .map_or_else(|| place.to_owned(), str::to_owned)
 }
 
-fn region(places: &[String], ad: &Ad<'_>, share: Option<(u64, u64)>) -> WishResult {
+fn region(places: &Places, ad: &Ad<'_>, share: Option<(u64, u64)>) -> WishResult {
     let code = ReasonCode::RegionWish;
     let from = share.map_or(0, |(from, _)| from);
     if from >= 100 {
@@ -620,13 +689,13 @@ fn region(places: &[String], ad: &Ad<'_>, share: Option<(u64, u64)>) -> WishResu
     }
     let spans = |range: &Option<Range<usize>>| range.clone().into_iter().collect::<Vec<_>>();
     for (folded, range, written) in &sources {
-        if let Some(place) = first_named(folded, places.iter().map(String::as_str)) {
+        if let Some(place) = places.first_named(folded) {
             let params = json!({ "location": as_written(written, place), "remote": false });
             return result(code, State::Met, params, spans(range));
         }
     }
     for (folded, range, written) in &sources {
-        if let Some(place) = first_named(folded, KNOWN_PLACES.iter().copied()) {
+        if let Some(place) = KNOWN_PLACES.first_named(folded) {
             let state = if from >= REGION_REMOTE_NEAR {
                 State::Near
             } else {
@@ -737,12 +806,25 @@ mod tests {
 
     #[test]
     fn places_in_the_order_the_text_names_them() {
-        let places = ["bayern", "munchen"];
+        let places = Places::new(["bayern", "munchen", "frankfurt", "frankfurt am main"]);
         assert_eq!(
-            first_named("munchen, bayern, deutschland", places.iter().copied()),
+            places.first_named("munchen, bayern, deutschland"),
             Some("munchen")
         );
-        assert_eq!(first_named("munchenstein", places.iter().copied()), None);
+        assert_eq!(places.first_named("munchenstein, bayern"), Some("bayern"));
+        assert_eq!(places.first_named("munchenstein"), None);
+        assert_eq!(
+            places.first_named("in frankfurt am main"),
+            Some("frankfurt am main")
+        );
+        assert_eq!(places.first_named("frankfurt am mainz"), Some("frankfurt"));
+        let signs = Places::new(["(berlin)", "berlin"]);
+        assert_eq!(signs.first_named("x (berlin) berlin"), Some("(berlin)"));
+        assert_eq!(signs.first_named("x(berlin) berlin"), Some("berlin"));
+        assert_eq!(
+            Places::new(["baden-baden"]).first_named("nach baden-baden"),
+            Some("baden-baden")
+        );
         assert_eq!(as_written("München, Bayern", "munchen"), "München");
         assert!(expand("bayern").contains(&"nurnberg".to_owned()));
         let germany = expand("deutschland");
