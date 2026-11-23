@@ -5,9 +5,11 @@
 use jiff::civil::Date;
 use serde_json::{Map, Value};
 
+use super::rubric::Number;
 use super::{Labels, Requirement, Wording, Words, flag, grouped, int, list_param, text_param};
 use crate::matching::{CriterionKey, CriterionStatus, Part, PartCode, ReasonCode, Via};
 use crate::model::{Band, HIGH_FROM, MID_FROM};
+use crate::profile::LanguageLevel;
 use crate::view::WorkMode;
 
 pub(super) struct German;
@@ -798,6 +800,46 @@ impl Wording for German {
         };
         format!("{what} ({}): {evidence}", kind.join(", "))
     }
+
+    fn number(&self, number: Number) -> String {
+        match number {
+            Number::Plain(n) => n.to_string(),
+            Number::Count(n) => usize::try_from(n)
+                .ok()
+                .and_then(|i| COUNT_WORDS.get(i))
+                .map_or_else(|| n.to_string(), |word| (*word).to_owned()),
+            Number::Share(per_mille) => decimal(per_mille, 1000),
+            Number::Percent(per_mille) => format!("{} %", decimal(per_mille, 10)),
+            Number::Language(level) => match level {
+                Some(LanguageLevel::A1) => "A1",
+                Some(LanguageLevel::A2) => "A2",
+                Some(LanguageLevel::B1) => "B1",
+                Some(LanguageLevel::B2) => "B2",
+                Some(LanguageLevel::C1) => "C1",
+                Some(LanguageLevel::C2) => "C2",
+                Some(LanguageLevel::Native) | None => "Muttersprache",
+            }
+            .to_owned(),
+        }
+    }
+}
+
+/// How many as a word in a sentence, up to twelve; above, digits.
+const COUNT_WORDS: [&str; 13] = [
+    "null", "eins", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn",
+    "elf", "zwölf",
+];
+
+/// `value / scale` with a decimal comma and no trailing zeros: `decimal(700, 1000)` is `0,7`,
+/// `decimal(955, 10)` is `95,5`.
+fn decimal(value: u64, scale: u64) -> String {
+    let (whole, rest) = (value / scale, value % scale);
+    if rest == 0 {
+        return whole.to_string();
+    }
+    let width = scale.to_string().len() - 1;
+    let digits = format!("{rest:0width$}");
+    format!("{whole},{}", digits.trim_end_matches('0'))
 }
 
 /// "ab sofort" stays, a date reads "ab 01.11.2026".

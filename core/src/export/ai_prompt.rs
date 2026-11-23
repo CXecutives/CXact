@@ -15,7 +15,7 @@
 //!    entry behind them, the points to check, target role and wishes,
 //! 5. the method (the rules for requirements and for the hard criteria),
 //! 6. the one scoring rubric of the app (`ai_rubric.de.md`, on the app's scale of 0 to 100,
-//!    its band limits filled in from [`crate::model`]),
+//!    its numbers filled in from the engine's parameters and the bands, [`rubric`]),
 //! 7. a fixed answer format of six blocks for a consultant who decides whether to apply.
 //!
 //! Its text is content for the assistant, not interface prose: the German words ([`de`]) are
@@ -23,6 +23,7 @@
 //! code reaches the text: every reason is said in words (an exhaustive `match`).
 
 mod de;
+mod rubric;
 #[cfg(test)]
 mod tests;
 
@@ -36,7 +37,7 @@ use crate::matching::{
     Assessment, CriterionInfo, CriterionKey, CriterionState, CriterionStatus, Part, Reason,
     ReasonCode, ReasonKind, Verdict, Via, Weight,
 };
-use crate::model::{Band, HIGH_FROM, MID_FROM, band};
+use crate::model::{Band, band};
 use crate::pipeline::LocalMatcher;
 use crate::portal::Facts;
 use crate::profile::ProfileForm;
@@ -134,15 +135,10 @@ pub fn ai_prompt(profile: &ProfileForm, item: PromptJob<'_>, today: Date) -> Str
     finish(&blocks)
 }
 
-/// The rubric with the app's band limits filled in: the one source of both is
-/// [`crate::model`], the text only holds the placeholders `{HIGH_FROM}` and `{MID_FROM}`.
+/// The rubric with its numbers filled in from their one source ([`rubric`]): the text only
+/// holds placeholders.
 fn rubric(w: &dyn Wording) -> String {
-    w.words()
-        .rubric
-        .replace("{HIGH_FROM}", &HIGH_FROM.to_string())
-        .replace("{MID_FROM}", &MID_FROM.to_string())
-        .trim_end()
-        .to_owned()
+    rubric::fill(w).trim_end().to_owned()
 }
 
 /// The prompt's blocks, one blank line apart, with a final line break.
@@ -171,8 +167,8 @@ fn section(level: usize, heading: &str, body: &str) -> String {
 
 /// The fixed texts of the prompts.
 struct Words {
-    /// The scoring rubric with the placeholders `{HIGH_FROM}` and `{MID_FROM}` ([`rubric`]
-    /// fills them in).
+    /// The scoring rubric with a placeholder for each of its numbers ([`rubric::fill`] fills
+    /// them in).
     rubric: &'static str,
     task_heading: &'static str,
     intro: &'static str,
@@ -300,6 +296,8 @@ trait Wording: Sync {
     /// A reason in one sentence; `None` for requirements and terms (they are quoted).
     fn reason(&self, code: ReasonCode, params: &Map<String, Value>) -> Option<String>;
     fn requirement(&self, line: &Requirement<'_>) -> String;
+    /// A number of the rubric as the prose writes it.
+    fn number(&self, number: rubric::Number) -> String;
 }
 
 // ------------------------------------------------------------------------- the profile

@@ -383,18 +383,20 @@ a word that occurs nowhere stays out.
 
 The score is `content x frame factor`, then the lowest cap (`core/src/matching/scorer.rs`, its
 constants in `params.rs`, the rules in `core/src/export/ai_rubric.de.md`; `docs/MATCHING.md`
-"Passungsgrad (engine 25)"). Every change goes into three places at once: `scorer.rs`, the
-replay in `tools/scorer/train.py` (it refuses to fit while it differs from a dumped score) and
-the rubric's text, which the AI prompts quote.
+"Passungsgrad (engine 25)"). The rubric, which the AI prompts quote, holds its numbers only as
+placeholders filled from `params.rs` (`core/src/export/ai_prompt/rubric.rs`): a changed constant
+reaches it by itself, its words only where a test there ties them to the value. A new number
+of the rubric is a placeholder and a row of that table. The fitter
+(`core/examples/fit_partial.rs`) scores with the same arithmetic (`scorer::signal_score`) and
+refuses to fit while a dumped score differs.
 
 - **A weight** (`W_ROLE`, `W_CORE`, `W_MUSTS`, sum 100), the field or level values, the frame
   step (`FRAME_STEP`), the permanent factor or a cap: these are fixed by meaning, so the change
-  is a product decision. Change the constant and the rubric's number, then measure (below).
+  is a product decision. Change the constant, then measure (below).
 - **A part**: a signal for it in `signals.rs` (its range in `MAX`, its direction in `SIGN`,
   its name in `NAMES`; the dump writes it), its share in `scorer::shares` with a weight, its
   line in `explain::passung` (a `PartCode` with its params in `types.rs`, which the lines must
-  still add up to), the same in `train.py`, a test with an invented ad in `explain.rs` and the
-  rubric's list.
+  still add up to), a test with an invented ad in `explain.rs` and the rubric's list.
 - **A frame condition**: an aspect in `signals::frame_aspects` and `FRAME_CODES`; each
   condition worse than wished is one step.
 - **Refit** the free value (`PARTIAL`; `UNNAMED` follows the rubric's rule 8) after a change of the signals or the

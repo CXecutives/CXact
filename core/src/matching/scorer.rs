@@ -19,6 +19,10 @@
 //! place, start, duration, workload; what the ad does not state fits), a permanent role keeps
 //! `PERMANENT_FACTOR`; then the lowest cap holds, each with its reason. Integer arithmetic
 //! only; every line is whole points, so the lines add up to the score.
+//!
+//! [`ScoreParams`] holds the one value a fit may vary (`PARTIAL`): the engine scores with its
+//! default, the developer's fitter (`core/examples/fit_partial.rs`) with each value of its grid
+//! through [`signal_score`], the same arithmetic.
 
 use super::engine::Cap;
 use super::params::{
@@ -112,15 +116,35 @@ fn level_factor(level: u16) -> u64 {
     }
 }
 
+/// What a fit may vary of the Passungsgrad; everything else is fixed by meaning
+/// (`params.rs`). The default is the engine's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ScoreParams {
+    /// What a requirement met in part counts (per-mille), `PARTIAL`.
+    pub partial: u64,
+}
+
+impl ScoreParams {
+    /// The values the engine scores with.
+    pub const ENGINE: ScoreParams = ScoreParams { partial: PARTIAL };
+}
+
+impl Default for ScoreParams {
+    fn default() -> Self {
+        ScoreParams::ENGINE
+    }
+}
+
 /// The share (per-mille) of met, partly met and open requirements, counted as at least
 /// `units`, the unnamed ones at `fill`.
-fn share(met: u16, partial: u16, open: u16, units: u64, fill: u64) -> u64 {
+fn share(met: u16, partial: u16, open: u16, units: u64, fill: u64, p: ScoreParams) -> u64 {
     let n = u64::from(met) + u64::from(partial) + u64::from(open);
     let units = units.max(n);
     if units == 0 {
         return fill;
     }
-    (u64::from(met) * u64::from(E_FULL) + u64::from(partial) * PARTIAL + (units - n) * fill) / units
+    (u64::from(met) * u64::from(E_FULL) + u64::from(partial) * p.partial + (units - n) * fill)
+        / units
 }
 
 /// How the score of one job came about, in whole points: the content parts, the
@@ -159,20 +183,20 @@ fn taken(points: u8, keep: u64) -> u8 {
 }
 
 /// The three content shares (per-mille): role and field, core, other musts.
-fn shares(s: &Signals, class: FieldClass) -> [u64; 3] {
+fn shares(s: &Signals, class: FieldClass, p: ScoreParams) -> [u64; 3] {
     let role = class.value() * level_factor(s.get(Sig::Level)) / 1000;
     let (om, op, oo) = (
         s.get(Sig::OtherMet),
         s.get(Sig::OtherPartial),
         s.get(Sig::OtherOpen),
     );
-    let musts = share(om, op, oo, MUST_SATURATION, role * UNNAMED / 1000);
+    let musts = share(om, op, oo, MUST_SATURATION, role * UNNAMED / 1000, p);
     // The core points the ad does not name count as role and field and the named other musts
     // on average; without other musts as role and field.
     let fill = if om + op + oo == 0 {
         role
     } else {
-        u64::midpoint(role, share(om, op, oo, 0, 0))
+        u64::midpoint(role, share(om, op, oo, 0, 0, p))
     };
     let core = share(
         s.get(Sig::CoreMet),
@@ -180,14 +204,19 @@ fn shares(s: &Signals, class: FieldClass) -> [u64; 3] {
         s.get(Sig::CoreOpen),
         CORE_SATURATION,
         fill,
+        p,
     );
     [role, core, musts]
 }
 
 /// The Passungsgrad of one job from its signals.
 pub(crate) fn percent(s: &Signals) -> Percent {
+    percent_with(s, ScoreParams::ENGINE)
+}
+
+fn percent_with(s: &Signals, p: ScoreParams) -> Percent {
     let class = class(s);
-    let shares = shares(s, class);
+    let shares = shares(s, class, p);
     let mut points = [0u8; 3];
     for (i, (w, sh)) in WEIGHTS.iter().zip(shares).enumerate() {
         points[i] = point(div_round_half_even(w * sh, 1000));
@@ -201,7 +230,7 @@ pub(crate) fn percent(s: &Signals) -> Percent {
     let nice_share = if nm + np + no == 0 {
         0
     } else {
-        share(nm, np, no, 0, 0)
+        share(nm, np, no, 0, 0, p)
     };
     let nice = point(div_round_half_even(NICE_MAX * nice_share, 1000)).min(100 - parts);
     let content = parts + nice;
@@ -242,22 +271,26 @@ pub(crate) fn percent(s: &Signals) -> Percent {
 }
 
 /// The core of the role clearly open: a must on it open and less than half of the core met.
-pub(crate) fn core_open(s: &Signals) -> bool {
+fn core_open(s: &Signals, p: ScoreParams) -> bool {
     let (met, partial, open) = (
         s.get(Sig::CoreMet),
         s.get(Sig::CorePartial),
         s.get(Sig::CoreOpen),
     );
-    open >= 1 && 2 * share(met, partial, open, 0, 0) < u64::from(E_FULL)
+    open >= 1 && 2 * share(met, partial, open, 0, 0, p) < u64::from(E_FULL)
 }
 
 /// Every cap the signals give, with the highest score it allows: an open formal must, the core
 /// of the role clearly open, a foreign field, a junior role for a senior profile, two or more
 /// levels below the target roles.
 pub(crate) fn caps(s: &Signals) -> Vec<Cap> {
+    caps_with(s, ScoreParams::ENGINE)
+}
+
+fn caps_with(s: &Signals, p: ScoreParams) -> Vec<Cap> {
     [
         (s.get(Sig::FormalOpen) == 1).then_some((FORMAL_CAP, CapCode::Formal)),
-        core_open(s).then_some((CORE_OPEN_CAP, CapCode::CoreOpen)),
+        core_open(s, p).then_some((CORE_OPEN_CAP, CapCode::CoreOpen)),
         (class(s) == FieldClass::Foreign).then_some((OFF_FIELD_CAP, CapCode::OffField)),
         (s.get(Sig::Junior) == 1).then_some((JUNIOR_CAP, CapCode::Junior)),
         (s.get(Sig::Level) == 4).then_some((LEVEL_CAP, CapCode::Level)),
@@ -265,6 +298,17 @@ pub(crate) fn caps(s: &Signals) -> Vec<Cap> {
     .into_iter()
     .flatten()
     .collect()
+}
+
+/// The score of a scorable job (its total under the lowest cap) and its rank (`fine`) from
+/// its signals with the values `p`, as the engine gives them with [`ScoreParams::ENGINE`].
+pub fn signal_score(s: &Signals, p: ScoreParams) -> (u8, u16) {
+    let percent = percent_with(s, p);
+    let score = caps_with(s, p)
+        .iter()
+        .map(|c| c.0)
+        .fold(percent.total, u8::min);
+    (score, percent.fine)
 }
 
 #[cfg(test)]
@@ -324,6 +368,40 @@ mod tests {
     fn score(s: &Signals) -> u8 {
         let p = percent(s);
         caps(s).iter().map(|c| c.0).fold(p.total, u8::min)
+    }
+
+    /// The fitter's score is the engine's: with the engine's values `signal_score` gives the
+    /// total under the lowest cap and the rank, wherever the job stands.
+    #[test]
+    fn the_signal_score_is_the_engines() {
+        for s in starts() {
+            let engine = (score(&s), percent(&s).fine);
+            assert_eq!(signal_score(&s, ScoreParams::default()), engine, "{s:?}");
+        }
+    }
+
+    /// `PARTIAL` is what a requirement met in part counts: more of it never lowers a score or
+    /// a rank, and at 1000 met in part is met.
+    #[test]
+    fn a_fit_varies_what_met_in_part_counts() {
+        for s in starts() {
+            let mut last = (0, 0);
+            for partial in (0..=1000).step_by(100) {
+                let now = signal_score(&s, ScoreParams { partial });
+                assert!(now.0 >= last.0 && now.1 >= last.1, "{partial}: {s:?}");
+                last = now;
+            }
+        }
+        let partly = sig(&[
+            (Sig::Role, 2),
+            (Sig::CoreMet, 1),
+            (Sig::CorePartial, 2),
+            (Sig::OtherPartial, 3),
+        ]);
+        let met = sig(&[(Sig::Role, 2), (Sig::CoreMet, 3), (Sig::OtherMet, 3)]);
+        let full = ScoreParams { partial: 1000 };
+        assert_eq!(signal_score(&partly, full), signal_score(&met, full));
+        assert!(signal_score(&partly, ScoreParams::ENGINE).1 < signal_score(&partly, full).1);
     }
 
     /// The weights are fixed by meaning: the role and its core decide, the rest of the list

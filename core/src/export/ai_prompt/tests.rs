@@ -10,7 +10,7 @@ use super::*;
 use crate::matching::{
     Evidence, EvidenceLevel, Highlight, KeyFacts, PartCode, Summary, compile_profile,
 };
-use crate::model::{Place, Posting};
+use crate::model::{HIGH_FROM, MID_FROM, Place, Posting};
 use crate::portal::{JobKey, Portal, job_link};
 use crate::store::MailRef;
 
@@ -573,14 +573,19 @@ fn the_prompt_names_cxact() {
     );
 }
 
-/// The rubric holds the scale of 0 to 100 and only the app's band limits as placeholders,
-/// which the prompt fills in from the one source, [`crate::model`].
+/// The rubric holds the scale of 0 to 100 and its numbers only as placeholders, which the
+/// prompt fills in from their one source: the app's bands ([`crate::model`]) and the engine's
+/// parameters (`matching::params`).
 #[test]
-fn the_rubric_is_filled_with_the_limits_of_the_app() {
+fn the_rubric_is_filled_with_the_numbers_of_the_app() {
+    use crate::matching::params::{
+        CORE_OPEN_CAP, FRAME_STEP, JUNIOR_CAP, PARTIAL, PERMANENT_FACTOR, SENIOR_YEARS, UNNAMED,
+        W_CORE, W_MUSTS, W_ROLE,
+    };
     let view = view();
     let de = prompt_of(&profile(), item(&view, Some(AD), None));
     let raw = de_words().rubric;
-    assert!(raw.contains("{HIGH_FROM}") && raw.contains("{MID_FROM}"));
+    assert!(raw.contains("{HIGH_FROM}") && raw.contains("{PARTIAL}"));
     let filled = rubric(&de::German);
     assert!(de.contains(&filled), "the rubric whole");
     assert!(
@@ -588,20 +593,27 @@ fn the_rubric_is_filled_with_the_limits_of_the_app() {
         "a placeholder is left:\n{filled}"
     );
     let flat = filled.split_whitespace().collect::<Vec<_>>().join(" ");
-    assert!(flat.contains(&format!(
-        "Ab {HIGH_FROM} Punkten ist die Übereinstimmung hoch, ab {MID_FROM} mittel, darunter gering."
-    )));
+    for part in [
+        format!(
+            "Ab {HIGH_FROM} Punkten ist die Übereinstimmung hoch, ab {MID_FROM} mittel, darunter gering."
+        ),
+        format!("Rolle und Fach ({W_ROLE})"),
+        format!("Kern der Rolle ({W_CORE})"),
+        format!("Weitere Muss-Punkte ({W_MUSTS})"),
+        format!("zählt zu {} % wie Rolle und Fach", UNNAMED / 10),
+        format!("(CXact rechnet {} %)", PARTIAL / 10),
+        format!("kostet {} % der Zahl", (1000 - FRAME_STEP) / 10),
+        format!("(CXact rechnet sie mit {} %)", PERMANENT_FACTOR / 10),
+        format!("Der Kern der Rolle ist klar offen: höchstens {CORE_OPEN_CAP}"),
+        format!("bei mindestens {SENIOR_YEARS} Jahren Berufserfahrung: höchstens {JUNIOR_CAP}"),
+    ] {
+        assert!(flat.contains(&part), "{part}");
+    }
     for part in [
         "- 90 bis 100 alles Wesentliche passt",
         "- unter 25 passt nicht",
-        "Rolle und Fach (40)",
-        "Kern der Rolle (40)",
-        "Weitere Muss-Punkte (20)",
-        "kostet 5 % der Zahl",
         "offene kosten nichts",
-        "(CXact rechnet sie mit 90 %)",
         "(tagessatz_wunsch, arbeitsmodell und regionen)",
-        "Der Kern der Rolle ist klar offen: höchstens 49",
         "Was eine Anzeige nicht oder nur vage sagt, kostet nichts",
     ] {
         assert!(flat.contains(part), "{part}");

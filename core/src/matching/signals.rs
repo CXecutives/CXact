@@ -2,7 +2,7 @@
 //! small integers in fixed ranges. They are the inputs of the Passungsgrad (`scorer.rs`):
 //! the role and the field, the level, the musts on the core of the role and the others as
 //! met, met in part and open, the frame, the nice-to-haves and the facts behind the caps.
-//! The private fitter (`tools/scorer/train.py`) replays the scorer from them.
+//! The PARTIAL fitter (`core/examples/fit_partial.rs`) runs the scorer on dumps of them.
 //!
 //! Every signal has a direction ([`SIGN`]): +1 when more of it may only raise the score, -1
 //! when it may only lower it, 0 when it may do either. Integer arithmetic only; the same

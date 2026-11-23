@@ -6,7 +6,7 @@ file: name, lines, purpose (the first sentence of its header comment), main publ
 (Rust `pub`, TS exports, Svelte props; `+n` more). The notes under the headings come from
 docs/ARCHITECTURE.md "Layers".
 
-511 files, 14 of them without a header comment ("(no header)").
+512 files, 14 of them without a header comment ("(no header)").
 
 ## Where a change goes
 
@@ -43,6 +43,7 @@ everything the app knows and does, without UI and without…
 - cv_compare.rs 71 · One paid call of the CV worker, read and sent exactly as…
 - dump_alerts.rs 69 · Save alert mails as local test data:
 - export_gold.rs 365 · Export the app's fetched job texts as the private gold set:
+- fit_partial.rs 367 · Fits the free value of the Passungsgrad on teacher labels…
 - live_search.rs 329 · A real search of the sources the app searches itself, run…
 - match_eval.rs 374 · Evaluate the engine against the blind labels of the…
 - vocab_gaps.rs 30 · The gap finder: which words of the ads' requirements and…
@@ -72,7 +73,7 @@ everything the app knows and does, without UI and without…
 
 ### core/src/export
 writes the AI prompts, the generated colours of the window…
-- ai_prompt.rs 947 · The prompt for any AI chat the user likes: a deep analysis… · PromptJob, PromptSource, ai_prompt, MAX_PROFILE_CHARS +1
+- ai_prompt.rs 945 · The prompt for any AI chat the user likes: a deep analysis… · PromptJob, PromptSource, ai_prompt, MAX_PROFILE_CHARS +1
 - colour.rs 43 · A colour of the app's tokens, as the generated… · Colour
 - generated.rs 66 · Files the tests generate from the code, one rule for all… · regen, stale, write, REGEN
 - mod.rs 159 · The AI prompts, the generated colours of the window and… · PromptJob, PromptSource, ai_prompt, write_atomic +5
@@ -80,8 +81,9 @@ writes the AI prompts, the generated colours of the window…
 - personal.rs 224 · The one contact-data filter for everything that sends the… · scrub_profile, scrub_text
 
 ### core/src/export/ai_prompt
-- de.rs 860 · The German prompts: external contract - do not translate.
-- tests.rs 1352 · Tests of the AI prompts: every section of the prompt, the…
+- de.rs 902 · The German prompts: external contract - do not translate.
+- rubric.rs 181 · The numbers of the rubric: the text names each one only as…
+- tests.rs 1364 · Tests of the AI prompts: every section of the prompt, the…
 
 ### core/src/fetch
 fetches pages through the policy (queue, HTTP, health)
@@ -123,7 +125,7 @@ is the pure integer engine
 - gaps.rs 193 · The gap finder's view of a job: the words of its… · Gap, JobGaps, vocabulary_gaps
 - layout.rs 116 · The layout of an ad's text for the reader: the lines that… · TextLayout, text_layout
 - limits.rs 573 · The limits of an engagement the profile sets, checked and… · Workload, read, workload, workload_fits +4
-- mod.rs 467 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +19
+- mod.rs 468 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +21
 - normalize.rs 370 · Text primitives with Python semantics: case folding,… · is_space, is_word, decimal, digit_class_body +10
 - params.rs 142 · Frozen parameters of the engine. · E_FULL, E_HALF, E_NONE, W_MUST +57
 - permanent.rs 496 · The rule for permanent roles: the minimum annual salary. · Salary, with_bonus, parse_salary, salary +3
@@ -133,7 +135,7 @@ is the pure integer engine
 - requirements.rs 52 · Vocabulary terms of a job text, independent of the profile. · extract_job_skills
 - roles.rs 442 · Target roles: job titles the consultant wants. · Role, read, RoleFit, title_core +2
 - score.rs 27 · Integer rounding of the scores. · div_round_half_even
-- scorer.rs 527 · The Passungsgrad: `score = content x frame factor`, then… · FieldClass, class, Percent, percent +3
+- scorer.rs 605 · The Passungsgrad: `score = content x frame factor`, then… · FieldClass, class, ScoreParams, Percent +4
 - sections.rs 223 · Lines, headings and requirement cues of a job text. · ReqKind, is_bullet, norm_heading, section_kind +4
 - seniority.rs 246 · The level of an ad against the profile's own years of… · experience_years, junior_title, entry_level_must, page_junior_level +1
 - signals.rs 666 · The signals of a job: what the engine read of one ad… · N, Sig, Signals, signals +14
@@ -310,7 +312,7 @@ shape what the UI sees.
 - matching_wishes.rs 450 · The target roles and wishes of the profile, one test per…
 - notices.rs 124 · `src-tauri/resources/THIRD-PARTY.txt` must match the…
 - palette.rs 270 · `ui/src/styles/tokens.css` is the one place a colour of…
-- rubric.rs 95 · The scoring rubric of the AI prompts:…
+- rubric.rs 100 · The scoring rubric of the AI prompts:…
 - rust_texts.rs 222 · The texts on the Rust side follow the rules of the…
 - time_zone.rs 30 · The zone of everything the user sees is process-wide:…
 - ui_contract.rs 1780 · Architecture rules of the UI.
@@ -563,9 +565,6 @@ beside the app.
 
 ### tools/esco
 - build.py 546 · ESCO vocabulary of the matching engine:…
-
-### tools/scorer
-- train.py 326 · Fits the free value of the Passungsgrad on teacher labels…
 
 ### tools/ui-harness
 - playwright.config.ts 81 · UI harness: the harness build served by `vite preview`… · default
