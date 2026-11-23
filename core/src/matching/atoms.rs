@@ -523,13 +523,23 @@ fn read_atoms(text: &str, vocab: &Vocab) -> Vec<String> {
             continue;
         }
         if let Some(t) = kept(&raw[i]) {
-            // Hyphenated words that form a known concept count as that concept.
+            // Hyphenated words that form a known concept count as that concept; after generic
+            // words the concept keeps them as its modifier (`IT-Projekt-Management` reads as
+            // `IT-Projektmanagement`).
             let spaced: Vec<String> = if t.contains('-') {
                 t.split('-').map(stem).collect()
             } else {
                 Vec::new()
             };
-            if spaced.len() > 1
+            let modified = (1..spaced.len().saturating_sub(1)).find_map(|at| {
+                let (n, concept) = vocab.concept_at(&spaced, at)?;
+                let ends = n > 1 && at + n == spaced.len();
+                (ends && spaced[..at].iter().all(|p| is_generic(p)))
+                    .then(|| format!("{}-{concept}", spaced[..at].join("-")))
+            });
+            if let Some(atom) = modified {
+                pieces.push((atom, true));
+            } else if spaced.len() > 1
                 && vocab
                     .concept_at(&spaced, 0)
                     .is_some_and(|(n, _)| n == spaced.len())

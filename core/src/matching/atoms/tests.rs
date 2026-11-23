@@ -360,3 +360,26 @@ fn tables_are_sorted_and_folded() {
         }
     }
 }
+
+/// A hyphenated word that ends in a known concept after generic words reads as the concept
+/// with them as its modifier (the wording of a real ad); a word that goes on after the
+/// concept, or starts with a word of its own, is another word.
+#[test]
+fn a_hyphenated_word_ends_in_a_concept() {
+    let v = Vocab::core();
+    assert_eq!(
+        atoms("IT-Projekt-Management", &v),
+        atoms("IT-Projektmanagement", &v)
+    );
+    let line = "Mindestens 8 Jahre Berufserfahrung im IT-Projekt-/Service-Management";
+    assert!(atoms(line, &v).contains(&"it-projektmanagement".to_owned()));
+    assert_eq!(*atoms("Projekt-Management", &v), ["projektmanagement"]);
+    assert_eq!(
+        *atoms("Projekt-Management-Office", &v),
+        ["projekt-management-offic"]
+    );
+    assert_eq!(
+        *atoms("Scrum-Projekt-Management", &v),
+        ["scrum-projekt-management"]
+    );
+}
