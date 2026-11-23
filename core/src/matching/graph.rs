@@ -239,3 +239,71 @@ impl Known {
             .get_or_init(|| self.atoms.iter().any(|p| fit(p, job) != Fit::None))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::matching::atoms::{Vocab, atoms};
+
+    /// Every relation in the tables, umbrella or node first.
+    fn relations() -> impl Iterator<Item = (&'static str, &'static str)> {
+        let tables = DOMAINS
+            .iter()
+            .flat_map(|d| d.covers.iter().chain(d.near))
+            .chain(lex::CORE_COVERS)
+            .chain(lex::CORE_NEAR);
+        tables.flat_map(|(a, bs)| bs.iter().map(move |b| (*a, *b)))
+    }
+
+    /// Every node is what the engine reads for its own word: a typo or a word the vocabulary
+    /// reads otherwise would be a node no ad ever names. A node the vocabulary reads as another
+    /// concept (`Programmleitung`) stands for its compounds (`Programmleitungserfahrung`).
+    #[test]
+    fn every_node_is_an_atom() {
+        let vocab = Vocab::all();
+        for (a, b) in relations() {
+            for node in [a, b] {
+                let read = atoms(node, &vocab);
+                assert!(
+                    *read == [stem(node)] || (node.len() >= COMPOUND_NODE && read.len() == 1),
+                    "{node}: {read:?}"
+                );
+            }
+        }
+    }
+
+    /// No umbrella covers itself, through a chain neither; no node relates to itself.
+    #[test]
+    fn the_graph_has_no_cycles() {
+        for (a, b) in relations() {
+            assert_ne!(stem(a), stem(b), "{a}");
+        }
+        for (node, others) in EDGES.iter() {
+            let up = others.iter().filter(|(_, e)| *e == Fit::General);
+            let down = others.iter().filter(|(_, e)| *e == Fit::Covered);
+            for (o, _) in down {
+                assert!(
+                    !up.clone().any(|(u, _)| u == o),
+                    "{node} covers and is covered by {o}"
+                );
+            }
+        }
+    }
+
+    /// An umbrella asked for is met in full by narrower work, through a chain too; the
+    /// narrower work asked in half by the umbrella; near nodes in half both ways, also as the
+    /// start of a compound.
+    #[test]
+    fn edges_relate_umbrellas_and_near_nodes() {
+        let fits = |job: &str, profile: &str| fit(&stem(job), &stem(profile));
+        assert_eq!(fits("rechnungswesen", "jahresabschluss"), Fit::Covered);
+        assert_eq!(fits("jahresabschluss", "rechnungswesen"), Fit::General);
+        assert_eq!(fits("unternehmenssteuerung", "fp&a"), Fit::Covered);
+        assert_eq!(fits("projektleitung", "projektmanagement"), Fit::General);
+        assert_eq!(
+            fits("projektleitungskompetenz", "projektmanagement"),
+            Fit::General
+        );
+        assert_eq!(fits("rechnungswesen", "konsolidierung"), Fit::None);
+    }
+}
