@@ -132,6 +132,10 @@ pub(crate) const DOMAIN: Domain = Domain {
         // Bookkeeping.
         ("financial accounting", "finanzbuchhaltung"),
         ("accounting", "rechnungswesen"),
+        // An account of a customer is no accounting (as `sales` reads it).
+        ("key account", "key-account-management"),
+        ("account management", "kundenbetreuung"),
+        ("account manager", "kundenbetreuung"),
         ("ledger", "hauptbuchhaltung"),
         ("general ledger", "hauptbuchhaltung"),
         ("hauptbuch", "hauptbuchhaltung"),
@@ -179,19 +183,25 @@ pub(crate) const DOMAIN: Domain = Domain {
         ("shared service center", "shared-service-cent"),
     ],
     // Planning, analysis and the P&L are the work of controlling, controlling and planning
-    // steer the company, cash management is part of treasury, the statements part of
-    // accounting, the eliminations steps of a consolidation, integration and due diligence
-    // steps of M&A.
+    // steer the company, cash management is treasury's, the balance sheet, the closings and
+    // group accounting are accounting (bookkeeping and a consolidation alone are no proof:
+    // the held-out labels), the eliminations steps of a consolidation, due diligence a step
+    // of M&A.
     covers: &[
         (
             "controlling",
             &["finanzanalyse", "finanzplanung", "forecast", "fp&a", "guv"],
         ),
         ("konsolidierung", &["ic-eliminierung", "wahrungsumrechnung"]),
-        ("m&a", &["due-diligence", "post-merger-integration"]),
+        ("m&a", &["due-diligence"]),
         (
             "rechnungswesen",
-            &["jahresabschluss", "konzernrechnungslegung"],
+            &[
+                "bilanzierung",
+                "jahresabschluss",
+                "konzernrechnungslegung",
+                "monatsabschluss",
+            ],
         ),
         ("treasury", &["cash-management"]),
         (
@@ -199,19 +209,22 @@ pub(crate) const DOMAIN: Domain = Domain {
             &["controlling", "unternehmensplanung"],
         ),
     ],
-    // A finance business partner plans and analyses; liquidity planning manages cash.
+    // A finance business partner plans and analyses, liquidity planning manages cash, an
+    // integration follows a deal: close, no proof of the other. Liquidity planning is no
+    // proof of treasury (the held-out labels).
     near: &[
         ("cash-management", &["liquiditatsplanung"]),
         (
             "finance-bp",
             &["finanzanalyse", "finanzplanung", "fp&a", "guv"],
         ),
+        ("m&a", &["post-merger-integration"]),
     ],
 };
 
 #[cfg(test)]
 mod tests {
-    use super::super::testing::{assert_same, vocab};
+    use super::super::testing::{assert_same, full, vocab};
     use crate::matching::atoms::{Fit, Vocab, atoms};
     use crate::matching::graph::fit;
 
@@ -226,7 +239,8 @@ mod tests {
     }
 
     /// English group accounting reads as the German; the steps of a consolidation are met
-    /// in half by it, and it by them.
+    /// in half by it, it in full by a step; M&A in full by a due diligence, in half by an
+    /// integration after the deal.
     #[test]
     fn group_accounting_and_the_steps_of_a_consolidation() {
         let v = finance();
@@ -242,28 +256,69 @@ mod tests {
             ],
         );
         let one = |text: &str| atoms(text, &v).last().cloned().expect("one atom");
-        for (step, part) in [
+        for (step, part, met) in [
             (
                 "Fundierte Erfahrung mit M&A-Prozessen",
                 "Post Merger Integration",
+                Fit::General,
             ),
             (
                 "Fundierte Erfahrung mit M&A-Prozessen",
                 "Financial Due Diligence",
+                Fit::Covered,
             ),
-            ("kaufmännische Unternehmenssteuerung", "Unternehmensplanung"),
+            (
+                "kaufmännische Unternehmenssteuerung",
+                "Unternehmensplanung",
+                Fit::Covered,
+            ),
         ] {
             let job = atoms(step, &v);
             let profile = one(part);
             assert!(
-                job.iter().any(|j| fit(j, &profile) == Fit::General),
+                job.iter().any(|j| fit(j, &profile) == met),
                 "{step} / {part}: {job:?} {profile:?}"
             );
         }
         let consolidation = one("Konsolidierung");
         for step in ["intercompany eliminations", "currency translation"] {
             assert_eq!(fit(&one(step), &consolidation), Fit::General, "{step}");
-            assert_eq!(fit(&consolidation, &one(step)), Fit::General, "{step}");
+            assert_eq!(fit(&consolidation, &one(step)), Fit::Covered, "{step}");
         }
+    }
+
+    /// Accounting asked for is met by its narrower work, an umbrella through a chain too
+    /// (steering the company covers controlling, controlling FP&A); the narrower work asked is
+    /// met in half by accounting.
+    #[test]
+    fn accounting_is_met_by_its_narrower_work() {
+        let v = finance();
+        for (job, profile) in [
+            (
+                "Fundierte Expertise im Finanz- und Rechnungswesen",
+                "Bilanzierung nach HGB",
+            ),
+            (
+                "Erfahrung im Rechnungswesen",
+                "Konzernrechnungslegung nach IFRS",
+            ),
+            ("kaufmännische Unternehmenssteuerung", "FP&A"),
+            ("Fundierte Kenntnisse in Accounting", "Monatsabschlüsse"),
+            ("Erfahrung im Treasury", "Cash Management"),
+        ] {
+            assert!(full(&v, job, profile), "{job} / {profile}");
+            assert!(!full(&v, profile, job), "{profile} / {job}");
+        }
+        let one = |text: &str| atoms(text, &v).last().cloned().expect("one atom");
+        assert_eq!(
+            fit(&one("Bilanzierung"), &one("Rechnungswesen")),
+            Fit::General
+        );
+        // A key account is no accounting.
+        assert!(!full(
+            &v,
+            "Erfahrung im Key Account Management",
+            "Konsolidierung"
+        ));
     }
 }

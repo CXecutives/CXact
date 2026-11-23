@@ -786,6 +786,9 @@ pub(crate) enum Fit {
     None,
     /// The job atom narrows the profile atom (`Finanzcontrolling` vs `Controlling`).
     General,
+    /// The profile atom is narrower work the job atom covers (`Jahresabschluss` for
+    /// `Rechnungswesen`, `graph`): it meets a requirement, but the ad does not name it.
+    Covered,
     /// The profile atom narrows the job atom (`SAP-Projektleitung` vs `Projektleitung`).
     Specific,
     /// Same skill, also through a light compound part (`Konzernkonsolidierung`).

@@ -300,8 +300,8 @@ mod tests {
         );
     }
 
-    /// An HR transformation meets the harmonisation of HR processes in half, and the
-    /// harmonisation the transformation.
+    /// An HR transformation meets the harmonisation of HR processes in half, the
+    /// harmonisation the transformation in full.
     #[test]
     fn harmonising_hr_processes_is_part_of_a_transformation() {
         use crate::matching::atoms::{Fit, atoms};
@@ -318,7 +318,7 @@ mod tests {
         let transformation = one("HR-Transformation");
         let harmonising = one("HR-Prozessharmonisierung");
         assert_eq!(fit(&harmonising, &transformation), Fit::General);
-        assert_eq!(fit(&transformation, &harmonising), Fit::General);
+        assert_eq!(fit(&transformation, &harmonising), Fit::Covered);
     }
 
     /// Broad companion words never count alone; the field name `HR` heads job titles and

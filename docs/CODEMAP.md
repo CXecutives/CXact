@@ -113,7 +113,7 @@ reads the alert mails (IMAP)
 is the pure integer engine
 - ad_facts.rs 631 · The key facts of an ad, each with the passage that states… · Stated, Duration, AdFacts, read +4
 - application.rs 498 · How to apply to an ad: the application deadline it names… · Contact, deadline, contact
-- atoms.rs 910 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +11
+- atoms.rs 913 · Skill atoms of the engine: case-folded, umlauts folded,… · fold, Vocab, is_filler, raw_tokens +11
 - contract.rs 399 · Contract type of an ad: interim, permanent, temporary… · ContractKind, Contract, student_role, infer
 - engine.rs 756 · The engine: requirements read from the job, each item… · EngineProfile, Scored, Evaluation, Cap +3
 - exclusion.rs 614 · Exclusion words of the profile: a word excludes the ad… · check
@@ -121,7 +121,7 @@ is the pure integer engine
 - facts.rs 1274 · Hard criteria of the engine, structured facts first. · Availability, HardCriteria, country_code, Finding +20
 - fit.rs 996 · The profile the engine matches against, and the match… · Entry, Broad, Skills, degree_fields_in +9
 - gaps.rs 193 · The gap finder's view of a job: the words of its… · Gap, JobGaps, vocabulary_gaps
-- graph.rs 194 · The engine's knowledge graph: how the atoms of an ad… · fit, packs, other_field, Known +1
+- graph.rs 195 · The engine's knowledge graph: how the atoms of an ad… · fit, packs, other_field, Known +1
 - layout.rs 116 · The layout of an ad's text for the reader: the lines that… · TextLayout, text_layout
 - limits.rs 573 · The limits of an engagement the profile sets, checked and… · Workload, read, workload, workload_fits +4
 - mod.rs 466 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +19
@@ -183,7 +183,7 @@ is the pure integer engine
 - customer_service.rs 600 · Customer service and customer experience: customer service… · DOMAIN
 - data.rs 219 · Data and business intelligence: BI tools, SQL, data… · DOMAIN
 - energy.rs 127 · Energy industry: grids and their regulation, metering and… · DOMAIN
-- finance.rs 269 · Finance, controlling, accounting, treasury, restructuring… · DOMAIN
+- finance.rs 323 · Finance, controlling, accounting, treasury, restructuring… · DOMAIN
 - hr.rs 334 · Human resources: HR leadership and transformation, labour… · DOMAIN
 - it_project.rs 55 · IT projects and PMO: delivery, testing, data and… · DOMAIN
 - it_service.rs 181 · IT service management: ITIL and ITSM, service desk and IT… · DOMAIN
@@ -205,7 +205,7 @@ is the pure integer engine
 - contract.rs 356 · Contract kinds: agency work (ANUE), interim and permanent. · CONTRACT_DENIED, ANUE_WORDS, ANUE_PARTS, ANUE_HIDDEN +20
 - cues.rs 255 · Nice and must cues, separators, examples, lead verbs and… · SOFT_ALONE, PRONOUN_STARTS, DESCRIPTION_STARTS, MANDATORY_WORDS +17
 - exclusion.rs 259 · Exclusion roles, mentions and denials. · EXCLUSION_WORD_FAMILIES, EXCLUSION_ROLE_WORDS, EXCLUSION_ROLE_ENDINGS, EXCLUSION_ROLE_HEADS +14
-- graph.rs 49 · Relations of the knowledge graph for every profile:… · CORE_COVERS, CORE_NEAR, METHODS
+- graph.rs 47 · Relations of the knowledge graph for every profile:… · CORE_COVERS, CORE_NEAR, METHODS
 - level.rs 127 · Seniority and role levels. · ROLE_BRINGS, ENTRY_LEVEL_VALUES, LOW_LEVEL_VALUES, ENTRY_LEVEL_MUSTS +2
 - mod.rs 34 · Word lists of the engine, split by topic.
 - morphology.rs 67 · Word endings, linkers, adjective stems and particles. · WORD_ENDINGS, LINKERS, ADJECTIVE_ENDINGS, DECLINED_ENDINGS +7

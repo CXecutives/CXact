@@ -531,7 +531,7 @@ mod tests {
     }
 
     /// A profile that names the field meets its narrower work in half, the narrower work
-    /// the field in half, never a word of another field.
+    /// the field in full, never a word of another field.
     #[test]
     fn the_field_meets_its_narrower_work_in_half() {
         let v = vocab(&["Kundenservice", "Contact Center Management", "Zendesk"]);
@@ -546,7 +546,7 @@ mod tests {
         ] {
             assert_eq!(fit(&one(job), &profile), Fit::General, "{job}");
         }
-        assert_eq!(fit(&profile, &one("Beschwerdemanagement")), Fit::General);
+        assert_eq!(fit(&profile, &one("Beschwerdemanagement")), Fit::Covered);
         assert_eq!(fit(&one("Projektcontrolling"), &profile), Fit::None);
     }
 

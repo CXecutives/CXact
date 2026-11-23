@@ -6,8 +6,9 @@
 
 /// Umbrella concepts and the narrower concepts they cover (stemmed when the graph is built):
 /// an ad asking for the umbrella is met by a profile naming a narrower one, the narrower one
-/// asked is met in half by the umbrella.
-pub(crate) const CORE_COVERS: &[(&str, &[&str])] = &[];
+/// asked is met in half by the umbrella. Who manages programmes manages projects.
+pub(crate) const CORE_COVERS: &[(&str, &[&str])] =
+    &[("projektmanagement", &["programmmanagement"])];
 
 /// Concepts close to each other, met in half both ways: an AI tool used and AI asked for,
 /// leading and managing a project or a programme, stakeholders and their management. A node
@@ -16,10 +17,7 @@ pub(crate) const CORE_NEAR: &[(&str, &[&str])] = &[
     ("generative-ki", AI_TOOLS),
     ("ki", AI_TOOLS),
     ("llm", AI_TOOLS),
-    (
-        "programmmanagement",
-        &["programmleitung", "projektmanagement"],
-    ),
+    ("programmmanagement", &["programmleitung"]),
     ("projektleitung", &["projektmanagement"]),
     ("stakeholdermanagement", &["stakeholder"]),
 ];

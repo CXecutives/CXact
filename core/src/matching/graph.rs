@@ -23,8 +23,7 @@ use super::lexicon::engine as lex;
 
 /// How an ad atom relates to a profile atom: by their words, then through the graph. A
 /// node of ten letters or more stands for its compounds too (`Projektleitungskompetenz` is
-/// near `Projektmanagement`); the profile atom is the other node or narrower
-/// (`Konzerncontrolling`).
+/// near `Projektmanagement`); the profile atom is the other node, or a compound of it.
 pub(crate) fn fit(job: &str, profile: &str) -> Fit {
     let direct = atoms::fit_direct(job, profile);
     if direct != Fit::None {
@@ -35,13 +34,13 @@ pub(crate) fn fit(job: &str, profile: &str) -> Fit {
         .chain(starts.map(|at| &job[..at]))
         .filter_map(|node| EDGES.get(node))
         .flatten()
-        .filter(|(other, _)| {
-            matches!(
-                atoms::fit_direct(other, profile),
-                Fit::Equal | Fit::Specific
-            )
+        .filter_map(|(other, edge)| match atoms::fit_direct(other, profile) {
+            Fit::Equal => Some(*edge),
+            // A compound of the other node meets in half (`Konzerncontrolling` for FP&A asked);
+            // it proves no umbrella (`Standortkonsolidierung` is no accounting).
+            Fit::Specific if *edge == Fit::General => Some(Fit::General),
+            _ => None,
         })
-        .map(|(_, edge)| *edge)
         .max()
         .unwrap_or(Fit::None)
 }
@@ -50,8 +49,9 @@ pub(crate) fn fit(job: &str, profile: &str) -> Fit {
 const COMPOUND_NODE: usize = 10;
 
 /// Every node with the nodes it relates to and how an ad asking for it is met by a profile
-/// naming the other: an umbrella by a narrower node it covers, a narrower node by its
-/// umbrellas, a node by its near ones, in half.
+/// naming the other: an umbrella in full by a narrower node it covers (the profile is more
+/// specific), a narrower node in half by its umbrellas (more general), a node in half by its
+/// near ones.
 static EDGES: LazyLock<HashMap<String, Vec<(String, Fit)>>> = LazyLock::new(|| {
     let covers = DOMAINS
         .iter()
@@ -75,7 +75,7 @@ static EDGES: LazyLock<HashMap<String, Vec<(String, Fit)>>> = LazyLock::new(|| {
     };
     for umbrella in below.keys() {
         for narrower in covered(&below, umbrella) {
-            add(umbrella, &narrower, Fit::General);
+            add(umbrella, &narrower, Fit::Covered);
             add(&narrower, umbrella, Fit::General);
         }
     }

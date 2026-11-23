@@ -155,7 +155,7 @@ fn title_fit_with(query: &Query, title: &str, vocab: &Vocab, drop_contract: bool
                             full / 2
                         }
                         Fit::Equal | Fit::Specific => full,
-                        Fit::General => full / 2,
+                        Fit::General | Fit::Covered => full / 2,
                         Fit::None => 0,
                     }
                 })

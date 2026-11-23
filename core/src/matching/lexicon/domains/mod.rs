@@ -96,7 +96,7 @@ pub(crate) mod testing {
         atoms(job, vocab).iter().any(|j| {
             profile
                 .iter()
-                .any(|p| matches!(fit(j, p), Fit::Equal | Fit::Specific))
+                .any(|p| matches!(fit(j, p), Fit::Equal | Fit::Covered | Fit::Specific))
         })
     }
 

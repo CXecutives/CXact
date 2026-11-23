@@ -373,8 +373,8 @@ pub(crate) fn is_hygiene(text: &str) -> bool {
 }
 
 fn related(a: &str, b: &str) -> bool {
-    matches!(graph::fit(a, b), Fit::Equal | Fit::Specific)
-        || matches!(graph::fit(b, a), Fit::Equal | Fit::Specific)
+    matches!(graph::fit(a, b), Fit::Equal | Fit::Covered | Fit::Specific)
+        || matches!(graph::fit(b, a), Fit::Equal | Fit::Covered | Fit::Specific)
 }
 
 /// Which musts stand on the core of the role: a skill that names what the title names (also

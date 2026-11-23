@@ -202,7 +202,7 @@ fn role_fit(
             .unwrap_or(Fit::None);
         match best {
             Fit::Equal => {}
-            Fit::General | Fit::Specific => full = false,
+            Fit::General | Fit::Covered | Fit::Specific => full = false,
             Fit::None => return None,
         }
     }

@@ -474,7 +474,7 @@ fn entry_fit(job: &Alternative, whole: &Entry) -> (u16, Via) {
     if matched == entry.len() && (!generic_only || whole_item) {
         return if fits.contains(&Fit::General) {
             (E_HALF, Via::General)
-        } else if fits.contains(&Fit::Specific) {
+        } else if fits.contains(&Fit::Specific) || fits.contains(&Fit::Covered) {
             (E_FULL, Via::Specific)
         } else {
             (E_FULL, Via::Exact)
@@ -497,7 +497,7 @@ fn entry_fit(job: &Alternative, whole: &Entry) -> (u16, Via) {
             whole
                 .ids
                 .iter()
-                .any(|&i| matches!(j.fit(i), Fit::Equal | Fit::Specific))
+                .any(|&i| matches!(j.fit(i), Fit::Equal | Fit::Covered | Fit::Specific))
         })
     {
         // Free text that mentions a skill (a USP sentence, a long description such as
@@ -592,12 +592,14 @@ fn skill_fit_in(skills: &Skills, text: &str, broad: bool) -> ItemFit {
         })
     {
         // An industry is the setting of a requirement, never its function
-        // (`Vertriebserfahrung im Maschinenbau` is not half met by `Maschinenbau`).
-        let industry = best
+        // (`Vertriebserfahrung im Maschinenbau` is not half met by `Maschinenbau`); so is an
+        // umbrella the entry's narrower work covers (`Datenmigration im Finanzwesen` is not
+        // half met by `Monatsabschlüsse`).
+        let setting = best
             .entry
             .and_then(|e| skills.entries.get(e))
-            .is_some_and(|e| e.industry);
-        if industry {
+            .is_some_and(|e| e.industry || e.ids.iter().any(|&i| asked.best[i] == Fit::Covered));
+        if setting {
             best = NONE;
         } else {
             best.value = E_HALF;
