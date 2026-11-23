@@ -1,11 +1,11 @@
 {
   "generatedBy": "tools/sync-contract.cmd, never edited by hand",
   "from": "main",
-  "commit": "3d0ad598e7c28d6de14e9f8d58afe9ff8974e575",
+  "commit": "eb7a6b40881867c85ec24213b4a95119c87262d3",
   "files": {
     "tools/ui-harness/demo/ads.json": "78bd5ce9b3efb255",
-    "tools/ui-harness/demo/snapshot.json": "a453f38fc8aa4f9d",
-    "tools/ui-harness/demo/vocabulary.json": "b3999742aa4235d1",
+    "tools/ui-harness/demo/snapshot.json": "01bdc064f445f100",
+    "tools/ui-harness/demo/vocabulary.json": "393459ed2b3c98a8",
     "ui/src/lib/ipc/types/AppNote.ts": "94e748266a727c3c",
     "ui/src/lib/ipc/types/AppState.ts": "5a8f60a67d2ac39c",
     "ui/src/lib/ipc/types/AskedTerm.ts": "4a6d553eaaa0e51c",
