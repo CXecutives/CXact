@@ -72,7 +72,7 @@
   import { warningText } from '$lib/i18n/texts';
   import type { JobView, Place } from '$lib/ipc/types';
   import { searchWords } from '$lib/marks';
-  import { play, staggerLimit } from '$lib/motion/motion';
+  import { now, play, staggerLimit } from '$lib/motion/motion';
   import { animateOpen } from '$lib/motion/pace';
   import { glideWhole } from '$lib/motion/scroll';
   import { afterUnfold, rowCollapse, rowEnter, unfold } from '$lib/motion/transitions';
@@ -409,13 +409,16 @@
       if (shift === 0 || (!seen(was) && !seen(box.top))) continue;
       moves.push([row, Math.max(-height, Math.min(height, shift))]);
     }
+    // One start for every row and the highlight: they glide as one.
+    const start = now();
     for (const [row, offset] of moves) {
       const motion = play(row, [{ transform: `translateY(${offset}px)` }, { transform: 'none' }], {
         duration: 'slow',
         easing: 'out',
+        start,
       });
       motion?.addEventListener('finish', () => motion.cancel());
-      if (row.hasAttribute('data-open')) rowBar?.shift(offset);
+      if (row.hasAttribute('data-open')) rowBar?.shift(offset, start);
     }
   }
 

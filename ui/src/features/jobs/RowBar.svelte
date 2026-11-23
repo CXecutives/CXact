@@ -148,7 +148,7 @@
    * one glide of a choice) as along with a row that glides to its new place (the same
    * timing). Its height moves only where the two rows differ (rows are one height).
    */
-  function slide(from: BarBox, to: BarBox): void {
+  function slide(from: BarBox, to: BarBox, start: number | null = null): void {
     stop();
     place(to);
     if (bar === null) return;
@@ -157,7 +157,7 @@
       transform: `translateY(${Math.round(box.top)}px)`,
       ...(sized ? { height: px(box.height) } : {}),
     });
-    const animation = play(bar, [at(from), at(to)], { duration: 'slow', easing: 'out' });
+    const animation = play(bar, [at(from), at(to)], { duration: 'slow', easing: 'out', start });
     animation?.addEventListener('finish', () => animation.cancel());
     motion = animation === null ? null : { animation, from, to };
   }
@@ -254,11 +254,11 @@
   }
 
   /** The open row glides by `offset` to its new place (the list re-sorted): the bar glides
-   *  along in the row's timing. */
-  export function shift(offset: number): void {
+   *  along in the row's timing, from the row's own start. */
+  export function shift(offset: number, start: number | null = null): void {
     update();
     if (placed === null || !shown || at === null || inMotion()) return;
-    slide({ top: placed.top + offset, height: placed.height }, placed);
+    slide({ top: placed.top + offset, height: placed.height }, placed, start);
   }
 
   /** Reports the rows' layout, right after each layout that changed their size. */
@@ -283,12 +283,42 @@
    * in one column), which reports nothing.
    */
   function soon(): () => void {
+    reobserve();
+    const frame = requestAnimationFrame(update);
+    followRows();
+    return () => cancelAnimationFrame(frame);
+  }
+
+  /** The rows are reported once more after the next layout, in this very frame when it is
+   *  being prepared (after every frame callback that moves them). */
+  function reobserve(): void {
     if (observer !== null && rows !== null) {
       observer.unobserve(rows);
       observer.observe(rows);
     }
-    const frame = requestAnimationFrame(update);
-    return () => cancelAnimationFrame(frame);
+  }
+
+  /** While the rows move (an unfold, a glide), the bar is placed in every frame after its
+   *  layout, before it is drawn: a busy machine may skip the size report of a frame, and an
+   *  unfold may start a frame late. It follows until its row stood still for two frames and
+   *  nothing animates. */
+  let follow = 0;
+  function followRows(): void {
+    cancelAnimationFrame(follow);
+    let still = 0;
+    let last: number | null = null;
+    const step = (): void => {
+      reobserve();
+      update();
+      const top = open === null ? null : (find(open)?.getBoundingClientRect().top ?? null);
+      still = top === last ? still + 1 : 0;
+      last = top;
+      const moving = rows
+        ?.getAnimations({ subtree: true })
+        .some((animation) => animation.playState === 'running');
+      if (moving || still < 2) follow = requestAnimationFrame(step);
+    };
+    follow = requestAnimationFrame(step);
   }
 
   // Another job opened in the same list: at once, so the bar sets off with the rows' wash.
@@ -307,6 +337,7 @@
   $effect(() => () => {
     stop();
     cancelAnimationFrame(snapFrame);
+    cancelAnimationFrame(follow);
   });
 </script>
 

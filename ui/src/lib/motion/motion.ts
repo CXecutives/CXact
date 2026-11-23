@@ -189,6 +189,15 @@ export interface PlayOptions {
   crossfade?: boolean;
   /** `add`: the keyframes add to the element's own style (a glide by a delta). */
   composite?: CompositeOperation;
+  /** The timeline time it starts at: animations that move together share it, so a busy
+   *  machine never starts one a frame after the other ([`now`]). */
+  start?: number | null;
+}
+
+/** The time on the document's timeline, for animations that start together (`start`). */
+export function now(): number | null {
+  const time = document.timeline.currentTime;
+  return typeof time === 'number' ? time : null;
 }
 
 /**
@@ -213,5 +222,7 @@ export function play(
   if (ms === 0 && timing.delay === 0) return null;
   // WAAPI takes the CSS easing string of the token as it is.
   timing.easing = token(`--ease-${options.easing ?? 'standard'}`);
-  return element.animate(keyframes, timing);
+  const animation = element.animate(keyframes, timing);
+  if (options.start !== undefined && options.start !== null) animation.startTime = options.start;
+  return animation;
 }
