@@ -20,7 +20,7 @@ const OUT = 'docs/CODEMAP.md';
 
 /** What the map lists, in this order (the layers of docs/ARCHITECTURE.md). */
 const LAYERS = [
-  { name: 'core', roots: ['core/src', 'core/tests', 'core/examples'] },
+  { name: 'core', roots: ['core/src', 'core/tests', 'core/examples', 'core/build.rs'] },
   { name: 'src-tauri', roots: ['src-tauri/src', 'src-tauri/build.rs'] },
   { name: 'ui/src', roots: ['ui/src'] },
   { name: 'cv-worker', roots: ['cv-worker/src'] },

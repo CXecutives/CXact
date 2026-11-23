@@ -54,7 +54,9 @@ use sha2::Digest as _;
 /// the role does) and a specialist offered as an employment is a rung below a lead. Then the
 /// causes of held-out sets 1 and 6: a nice cue after a comma makes only its clause nice, a
 /// field word is no industry, a must naming the title's field word stands on the core, general
-/// business work shows no field, a compound of another field fits a title in half.
+/// business work shows no field, a compound of another field fits a title in half. Version 26
+/// (the revision carries the engine's fingerprint) changed only the version line: with
+/// `engine 25` in front the rows still give `106934c7fafea2b3`.
 const GOLDEN_DIGEST: &str = "golden_digest.txt";
 
 fn fixtures() -> PathBuf {

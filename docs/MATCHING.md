@@ -712,10 +712,10 @@ reaches the text; a test builds every code and looks for none.
 
 ## In the app
 
-`pipeline::LocalMatcher` wraps one compiled profile; revision `e{ENGINE_VERSION}.{INPUTS}:{fingerprint}`
-(a stored score of another revision is stale; `INPUTS` counts what a stored job hands the engine besides
-its text - since 2 the page facts under `matching::fact_key` and the teaser flag, since 4 the career level, the
-industries and a remote field in words, since 5 the stored key facts carry the workload). A panic of the engine
+`pipeline::LocalMatcher` wraps one compiled profile; revision `e{ENGINE_VERSION}.{engine}:{profile}`
+(a stored score of another revision is stale; `engine` is the fingerprint `core/build.rs` takes of every source
+that decides a score: `core/src/matching/**` with its word lists and ESCO data, the scored text and
+`pipeline/local.rs`, what a stored job hands the engine and what the store keeps). A panic of the engine
 leaves the job `unscorable` with the note `engineFailed` and the run goes on. The profile is compiled once and kept until its file changes
 (`src-tauri/src/commands/scoring.rs`); an empty profile or a parse error means no matcher, so nothing is
 scored and nothing is pending. Jobs without text are judged from title and location (usually

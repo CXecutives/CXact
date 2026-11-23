@@ -6,7 +6,7 @@ file: name, lines, purpose (the first sentence of its header comment), main publ
 (Rust `pub`, TS exports, Svelte props; `+n` more). The notes under the headings come from
 docs/ARCHITECTURE.md "Layers".
 
-484 files, 5 of them without a header comment ("(no header)").
+485 files, 5 of them without a header comment ("(no header)").
 
 ## Where a change goes
 
@@ -38,6 +38,9 @@ docs/CHANGING.md:
 ## core
 
 everything the app knows and does, without UI and without…
+
+### core
+- build.rs 68 · The fingerprint of what decides a score, for the stored…
 
 ### core/examples
 - cv_compare.rs 71 · One paid call of the CV worker, read and sent exactly as…
@@ -124,7 +127,7 @@ is the pure integer engine
 - job.rs 1969 · A job text as the engine reads it: sections with inline… · Stage, Class, Item, JobDoc +12
 - layout.rs 116 · The layout of an ad's text for the reader: the lines that… · TextLayout, text_layout
 - limits.rs 573 · The limits of an engagement the profile sets, checked and… · Workload, read, workload, workload_fits +4
-- mod.rs 467 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +19
+- mod.rs 469 · Matching engine: scores a job text against the consultant… · Gap, JobGaps, vocabulary_gaps, TextLayout +19
 - normalize.rs 303 · Text primitives with Python semantics: case folding,… · is_space, is_word, decimal, digit_class_body +8
 - params.rs 142 · Frozen parameters of the engine. · E_FULL, E_HALF, E_NONE, W_MUST +57
 - permanent.rs 496 · The rule for permanent roles: the minimum annual salary. · Salary, with_bonus, parse_salary, salary +3
@@ -175,7 +178,7 @@ is the pure integer engine
 ### core/src/pipeline
 runs mail and search, screen, fetch and score
 - dry_run.rs 364 · Dry run: a mailbox and portals to look at - without… · matcher, search_plan, DryRunBackends, DryRunMail +4
-- local.rs 844 · The matching engine behind `Matcher`: one compiled… · LocalMatcher, engine_facts, record, with_criterion +7
+- local.rs 870 · The matching engine behind `Matcher`: one compiled… · LocalMatcher, engine_facts, record, with_criterion +7
 - mod.rs 1133 · One click: the alert mails and the search -> new jobs ->… · LocalMatcher, Matcher, RunRequest, RunKind +23
 - rescore.rs 421 · When the app scores every job again by itself: after the… · Host, Rescore
 - score.rs 218 · Scoring jobs against the profile. · Matcher, engine_failed, guarded, screen +3
@@ -253,7 +256,7 @@ shape what the UI sees.
 - language.rs 243 · English-only sweep: every git-tracked text file must be…
 - mail_fixtures.rs 194 · Checked-in, anonymised alert mails - result as a snapshot.
 - mailbox_slot.rs 172 · Safety invariants of saving the mailbox in `src-tauri`, as…
-- matching_corpus.rs 698 · The synthetic matching corpus.
+- matching_corpus.rs 700 · The synthetic matching corpus.
 - matching_criteria.rs 1086 · The hard-criteria strip rests on evidence: a criterion is…
 - matching_fuzz.rs 270 · Deterministic fuzzing of the engine: every corpus ad line…
 - matching_generalisation.rs 364 · Rules found on the unseen held-out sets 3 to 6, checked on…
